@@ -5,6 +5,7 @@ window.Auth = (() => {
   let client = null;
   let session = null;
   let role = "coach_full";
+  let initPromise = null;
 
   function setMsg(text, ok=false) {
     const el = document.getElementById("loginMsg");
@@ -24,69 +25,96 @@ window.Auth = (() => {
     document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === id));
   }
 
-  async function init() {
+  async function ensureClient() {
+    if (client) return client;
     if (!window.supabase || !window.supabase.createClient) {
-      setMsg("Supabase-bibliotek kunde inte laddas.");
-      updateBadges();
-      return;
+      throw new Error("Supabase-bibliotek kunde inte laddas.");
     }
-
     client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    return client;
+  }
 
-    client.auth.onAuthStateChange(async (_event, nextSession) => {
-      session = nextSession || null;
-      updateBadges();
-      if (session) {
-        showView("appView");
-        setMsg("");
-        if (window.App && typeof window.App.onSignedIn === "function") {
-          window.App.onSignedIn(session);
+  async function init() {
+    if (initPromise) return initPromise;
+
+    initPromise = (async () => {
+      try {
+        await ensureClient();
+
+        client.auth.onAuthStateChange(async (_event, nextSession) => {
+          session = nextSession || null;
+          updateBadges();
+          if (session) {
+            showView("appView");
+            setMsg("");
+            if (window.App && typeof window.App.onSignedIn === "function") {
+              window.App.onSignedIn(session);
+            }
+          } else {
+            showView("loginView");
+          }
+        });
+
+        const { data } = await client.auth.getSession();
+        session = data?.session || null;
+        updateBadges();
+
+        if (session) {
+          showView("appView");
+          if (window.App && typeof window.App.onSignedIn === "function") {
+            window.App.onSignedIn(session);
+          }
+        } else {
+          showView("loginView");
         }
-      } else {
-        showView("loginView");
+      } catch (error) {
+        setMsg(error.message || "Kunde inte initiera auth.");
+        updateBadges();
       }
-    });
+    })();
 
-    const { data } = await client.auth.getSession();
-    session = data?.session || null;
-    updateBadges();
-
-    if (session) {
-      showView("appView");
-      if (window.App && typeof window.App.onSignedIn === "function") {
-        window.App.onSignedIn(session);
-      }
-    } else {
-      showView("loginView");
-    }
+    return initPromise;
   }
 
   async function sendMagicLink(email) {
-    if (!client) return setMsg("Auth är inte initierad ännu.");
     if (!email) return setMsg("Skriv din e-post.");
-    const redirectTo = window.location.origin + window.location.pathname;
-    const { error } = await client.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: redirectTo }
-    });
-    if (error) return setMsg("Kunde inte skicka länk: " + error.message);
-    setMsg("Länk skickad! Öppna mejlet och klicka på länken.", true);
+    try {
+      await init();
+      await ensureClient();
+      const redirectTo = window.location.origin + window.location.pathname;
+      const { error } = await client.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: redirectTo }
+      });
+      if (error) return setMsg("Kunde inte skicka länk: " + error.message);
+      setMsg("Länk skickad! Öppna mejlet och klicka på länken.", true);
+    } catch (error) {
+      setMsg(error.message || "Auth är inte initierad.");
+    }
   }
 
   async function refreshSession() {
-    if (!client) return;
-    const { data } = await client.auth.getSession();
-    session = data?.session || null;
-    updateBadges();
-    if (session) showView("appView");
+    try {
+      await init();
+      const { data } = await client.auth.getSession();
+      session = data?.session || null;
+      updateBadges();
+      if (session) showView("appView");
+    } catch (error) {
+      setMsg(error.message || "Kunde inte uppdatera session.");
+    }
   }
 
   async function logout() {
-    if (!client) return;
-    await client.auth.signOut();
-    session = null;
-    updateBadges();
-    showView("loginView");
+    try {
+      await init();
+      await client.auth.signOut();
+      session = null;
+      updateBadges();
+      showView("loginView");
+    } catch (error) {
+      setMsg(error.message || "Kunde inte logga ut.");
+    }
   }
 
   function getClient() { return client; }
