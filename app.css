@@ -1,17 +1,36 @@
-:root{--bg:#0f0f10;--card:#17181b;--text:#f5f5f7;--muted:#b6b7bd;--line:#2a2b30;--red:#b11226;--red2:#7a0c18;--ok:#35d07f;--err:#ff6a6a;--radius:16px}
-*{box-sizing:border-box}body{margin:14px;font-family:-apple-system,system-ui,Segoe UI,Roboto,Arial;background:radial-gradient(1000px 600px at 10% -10%,rgba(177,18,38,.22),transparent 55%),var(--bg);color:var(--text)}
-button,input,select{font:inherit}button{border:1px solid #5e0913;background:linear-gradient(180deg,#d41f34,#7a0c18);color:#fff;border-radius:14px;padding:12px 14px;font-weight:800;cursor:pointer}button.ghost{background:rgba(255,255,255,.05);border:1px solid var(--line)}button:disabled{opacity:.45;cursor:not-allowed}
-.card{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,0)),var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin:12px 0;box-shadow:0 10px 24px rgba(0,0,0,.28)}
-.top{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:18px;background:linear-gradient(90deg,#7a0c18,#b11226 40%,#7a0c18);border:2px solid rgba(0,0,0,.55)}
-.top img{width:58px;height:58px;border-radius:14px;background:#fff;border:2px solid #fff}.small{font-size:12px;color:var(--muted)}.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1 1 180px}.btnrow{display:flex;gap:10px;flex-wrap:wrap}.btnrow>*{flex:1 1 180px}
-label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}input,select{width:100%;padding:10px 12px;background:rgba(255,255,255,.04);color:var(--text);border:1px solid var(--line);border-radius:12px}
-.view{display:none}.view.active{display:block}.modal{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.56);padding:14px}.modal>.panel{max-width:920px;margin:0 auto;background:#16181c;border:1px solid var(--line);border-radius:18px;padding:14px;max-height:90vh;overflow:auto}
-.listItem{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08)}.listItem:last-child{border-bottom:0}
-table{width:100%;border-collapse:collapse}th,td{padding:9px 6px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;vertical-align:top}th{font-size:12px;color:var(--muted)}.nowrap{white-space:nowrap}
-.matchBlock{margin-bottom:12px}.print-card{border-left:5px solid var(--red)!important}.pill{display:inline-block;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.05);font-size:12px}.ok{color:var(--ok);font-weight:800}.error{color:var(--err);font-weight:800}
-.chk{width:22px;height:22px;accent-color:var(--red)}.doneRow td{background:rgba(255,255,255,.06);opacity:.82;text-decoration:line-through}.doneRow td:first-child{text-decoration:none}
-#runNowBar .hero{border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:16px;background:rgba(255,255,255,.05)}#runNowBar .title{font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:.8px;opacity:.9}#runNowBar .main{font-size:34px;font-weight:950;line-height:1.06;margin-top:10px;word-break:break-word}
-.homeActions button{min-height:56px}.status{padding:4px 10px;border-radius:999px;border:2px solid}.activeStatus{color:#2ecc71;border-color:#2ecc71}.doneStatus{color:#d41f34;border-color:#d41f34}.app-version{position:fixed;right:6px;bottom:4px;font-size:10px;opacity:.45}.hidden{display:none!important}
-#loginView .card{max-width:560px;margin:20px auto}#adminView .card{max-width:980px;margin:18px auto}code{opacity:.9}
-@media (max-width:600px){.top{align-items:flex-start}.btnrow>*{flex:1 1 100%}#runNowBar .main{font-size:28px}}
-@media print{body{background:#fff;color:#111;margin:0}.no-print,.modal,.top .small{display:none!important}.card{border:none;box-shadow:none;margin:0;padding:0;background:#fff}.print-card{background:#fff!important;border:1px solid #ddd!important;padding:12px!important;margin:10px 0!important}.doneRow td{background:#f3f3f3!important;color:#111!important}.chk{display:none!important}}
+
+body{
+font-family:system-ui;
+background:#111;
+color:#fff;
+margin:0;
+padding:20px;
+}
+.header{
+display:flex;
+gap:16px;
+background:#b11226;
+padding:16px;
+border-radius:16px;
+}
+.logo{
+width:64px;
+height:64px;
+border-radius:12px;
+background:#fff;
+}
+.card{
+background:#1b1b1b;
+padding:20px;
+border-radius:16px;
+margin-top:20px;
+}
+button{
+background:#b11226;
+border:0;
+padding:14px;
+border-radius:12px;
+color:#fff;
+font-weight:700;
+}
+.hidden{display:none}
