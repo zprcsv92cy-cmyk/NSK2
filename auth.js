@@ -6,16 +6,11 @@ window.Auth = (() => {
   let session = null;
   let role = "coach_full";
 
-  function hasConfig() {
-    return !SUPABASE_URL.includes("YOUR_PROJECT") && !SUPABASE_ANON_KEY.includes("YOUR_PUBLIC");
-  }
-
   function setMsg(text, ok=false) {
     const el = document.getElementById("loginMsg");
-    if (el) {
-      el.textContent = text || "";
-      el.style.color = ok ? "var(--ok)" : "";
-    }
+    if (!el) return;
+    el.textContent = text || "";
+    el.style.color = ok ? "var(--ok)" : "";
   }
 
   function updateBadges() {
@@ -26,22 +21,13 @@ window.Auth = (() => {
   }
 
   function showView(id) {
-    document.querySelectorAll(".view").forEach(v => {
-      v.classList.toggle("active", v.id === id);
-    });
+    document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === id));
   }
 
   async function init() {
     if (!window.supabase || !window.supabase.createClient) {
       setMsg("Supabase-bibliotek kunde inte laddas.");
       updateBadges();
-      return;
-    }
-
-    if (!hasConfig()) {
-      setMsg("Lägg in SUPABASE_URL och SUPABASE_ANON_KEY i auth.js.");
-      updateBadges();
-      showView("loginView");
       return;
     }
 
