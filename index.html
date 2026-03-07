@@ -1,195 +1,37 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="sv">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="manifest" href="./manifest.webmanifest">
-<meta name="theme-color" content="#b11226">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="NSK Team 18">
-<link rel="apple-touch-icon" href="./icon-192.png">
-<title>NSK Team 18 V3</title>
-<link rel="stylesheet" href="./app.css">
+<title>NSK Team 18</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="app.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-<div class="top">
-  <img src="./icon-192.png" alt="NSK">
-  <div>
-    <h1 style="margin:0;font-size:22px">Nyköpings Sportklubb • Team 18</h1>
-    <div class="small">V3 • uppdelade filer • auth • roller • backup • PDF</div>
-  </div>
+
+<header class="header">
+<img src="icon-192.png" class="logo">
+<div>
+<h1>Nyköpings Sportklubb • Team 18</h1>
+<div class="sub">V4 • auth • roller • backup • PDF</div>
 </div>
+</header>
 
-<div id="loginView" class="view active">
-  <div class="card">
-    <b style="font-size:20px">Logga in</b>
-    <div class="small" style="margin-top:6px">Ange din e-post. Du får en inloggningslänk utan lösenord.</div>
-    <label style="margin-top:14px">E-post</label>
-    <input id="loginEmail" type="email" autocomplete="email" placeholder="namn@exempel.se">
-    <div class="btnrow" style="margin-top:14px">
-      <button id="btnSendLink" type="button">Skicka inloggningslänk</button>
-      <button id="btnLogout" class="ghost hidden" type="button">Logga ut</button>
-    </div>
-    <div id="loginMsg" class="small" style="margin-top:12px"></div>
-    <div class="small" style="margin-top:12px">Status: <span id="authStatus">Ej inloggad</span> • Roll: <span id="roleStatus">—</span></div>
-  </div>
-</div>
+<section id="loginView" class="card">
+<h2>Logga in</h2>
+<p>Ange din e‑post. Du får en inloggningslänk utan lösenord.</p>
+<input id="email" placeholder="namn@exempel.se">
+<button id="loginBtn">Skicka inloggningslänk</button>
+<div id="status"></div>
+</section>
 
-<div id="homeView" class="view">
-  <div class="card no-print">
-    <div class="homeActions btnrow">
-      <button type="button" onclick="App.openRegister()">Truppen team 18</button>
-      <button class="ghost" type="button" data-perm="full" onclick="App.openNewPool()">Skapa nytt poolspel</button>
-      <button class="ghost" type="button" data-perm="admin" onclick="Admin.open()">Behörigheter</button>
-      <button class="ghost" type="button" onclick="App.openGoalieStats()">Statistik målvakter</button>
-    </div>
-  </div>
-  <div class="card">
-    <b>Sparade poolspel</b>
-    <div id="poolList" style="margin-top:10px"></div>
-  </div>
-</div>
+<section id="appView" class="hidden">
+<h2>App</h2>
+<button onclick="exportPDF()">Export PDF</button>
+<button onclick="backup()">Backup JSON</button>
+</section>
 
-<div id="adminView" class="view no-print">
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
-      <b style="font-size:20px">Behörigheter</b>
-      <div class="btnrow" style="flex:1 1 320px">
-        <button class="ghost" type="button" onclick="App.backHome()">Till startsidan</button>
-        <button type="button" onclick="Admin.reload()">Uppdatera</button>
-      </div>
-    </div>
-    <div id="adminMsg" class="small" style="margin-top:8px"></div>
-    <div class="card">
-      <b>Ge behörighet via e-post</b>
-      <div class="row" style="margin-top:10px">
-        <div style="flex:2 1 220px"><label>E-post</label><input id="inviteEmail" type="email" placeholder="namn@exempel.se"></div>
-        <div><label>Roll</label><select id="inviteRole"><option value="coach_run">coach_run</option><option value="coach_full">coach_full</option><option value="admin">admin</option></select></div>
-        <div style="align-self:flex-end"><button type="button" onclick="Admin.saveInvite()">Spara inbjudan</button></div>
-      </div>
-      <div id="inviteMsg" class="small" style="margin-top:8px"></div>
-    </div>
-    <div style="overflow:auto;margin-top:12px">
-      <table style="min-width:680px">
-        <thead><tr><th>E-post</th><th>User ID</th><th>Roll</th><th>Åtgärd</th></tr></thead>
-        <tbody id="adminUsersTbody"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<div id="editView" class="view">
-  <div class="card no-print">
-    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start">
-      <div>
-        <b>Redigera poolspel</b>
-        <div id="editSub" class="small"></div>
-      </div>
-      <div class="btnrow" style="flex:1 1 420px">
-        <button class="ghost" type="button" onclick="App.backHome()">Till startsidan</button>
-        <button class="ghost" type="button" onclick="App.openTeamPicker('edit')">Byt lag</button>
-        <button type="button" onclick="App.showRun()">Poolspel-läge</button>
-        <button type="button" onclick="App.exportPDF()">PDF</button>
-      </div>
-    </div>
-    <div class="small" style="margin-top:8px">Match nr, start, motståndare, plan, tränare, målvakt och bytesschema med avbockning.</div>
-  </div>
-
-  <div class="card no-print">
-    <div class="row">
-      <div><label>Match</label><select id="matchNo"></select></div>
-      <div><label>Antal matcher</label><select id="matchCount"></select></div>
-      <div><label>Starttid</label><input id="matchTime" type="time"></div>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <div><label>Motståndare</label><input id="opponent" placeholder="Motståndare"></div>
-      <div><label>Plan</label><select id="arena"></select></div>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <div><label>Tränare (flera val)</label><select id="coach" multiple size="4"></select></div>
-      <div><label>Målvakt</label><select id="goalie"></select></div>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <div><label>Truppstorlek</label><select id="teamSize"></select></div>
-      <div><label>På plan</label><select id="onCourt"></select></div>
-      <div><label>Perioder</label><select id="periodsCount"></select></div>
-      <div><label>Minuter/period</label><select id="periodMin"></select></div>
-      <div><label>Byte (sek)</label><select id="shiftSec"></select></div>
-    </div>
-    <div id="playersContainer" class="row" style="margin-top:10px"></div>
-    <div id="msg" class="small" style="margin-top:10px"></div>
-  </div>
-
-  <div id="editOutput" class="card"></div>
-</div>
-
-<div id="runView" class="view">
-  <div class="card no-print">
-    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start">
-      <div>
-        <b>Poolspel-läge</b>
-        <div id="runSub" class="small"></div>
-      </div>
-      <div class="btnrow" style="flex:1 1 420px">
-        <button class="ghost" type="button" onclick="App.backHome()">Till startsidan</button>
-        <button class="ghost" type="button" onclick="App.openTeamPicker('run')">Byt lag</button>
-        <button class="ghost" type="button" data-perm="full" onclick="App.showEdit()">Redigera</button>
-      </div>
-    </div>
-  </div>
-  <div id="runNowBar" class="card"></div>
-  <div id="runOutput"></div>
-</div>
-
-<div id="newPoolModal" class="modal no-print"><div class="panel">
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><b>Skapa nytt poolspel</b><button class="ghost" type="button" onclick="App.closeModal('newPoolModal')">Stäng</button></div>
-  <div class="row" style="margin-top:12px">
-    <div><label>Datum</label><input id="poolDate" type="date"></div>
-    <div><label>Ort</label><input id="poolPlace" placeholder="Ort"></div>
-    <div><label>Antal lag</label><select id="teamCount"></select></div>
-  </div>
-  <div class="btnrow" style="margin-top:12px"><button type="button" onclick="App.saveNewPool()">Spara</button></div>
-</div></div>
-
-<div id="teamSelectModal" class="modal no-print"><div class="panel">
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><b>Välj lag</b><button class="ghost" type="button" onclick="App.closeModal('teamSelectModal')">Stäng</button></div>
-  <div id="teamButtons" class="btnrow" style="margin-top:12px"></div>
-</div></div>
-
-<div id="registerModal" class="modal no-print"><div class="panel">
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><b>Truppen team 18</b><button class="ghost" type="button" onclick="App.closeModal('registerModal')">Stäng</button></div>
-  <div class="row" style="margin-top:12px">
-    <div class="card" style="margin:0">
-      <b>Spelare</b>
-      <div class="row" style="margin-top:10px"><input id="newPlayer" placeholder="Förnamn Efternamn"><button type="button" onclick="App.addPlayer()">Lägg till</button></div>
-      <div id="playerList" style="margin-top:10px"></div>
-    </div>
-    <div class="card" style="margin:0">
-      <b>Tränare</b>
-      <div class="row" style="margin-top:10px"><input id="newCoach" placeholder="Förnamn Efternamn"><button type="button" onclick="App.addCoach()">Lägg till</button></div>
-      <div id="coachList" style="margin-top:10px"></div>
-    </div>
-  </div>
-  <div class="card">
-    <b>Backup</b>
-    <div class="btnrow" style="margin-top:10px">
-      <button class="ghost" type="button" onclick="App.exportJSON()">Exportera JSON</button>
-      <label style="margin:0"><span class="small">Importera JSON</span><input id="importFile" type="file" accept="application/json"></label>
-    </div>
-    <div id="importMsg" class="small" style="margin-top:8px"></div>
-  </div>
-</div></div>
-
-<div id="goalieStatsModal" class="modal no-print"><div class="panel">
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><b>Statistik målvakter</b><button class="ghost" type="button" onclick="App.closeModal('goalieStatsModal')">Stäng</button></div>
-  <div class="card" id="goalieStatsList" style="margin-top:12px"></div>
-</div></div>
-
-<div class="app-version">V2 Auth 1.0</div>
-
-
-<script src="./app.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
