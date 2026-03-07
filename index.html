@@ -3,17 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NSK Team 18 V7.2</title>
+<title>NSK Team 18 V7.3</title>
 <meta name="theme-color" content="#b11226">
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="stylesheet" href="./app.css">
+<link rel="stylesheet" href="./app.css?v=73">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./config.js?v=73"></script>
 </head>
 <body>
 <header class="topbar">
   <div>
-    <h1>NSK Team 18 – V7.2</h1>
-    <div class="sub">spelare i byten • autosync • coach-helscreen</div>
+    <h1>NSK Team 18 – V7.3</h1>
+    <div class="sub">live-sync • auto-login • coach-helscreen • autosync</div>
   </div>
   <div class="topright">
     <div class="badge" id="authStatus">Ej inloggad</div>
@@ -114,9 +115,8 @@
   </div>
 </section>
 
-<script src="./config.js"></script>
-<script src="./auth.js"></script>
-<script src="./db.js"></script>
-<script src="./app.js"></script>
+<script src="./auth.js?v=73"></script>
+<script src="./db.js?v=73"></script>
+<script src="./app.js?v=73"></script>
 </body>
 </html>
