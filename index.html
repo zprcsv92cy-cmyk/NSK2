@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>NSK Team 18 V6</title>
+  <title>NSK Team 18 V6.1</title>
   <meta name="theme-color" content="#b11226">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -20,12 +20,13 @@
       <img src="./icon-192.png" class="logo" alt="NSK">
       <div>
         <h1>Nyköpings Sportklubb • Team 18</h1>
-        <div class="sub">V6 • auth • poolspel • live coachläge • timer • backup</div>
+        <div class="sub">V6.1 • auth • live coachläge • timer per match • sync-klar struktur</div>
       </div>
     </div>
     <div class="top-actions">
       <div class="badge" id="authBadge">Ej inloggad</div>
       <div class="badge" id="roleBadge">roll: —</div>
+      <div class="badge" id="syncBadge">lokal</div>
     </div>
   </header>
 
@@ -50,6 +51,7 @@
           <div class="toolbar">
             <h2>Poolspel</h2>
             <div class="btnrow compact">
+              <button id="btnSyncNow" class="ghost" type="button">Synka nu</button>
               <button id="btnLogout" class="ghost" type="button">Logga ut</button>
             </div>
           </div>
@@ -119,6 +121,16 @@
           </div>
 
           <div class="timerbox">
+            <div class="row timer-top">
+              <div>
+                <label for="timerMatchSelect">Timer för match</label>
+                <select id="timerMatchSelect"></select>
+              </div>
+              <div>
+                <label for="timerShiftSelect">Aktivt byte</label>
+                <select id="timerShiftSelect"></select>
+              </div>
+            </div>
             <div class="timer-main" id="timerDisplay">00:00</div>
             <div class="timer-sub" id="timerState">Timer stoppad</div>
             <div class="btnrow">
@@ -157,7 +169,7 @@
         <div class="card">
           <div class="toolbar">
             <h2>Admin / Roller</h2>
-            <div class="badge">V6</div>
+            <div class="badge">V6.1</div>
           </div>
           <div class="row">
             <div>
@@ -177,12 +189,13 @@
             <button id="btnSaveInvite" class="ghost" type="button">Spara inbjudan lokalt</button>
           </div>
           <div id="adminMsg" class="muted mt8"></div>
+          <div class="muted mt8">V6.1 sparar allt lokalt men har förberedd sync-struktur i <code>db.js</code> för nästa steg med Supabase-tabeller.</div>
         </div>
       </div>
     </section>
   </main>
 
-  <div class="version">V6</div>
+  <div class="version">V6.1</div>
 
   <script src="./db.js"></script>
   <script src="./auth.js"></script>
