@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>NSK Team 18 V6.1</title>
+  <title>NSK Team 18 V6.2</title>
   <meta name="theme-color" content="#b11226">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -20,7 +20,7 @@
       <img src="./icon-192.png" class="logo" alt="NSK">
       <div>
         <h1>Nyköpings Sportklubb • Team 18</h1>
-        <div class="sub">V6.1 • auth • live coachläge • timer per match • sync-klar struktur</div>
+        <div class="sub">V6.2 • riktig Supabase-sync • flera enheter • coachläge • timer per match</div>
       </div>
     </div>
     <div class="top-actions">
@@ -52,6 +52,7 @@
             <h2>Poolspel</h2>
             <div class="btnrow compact">
               <button id="btnSyncNow" class="ghost" type="button">Synka nu</button>
+              <button id="btnPullNow" class="ghost" type="button">Hämta från molnet</button>
               <button id="btnLogout" class="ghost" type="button">Logga ut</button>
             </div>
           </div>
@@ -98,7 +99,7 @@
           <div id="matchesList"></div>
         </div>
 
-        <div class="card coach-card">
+        <div class="card">
           <div class="toolbar">
             <h2>Live coachläge</h2>
             <div class="btnrow compact">
@@ -168,34 +169,17 @@
 
         <div class="card">
           <div class="toolbar">
-            <h2>Admin / Roller</h2>
-            <div class="badge">V6.1</div>
+            <h2>Molnstatus</h2>
+            <div class="badge">V6.2</div>
           </div>
-          <div class="row">
-            <div>
-              <label for="inviteEmail">Bjud in e-post</label>
-              <input id="inviteEmail" placeholder="namn@exempel.se">
-            </div>
-            <div>
-              <label for="inviteRole">Roll</label>
-              <select id="inviteRole">
-                <option value="coach_run">coach_run</option>
-                <option value="coach_full">coach_full</option>
-                <option value="admin">admin</option>
-              </select>
-            </div>
-          </div>
-          <div class="btnrow">
-            <button id="btnSaveInvite" class="ghost" type="button">Spara inbjudan lokalt</button>
-          </div>
-          <div id="adminMsg" class="muted mt8"></div>
-          <div class="muted mt8">V6.1 sparar allt lokalt men har förberedd sync-struktur i <code>db.js</code> för nästa steg med Supabase-tabeller.</div>
+          <div id="cloudInfo" class="muted">Klar för Supabase-tabellen <code>app_state</code>.</div>
+          <div class="muted mt8">När SQL-filen nedan körts i Supabase kan flera enheter dela samma state. Appen använder en gemensam nyckel: <code>team18-main</code>.</div>
         </div>
       </div>
     </section>
   </main>
 
-  <div class="version">V6.1</div>
+  <div class="version">V6.2</div>
 
   <script src="./db.js"></script>
   <script src="./auth.js"></script>
