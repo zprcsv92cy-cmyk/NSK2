@@ -1,91 +1,58 @@
-window.DB = (() => {
-  const LOCAL_KEY = "nsk_v62_state";
-  const CLOUD_KEY = "team18-main";
 
-  function defaults() {
-    return {
-      pools: [],
-      players: [],
-      settings: { goalie: "", shiftSeconds: 90, syncStatus: "lokal" }
-    };
-  }
+window.DB=(()=>{
 
-  function load() {
-    try {
-      const raw = localStorage.getItem(LOCAL_KEY);
-      const data = raw ? JSON.parse(raw) : defaults();
-      data.pools = Array.isArray(data.pools) ? data.pools : [];
-      data.players = Array.isArray(data.players) ? data.players : [];
-      data.settings = { ...defaults().settings, ...(data.settings || {}) };
-      return data;
-    } catch {
-      return defaults();
-    }
-  }
+const LOCAL="nsk_v63"
 
-  function save(data) {
-    localStorage.setItem(LOCAL_KEY, JSON.stringify(data));
-  }
+function load(){
+try{
+return JSON.parse(localStorage.getItem(LOCAL))||{pools:[]}
+}catch{ return {pools:[]} }
+}
 
-  function savePool(pool) {
-    const data = load();
-    const idx = data.pools.findIndex(p => p.id === pool.id);
-    if (idx >= 0) data.pools[idx] = pool;
-    else data.pools.unshift(pool);
-    save(data);
-    return pool;
-  }
+function save(data){
+localStorage.setItem(LOCAL,JSON.stringify(data))
+}
 
-  function savePlayers(players, goalie, shiftSeconds) {
-    const data = load();
-    data.players = players;
-    data.settings.goalie = goalie || "";
-    data.settings.shiftSeconds = Number(shiftSeconds) || 90;
-    save(data);
-  }
+function savePool(pool){
+const d=load()
+const i=d.pools.findIndex(p=>p.id===pool.id)
+if(i>=0)d.pools[i]=pool
+else d.pools.push(pool)
+save(d)
+}
 
-  function setSyncStatus(status) {
-    const data = load();
-    data.settings.syncStatus = status || "lokal";
-    save(data);
-  }
+async function syncPool(pool){
 
-  async function syncNow(payload) {
-    const client = window.Auth && Auth.getClient ? Auth.getClient() : null;
-    const session = window.Auth && Auth.getSession ? Auth.getSession() : null;
-    if (!client || !session) throw new Error("Inte inloggad.");
+const client=Auth.getClient()
+const session=Auth.getSession()
+if(!client||!session)throw "not logged in"
 
-    const row = {
-      id: CLOUD_KEY,
-      owner_email: session.user?.email || "",
-      payload,
-      updated_at: new Date().toISOString()
-    };
+const {error}=await client
+.from("pools")
+.upsert({
+cloud_id:pool.cloud_id,
+owner:session.user.email,
+payload:pool
+},{onConflict:"cloud_id"})
 
-    const { error } = await client.from("app_state").upsert(row, { onConflict: "id" });
-    if (error) throw error;
+if(error)throw error
+}
 
-    setSyncStatus("synkad");
-    return { ok: true };
-  }
+async function pullPool(cloud_id){
 
-  async function pullNow() {
-    const client = window.Auth && Auth.getClient ? Auth.getClient() : null;
-    if (!client) throw new Error("Auth saknas.");
+const client=Auth.getClient()
 
-    const { data, error } = await client
-      .from("app_state")
-      .select("payload, updated_at")
-      .eq("id", CLOUD_KEY)
-      .single();
+const {data,error}=await client
+.from("pools")
+.select("payload")
+.eq("cloud_id",cloud_id)
+.single()
 
-    if (error) throw error;
-    if (!data || !data.payload) throw new Error("Ingen molndata hittades.");
+if(error)throw error
 
-    save(data.payload);
-    setSyncStatus("hämtad");
-    return data.payload;
-  }
+return data.payload
+}
 
-  return { load, save, savePool, savePlayers, setSyncStatus, syncNow, pullNow, CLOUD_KEY };
-})();
+return{{load,save,savePool,syncPool,pullPool}}
+
+})()
