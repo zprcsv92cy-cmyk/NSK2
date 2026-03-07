@@ -1,13 +1,6 @@
 window.App = (() => {
   let state = {
-    pool: {
-      id: "",
-      name: "",
-      date: "",
-      place: "",
-      teams: [],
-      matches: []
-    },
+    pool: { id: "", name: "", date: "", place: "", teams: [], matches: [] },
     coachIndex: 0,
     players: [],
     goalie: "",
@@ -16,10 +9,8 @@ window.App = (() => {
     timer: { running: false, startedAt: 0, elapsedMs: 0, intervalId: null }
   };
 
-  function uid() {
-    return "v61_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 7);
-  }
   const byId = (id) => document.getElementById(id);
+  const uid = () => "v62_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 7);
 
   function setMsg(id, text, ok = false) {
     const el = byId(id);
@@ -44,8 +35,7 @@ window.App = (() => {
   }
 
   function uniqNames(arr) {
-    const seen = new Set();
-    const out = [];
+    const seen = new Set(), out = [];
     for (const item of arr) {
       const key = String(item).toLowerCase();
       if (seen.has(key)) continue;
@@ -61,11 +51,6 @@ window.App = (() => {
     if (badge) badge.textContent = data.settings?.syncStatus || "lokal";
   }
 
-  function updatePlayerCount() {
-    const badge = byId("playerCountBadge");
-    if (badge) badge.textContent = `${state.players.length} spelare`;
-  }
-
   function fillForm() {
     byId("poolName").value = state.pool.name || "";
     byId("poolDate").value = state.pool.date || "";
@@ -74,9 +59,18 @@ window.App = (() => {
     byId("playersCsv").value = (state.players || []).join("\n");
     byId("goalieName").value = state.goalie || "";
     byId("shiftSeconds").value = state.shiftSeconds || 90;
-    updatePlayerCount();
-    updateSyncBadge();
+    byId("playerCountBadge").textContent = `${state.players.length} spelare`;
     fillTimerSelectors();
+    updateSyncBadge();
+  }
+
+  function cloudPayload() {
+    const data = DB.load();
+    return {
+      pools: data.pools || [],
+      players: data.players || [],
+      settings: data.settings || {}
+    };
   }
 
   function readPoolForm() {
@@ -99,15 +93,8 @@ window.App = (() => {
     for (let i = 0; i < shifts; i++) {
       const start = (i * groupSize) % rotated.length;
       const slice = [];
-      for (let j = 0; j < groupSize; j++) {
-        slice.push(rotated[(start + j) % rotated.length]);
-      }
-      lineups.push({
-        no: i + 1,
-        timeLeft: formatMMSS((shifts - i) * state.shiftSeconds),
-        players: uniqNames(slice),
-        done: false
-      });
+      for (let j = 0; j < groupSize; j++) slice.push(rotated[(start + j) % rotated.length]);
+      lineups.push({ no: i + 1, timeLeft: formatMMSS((shifts - i) * state.shiftSeconds), players: uniqNames(slice), done: false });
     }
     return lineups;
   }
@@ -121,12 +108,106 @@ window.App = (() => {
     }));
   }
 
+  function persistPool() {
+    DB.savePool(state.pool);
+    updateSyncBadge();
+  }
+
   function currentTimerMatch() {
     return state.pool.matches?.[state.timerTarget.matchIndex] || null;
   }
 
-  function persistPool() {
-    DB.savePool(state.pool);
+  function fillTimerSelectors() {
+    const matchSel = byId("timerMatchSelect");
+    const shiftSel = byId("timerShiftSelect");
+    if (!matchSel || !shiftSel) return;
+
+    const matches = state.pool.matches || [];
+    if (!matches.length) {
+      matchSel.innerHTML = `<option value="0">Ingen match</option>`;
+      shiftSel.innerHTML = `<option value="0">Inga byten</option>`;
+      state.timerTarget = { matchIndex: 0, shiftIndex: 0 };
+      return;
+    }
+
+    state.timerTarget.matchIndex = Math.min(state.timerTarget.matchIndex, matches.length - 1);
+    matchSel.innerHTML = matches.map((m, i) => `<option value="${i}">${escapeHtml(m.title || ("Match " + (i + 1)))}</option>`).join("");
+    matchSel.value = String(state.timerTarget.matchIndex);
+
+    const lineups = matches[state.timerTarget.matchIndex].lineups || [];
+    state.timerTarget.shiftIndex = Math.min(state.timerTarget.shiftIndex, Math.max(0, lineups.length - 1));
+    shiftSel.innerHTML = lineups.length ? lineups.map((l, i) => `<option value="${i}">Byte ${l.no}</option>`).join("") : `<option value="0">Inga byten</option>`;
+    shiftSel.value = String(state.timerTarget.shiftIndex);
+  }
+
+  function renderCoach() {
+    const matches = state.pool.matches || [];
+    if (!matches.length) {
+      byId("coachCurrent").textContent = "Ingen match vald";
+      byId("coachCurrentMeta").textContent = "—";
+      byId("coachNext").textContent = "—";
+      byId("coachNextMeta").textContent = "—";
+      return;
+    }
+
+    state.coachIndex = Math.min(Math.max(0, state.coachIndex), matches.length - 1);
+    const curMatch = matches[state.coachIndex];
+    const nextMatch = matches[state.coachIndex + 1] || null;
+    const curLineup = (curMatch.lineups || []).find(x => !x.done) || curMatch.lineups?.[curMatch.lineups.length - 1] || null;
+    const nextLineup = (curMatch.lineups || []).find((x, idx, arr) => !x.done && arr[idx + 1]) ? (() => {
+      const idx = curMatch.lineups.findIndex(x => !x.done);
+      return curMatch.lineups[idx + 1];
+    })() : ((nextMatch?.lineups || []).find(x => !x.done) || null);
+
+    byId("coachCurrent").textContent = curLineup ? (curLineup.players || []).join(", ") : "Inga byten";
+    byId("coachCurrentMeta").textContent = buildMeta(curMatch, curLineup);
+    byId("coachNext").textContent = nextLineup ? (nextLineup.players || []).join(", ") : "Ingen nästa";
+    byId("coachNextMeta").textContent = nextLineup ? buildMeta(nextMatch && !(curMatch.lineups || []).some((x, idx, arr) => !x.done && arr[idx + 1]) ? nextMatch : curMatch, nextLineup) : "—";
+  }
+
+  function buildMeta(match, lineup) {
+    if (!match || !lineup) return "—";
+    const bits = [match.title || "", match.time || "—", match.opponent ? "mot " + match.opponent : "mot —", match.field ? "plan " + match.field : "plan —", state.goalie ? "målvakt " + state.goalie : "", "byte " + lineup.no, lineup.timeLeft].filter(Boolean);
+    return bits.join(" • ");
+  }
+
+  function renderMatches() {
+    const wrap = byId("matchesList");
+    if (!wrap) return;
+    const matches = state.pool.matches || [];
+    if (!matches.length) {
+      wrap.innerHTML = '<div class="muted">Inga matcher ännu.</div>';
+      return;
+    }
+    wrap.innerHTML = matches.map((m, i) => `
+      <div class="match-item">
+        <div class="match-head">
+          <div>
+            <b>${escapeHtml(m.title || ("Match " + (i + 1)))}</b>
+            <div class="muted">${escapeHtml(state.pool.date || "—")} • ${escapeHtml(state.pool.place || "—")} • timer ${formatMMSS(Math.floor((m.timerElapsedMs || 0) / 1000))}</div>
+          </div>
+          <div class="status ${m.done ? "status-done" : "status-live"}">${m.done ? "Klar" : "Live"}</div>
+        </div>
+        <div class="row mt8">
+          <div><label>Tid</label><input data-id="${m.id}" data-field="time" value="${escapeHtml(m.time || "")}" placeholder="10:00"></div>
+          <div><label>Motståndare</label><input data-id="${m.id}" data-field="opponent" value="${escapeHtml(m.opponent || "")}" placeholder="Motståndare"></div>
+          <div><label>Plan</label><input data-id="${m.id}" data-field="field" value="${escapeHtml(m.field || "")}" placeholder="1"></div>
+        </div>
+        <div class="lineup-list">
+          ${(m.lineups || []).map((lineup, idx) => `
+            <div class="lineup-row ${lineup.done ? "done" : ""}">
+              <div><b>#${lineup.no}</b></div>
+              <div>${escapeHtml(lineup.timeLeft)}</div>
+              <div>${escapeHtml((lineup.players || []).join(", ") || "—")}</div>
+              <div><button class="tick ghost" type="button" data-action="tick" data-id="${m.id}" data-lineup="${idx}">${lineup.done ? "✓" : "○"}</button></div>
+            </div>`).join("")}
+        </div>
+        <div class="btnrow mt8">
+          <button type="button" data-action="toggle" data-id="${m.id}" class="${m.done ? "ghost" : ""}">${m.done ? "Markera ej klar" : "Markera klar"}</button>
+          <button type="button" data-action="rebuild" data-id="${m.id}" class="ghost">Bygg om byten</button>
+          <button type="button" data-action="delete" data-id="${m.id}" class="ghost">Ta bort</button>
+        </div>
+      </div>`).join("");
   }
 
   function savePool() {
@@ -150,7 +231,7 @@ window.App = (() => {
     state.shiftSeconds = Math.max(20, Math.min(300, Number(byId("shiftSeconds").value || 90)));
     DB.savePlayers(state.players, state.goalie, state.shiftSeconds);
     rebuildAll(false);
-    updatePlayerCount();
+    byId("playerCountBadge").textContent = `${state.players.length} spelare`;
     renderMatches();
     renderCoach();
     fillTimerSelectors();
@@ -159,17 +240,7 @@ window.App = (() => {
 
   function addMatch() {
     const number = (state.pool.matches || []).length + 1;
-    state.pool.matches = [...(state.pool.matches || []), {
-      id: uid(),
-      title: "Match " + number,
-      time: "",
-      opponent: "",
-      field: "",
-      done: false,
-      timerElapsedMs: 0,
-      activeShiftIndex: 0,
-      lineups: []
-    }];
+    state.pool.matches = [...(state.pool.matches || []), { id: uid(), title: "Match " + number, time: "", opponent: "", field: "", done: false, timerElapsedMs: 0, activeShiftIndex: 0, lineups: [] }];
     ensureLineups();
     persistPool();
     renderMatches();
@@ -196,132 +267,6 @@ window.App = (() => {
     fillTimerSelectors();
   }
 
-  function fillTimerSelectors() {
-    const matchSel = byId("timerMatchSelect");
-    const shiftSel = byId("timerShiftSelect");
-    if (!matchSel || !shiftSel) return;
-
-    const matches = state.pool.matches || [];
-    if (!matches.length) {
-      matchSel.innerHTML = `<option value="0">Ingen match</option>`;
-      shiftSel.innerHTML = `<option value="0">Inga byten</option>`;
-      state.timerTarget = { matchIndex: 0, shiftIndex: 0 };
-      return;
-    }
-
-    state.timerTarget.matchIndex = Math.min(state.timerTarget.matchIndex, matches.length - 1);
-    matchSel.innerHTML = matches.map((m, i) => `<option value="${i}">${escapeHtml(m.title || ("Match " + (i + 1)))}</option>`).join("");
-    matchSel.value = String(state.timerTarget.matchIndex);
-
-    const lineups = matches[state.timerTarget.matchIndex].lineups || [];
-    state.timerTarget.shiftIndex = Math.min(state.timerTarget.shiftIndex, Math.max(0, lineups.length - 1));
-    shiftSel.innerHTML = lineups.length
-      ? lineups.map((l, i) => `<option value="${i}">Byte ${l.no}</option>`).join("")
-      : `<option value="0">Inga byten</option>`;
-    shiftSel.value = String(state.timerTarget.shiftIndex);
-  }
-
-  function currentLineupFor(match) {
-    const lineups = match?.lineups || [];
-    return lineups.find(x => !x.done) || lineups[lineups.length - 1] || null;
-  }
-
-  function nextLineupFor(match) {
-    const lineups = match?.lineups || [];
-    const idx = lineups.findIndex(x => !x.done);
-    return idx >= 0 ? (lineups[idx + 1] || null) : null;
-  }
-
-  function buildMeta(match, lineup) {
-    if (!match || !lineup) return "—";
-    const bits = [
-      match.title || "",
-      match.time || "—",
-      match.opponent ? "mot " + match.opponent : "mot —",
-      match.field ? "plan " + match.field : "plan —",
-      state.goalie ? "målvakt " + state.goalie : "",
-      "byte " + lineup.no,
-      lineup.timeLeft
-    ].filter(Boolean);
-    return bits.join(" • ");
-  }
-
-  function renderCoach() {
-    const matches = state.pool.matches || [];
-    if (!matches.length) {
-      byId("coachCurrent").textContent = "Ingen match vald";
-      byId("coachCurrentMeta").textContent = "—";
-      byId("coachNext").textContent = "—";
-      byId("coachNextMeta").textContent = "—";
-      return;
-    }
-
-    state.coachIndex = Math.min(Math.max(0, state.coachIndex), matches.length - 1);
-    const curMatch = matches[state.coachIndex];
-    const nextMatch = matches[state.coachIndex + 1] || null;
-    const curLineup = currentLineupFor(curMatch);
-    const nxtLineup = nextLineupFor(curMatch) || currentLineupFor(nextMatch);
-
-    byId("coachCurrent").textContent = curLineup ? (curLineup.players || []).join(", ") : "Inga byten";
-    byId("coachCurrentMeta").textContent = buildMeta(curMatch, curLineup);
-    byId("coachNext").textContent = nxtLineup ? (nxtLineup.players || []).join(", ") : "Ingen nästa";
-    byId("coachNextMeta").textContent = nxtLineup ? buildMeta(nextLineupFor(curMatch) ? curMatch : nextMatch, nxtLineup) : "—";
-  }
-
-  function renderMatches() {
-    const wrap = byId("matchesList");
-    if (!wrap) return;
-    const matches = state.pool.matches || [];
-    if (!matches.length) {
-      wrap.innerHTML = '<div class="muted">Inga matcher ännu.</div>';
-      return;
-    }
-
-    wrap.innerHTML = matches.map((m, i) => `
-      <div class="match-item">
-        <div class="match-head">
-          <div>
-            <b>${escapeHtml(m.title || ("Match " + (i + 1)))}</b>
-            <div class="muted">${escapeHtml(state.pool.date || "—")} • ${escapeHtml(state.pool.place || "—")} • timer ${formatMMSS(Math.floor((m.timerElapsedMs || 0) / 1000))}</div>
-          </div>
-          <div class="status ${m.done ? "status-done" : "status-live"}">${m.done ? "Klar" : "Live"}</div>
-        </div>
-
-        <div class="row mt8">
-          <div>
-            <label>Tid</label>
-            <input data-id="${m.id}" data-field="time" value="${escapeHtml(m.time || "")}" placeholder="10:00">
-          </div>
-          <div>
-            <label>Motståndare</label>
-            <input data-id="${m.id}" data-field="opponent" value="${escapeHtml(m.opponent || "")}" placeholder="Motståndare">
-          </div>
-          <div>
-            <label>Plan</label>
-            <input data-id="${m.id}" data-field="field" value="${escapeHtml(m.field || "")}" placeholder="1">
-          </div>
-        </div>
-
-        <div class="lineup-list">
-          ${(m.lineups || []).map((lineup, idx) => `
-            <div class="lineup-row ${lineup.done ? "done" : ""}">
-              <div><b>#${lineup.no}</b></div>
-              <div>${escapeHtml(lineup.timeLeft)}</div>
-              <div>${escapeHtml((lineup.players || []).join(", ") || "—")}</div>
-              <div><button class="tick ghost" type="button" data-action="tick" data-id="${m.id}" data-lineup="${idx}">${lineup.done ? "✓" : "○"}</button></div>
-            </div>
-          `).join("")}
-        </div>
-
-        <div class="btnrow mt8">
-          <button type="button" data-action="toggle" data-id="${m.id}" class="${m.done ? "ghost" : ""}">${m.done ? "Markera ej klar" : "Markera klar"}</button>
-          <button type="button" data-action="rebuild" data-id="${m.id}" class="ghost">Bygg om byten</button>
-          <button type="button" data-action="delete" data-id="${m.id}" class="ghost">Ta bort</button>
-        </div>
-      </div>
-    `).join("");
-  }
-
   function toggleLineupDone(matchId, lineupIndex) {
     state.pool.matches = (state.pool.matches || []).map(m => {
       if (m.id !== matchId) return m;
@@ -337,9 +282,7 @@ window.App = (() => {
   }
 
   function rebuildOne(matchId) {
-    state.pool.matches = (state.pool.matches || []).map((m, idx) =>
-      m.id === matchId ? { ...m, lineups: buildLineupsForMatch(idx), done: false, activeShiftIndex: 0, timerElapsedMs: 0 } : m
-    );
+    state.pool.matches = (state.pool.matches || []).map((m, idx) => m.id === matchId ? { ...m, lineups: buildLineupsForMatch(idx), done: false, activeShiftIndex: 0, timerElapsedMs: 0 } : m);
     resetTimer(false);
     persistPool();
     renderMatches();
@@ -348,13 +291,7 @@ window.App = (() => {
   }
 
   function rebuildAll(showMsg = true) {
-    state.pool.matches = (state.pool.matches || []).map((m, idx) => ({
-      ...m,
-      lineups: buildLineupsForMatch(idx),
-      done: false,
-      activeShiftIndex: 0,
-      timerElapsedMs: 0
-    }));
+    state.pool.matches = (state.pool.matches || []).map((m, idx) => ({ ...m, lineups: buildLineupsForMatch(idx), done: false, activeShiftIndex: 0, timerElapsedMs: 0 }));
     resetTimer(false);
     persistPool();
     if (showMsg) setMsg("playersMsg", "Bytesschemat byggdes om.", true);
@@ -362,9 +299,7 @@ window.App = (() => {
 
   function persistTimerToMatch(elapsedMs) {
     const idx = state.timerTarget.matchIndex;
-    state.pool.matches = (state.pool.matches || []).map((m, i) =>
-      i === idx ? { ...m, timerElapsedMs: elapsedMs, activeShiftIndex: state.timerTarget.shiftIndex } : m
-    );
+    state.pool.matches = (state.pool.matches || []).map((m, i) => i === idx ? { ...m, timerElapsedMs: elapsedMs, activeShiftIndex: state.timerTarget.shiftIndex } : m);
     persistPool();
   }
 
@@ -416,9 +351,27 @@ window.App = (() => {
   }
 
   async function syncNow() {
-    await DB.syncNow({ pool: state.pool, players: state.players, goalie: state.goalie, shiftSeconds: state.shiftSeconds });
-    updateSyncBadge();
-    setMsg("poolMsg", "Synk klar.", true);
+    try {
+      await DB.syncNow(cloudPayload());
+      updateSyncBadge();
+      setMsg("poolMsg", "Synk klar.", true);
+    } catch (e) {
+      setMsg("poolMsg", "Synk misslyckades: " + (e.message || e));
+    }
+  }
+
+  async function pullNow() {
+    try {
+      await DB.pullNow();
+      hydrateFromDB();
+      fillForm();
+      renderMatches();
+      renderCoach();
+      updateTimerDisplay();
+      setMsg("poolMsg", "Molndata hämtad.", true);
+    } catch (e) {
+      setMsg("poolMsg", "Hämtning misslyckades: " + (e.message || e));
+    }
   }
 
   function exportJson() {
@@ -427,7 +380,7 @@ window.App = (() => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "nsk-v61-backup.json";
+    a.download = "nsk-v62-backup.json";
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -448,18 +401,7 @@ window.App = (() => {
     }
   }
 
-  function saveInviteLocal() {
-    const email = String(byId("inviteEmail").value || "").trim();
-    const role = String(byId("inviteRole").value || "coach_run");
-    if (!email) return setMsg("adminMsg", "Skriv e-post.");
-    DB.saveInvite({ email, role, savedAt: Date.now() });
-    setMsg("adminMsg", "Inbjudan sparad lokalt.", true);
-    byId("inviteEmail").value = "";
-  }
-
-  function printPdf() {
-    window.print();
-  }
+  function printPdf() { window.print(); }
 
   function loadDemo() {
     state.players = ["Alex Andersson", "Benjamin Berg", "Carl Carlsson", "David Dahl", "Elias Eriksson", "Filip Friberg", "Gustav Gran", "Hugo Holm"];
@@ -484,7 +426,6 @@ window.App = (() => {
     renderMatches();
     renderCoach();
     updateTimerDisplay();
-    updateSyncBadge();
     setMsg("poolMsg", "Demo laddad.", true);
   }
 
@@ -511,24 +452,18 @@ window.App = (() => {
     byId("btnLogout").addEventListener("click", () => Auth.logout());
 
     byId("btnSyncNow").addEventListener("click", syncNow);
+    byId("btnPullNow").addEventListener("click", pullNow);
+
     byId("btnSavePool").addEventListener("click", savePool);
     byId("btnAddMatch").addEventListener("click", addMatch);
     byId("btnLoadDemo").addEventListener("click", loadDemo);
     byId("btnExportJson").addEventListener("click", exportJson);
     byId("btnPrint").addEventListener("click", printPdf);
-
     byId("btnSavePlayers").addEventListener("click", savePlayers);
     byId("btnRebuildLineup").addEventListener("click", () => { rebuildAll(true); renderMatches(); renderCoach(); fillTimerSelectors(); });
-    byId("btnSaveInvite").addEventListener("click", saveInviteLocal);
 
-    byId("btnCoachPrev").addEventListener("click", () => {
-      state.coachIndex = Math.max(0, state.coachIndex - 1);
-      renderCoach();
-    });
-    byId("btnCoachNext").addEventListener("click", () => {
-      state.coachIndex = Math.min(Math.max(0, (state.pool.matches || []).length - 1), state.coachIndex + 1);
-      renderCoach();
-    });
+    byId("btnCoachPrev").addEventListener("click", () => { state.coachIndex = Math.max(0, state.coachIndex - 1); renderCoach(); });
+    byId("btnCoachNext").addEventListener("click", () => { state.coachIndex = Math.min(Math.max(0, (state.pool.matches || []).length - 1), state.coachIndex + 1); renderCoach(); });
 
     byId("timerMatchSelect").addEventListener("change", (e) => {
       pauseTimer();
@@ -539,13 +474,11 @@ window.App = (() => {
       state.timer.elapsedMs = Number(match?.timerElapsedMs || 0);
       updateTimerDisplay();
     });
-
     byId("timerShiftSelect").addEventListener("change", (e) => {
       pauseTimer();
       state.timerTarget.shiftIndex = Number(e.target.value || 0);
       persistTimerToMatch(state.timer.elapsedMs);
     });
-
     byId("btnTimerStart").addEventListener("click", startTimer);
     byId("btnTimerPause").addEventListener("click", pauseTimer);
     byId("btnTimerReset").addEventListener("click", () => resetTimer(true));
