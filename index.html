@@ -3,36 +3,44 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>NSK Team 18 V5</title>
+  <title>NSK Team 18 V6</title>
   <meta name="theme-color" content="#b11226">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="NSK Team 18">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="./icon-512.png">
   <link rel="stylesheet" href="./app.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <header class="nsk-top">
-    <img class="nsk-logo" src="./icon-192.png" alt="NSK">
-    <div>
-      <h1>Nyköpings Sportklubb • Team 18</h1>
-      <div class="small">V5 • auth • poolspel • coachläge • backup • PDF</div>
+  <header class="topbar">
+    <div class="brand">
+      <img src="./icon-192.png" class="logo" alt="NSK">
+      <div>
+        <h1>Nyköpings Sportklubb • Team 18</h1>
+        <div class="sub">V6 • auth • poolspel • live coachläge • timer • backup</div>
+      </div>
     </div>
-    <div class="grow"></div>
-    <div class="badge" id="authBadge">Ej inloggad</div>
+    <div class="top-actions">
+      <div class="badge" id="authBadge">Ej inloggad</div>
+      <div class="badge" id="roleBadge">roll: —</div>
+    </div>
   </header>
 
-  <main class="app-shell">
+  <main class="shell">
     <section id="loginView" class="view active">
       <div class="card narrow">
         <h2>Logga in</h2>
-        <p class="small">Ange din e-post. Du får en inloggningslänk utan lösenord.</p>
+        <p class="muted">Ange din e-post. Du får en magic link utan lösenord.</p>
         <label for="loginEmail">E-post</label>
         <input id="loginEmail" type="email" autocomplete="email" placeholder="namn@exempel.se">
         <div class="btnrow">
           <button id="btnSendLink" type="button">Skicka inloggningslänk</button>
           <button id="btnRefreshSession" class="ghost" type="button">Uppdatera session</button>
         </div>
-        <div id="loginMsg" class="small mt8"></div>
+        <div id="loginMsg" class="muted mt8"></div>
       </div>
     </section>
 
@@ -45,29 +53,26 @@
               <button id="btnLogout" class="ghost" type="button">Logga ut</button>
             </div>
           </div>
-
           <div class="row">
             <div>
               <label for="poolName">Namn</label>
-              <input id="poolName" placeholder="t.ex. Poolspel Nyköping">
+              <input id="poolName" placeholder="t.ex. Poolspel Rosvalla">
             </div>
             <div>
               <label for="poolDate">Datum</label>
               <input id="poolDate" type="date">
             </div>
           </div>
-
           <div class="row">
             <div>
               <label for="poolPlace">Ort</label>
-              <input id="poolPlace" placeholder="Ort">
+              <input id="poolPlace" placeholder="Nyköping">
             </div>
             <div>
               <label for="poolTeams">Lag (kommaseparerat)</label>
-              <input id="poolTeams" placeholder="Lag 1, Lag 2">
+              <input id="poolTeams" placeholder="Lag 1, Lag 2, Lag 3">
             </div>
           </div>
-
           <div class="btnrow">
             <button id="btnSavePool" type="button">Spara poolspel</button>
             <button id="btnLoadDemo" class="ghost" type="button">Ladda demo</button>
@@ -78,8 +83,7 @@
             </label>
             <button id="btnPrint" class="ghost" type="button">Skriv ut / PDF</button>
           </div>
-
-          <div id="poolMsg" class="small mt8"></div>
+          <div id="poolMsg" class="muted mt8"></div>
         </div>
 
         <div class="card">
@@ -92,28 +96,69 @@
           <div id="matchesList"></div>
         </div>
 
-        <div class="card">
+        <div class="card coach-card">
           <div class="toolbar">
-            <h2>Coachläge</h2>
+            <h2>Live coachläge</h2>
             <div class="btnrow compact">
               <button id="btnCoachPrev" class="ghost" type="button">Föregående</button>
               <button id="btnCoachNext" class="ghost" type="button">Nästa</button>
             </div>
           </div>
-          <div class="coach-box">
-            <div class="small">Pågående match</div>
-            <div id="coachCurrent" class="coach-main">Ingen match vald</div>
-            <div class="small mt8">Nästa</div>
-            <div id="coachNext" class="coach-next">—</div>
+
+          <div class="runbar">
+            <div class="runbox">
+              <div class="runlabel">Pågående byte</div>
+              <div id="coachCurrent" class="runmain">Ingen match vald</div>
+              <div id="coachCurrentMeta" class="runmeta">—</div>
+            </div>
+            <div class="runbox">
+              <div class="runlabel">Nästa byte</div>
+              <div id="coachNext" class="runsecondary">—</div>
+              <div id="coachNextMeta" class="runmeta">—</div>
+            </div>
+          </div>
+
+          <div class="timerbox">
+            <div class="timer-main" id="timerDisplay">00:00</div>
+            <div class="timer-sub" id="timerState">Timer stoppad</div>
+            <div class="btnrow">
+              <button id="btnTimerStart" type="button">Starta</button>
+              <button id="btnTimerPause" class="ghost" type="button">Pausa</button>
+              <button id="btnTimerReset" class="ghost" type="button">Nollställ</button>
+              <button id="btnTickDone" class="ghost" type="button">Bocka byte</button>
+            </div>
           </div>
         </div>
 
         <div class="card">
           <div class="toolbar">
-            <h2>Admin / Roller</h2>
-            <div class="badge" id="roleBadge">roll: —</div>
+            <h2>Spelare</h2>
+            <div class="badge" id="playerCountBadge">0 spelare</div>
           </div>
-          <p class="small">Den här V5-basen har plats för adminvy och roller. Lägg in riktiga Supabase-tabeller för profiler/invites om du vill aktivera fullt flöde.</p>
+          <div class="row">
+            <div>
+              <label for="playersCsv">Spelare (en per rad eller kommaseparerat)</label>
+              <textarea id="playersCsv" rows="7" placeholder="Alex Andersson&#10;Benjamin Berg"></textarea>
+            </div>
+            <div>
+              <label for="goalieName">Målvakt</label>
+              <input id="goalieName" placeholder="Målvakt">
+              <label for="shiftSeconds" class="mt8block">Bytestid i sekunder</label>
+              <input id="shiftSeconds" type="number" min="20" max="300" step="5" value="90">
+            </div>
+          </div>
+          <div class="btnrow">
+            <button id="btnSavePlayers" type="button">Spara spelare</button>
+            <button id="btnRebuildLineup" class="ghost" type="button">Bygg om schema</button>
+          </div>
+          <div id="playersMsg" class="muted mt8"></div>
+        </div>
+
+        <div class="card">
+          <div class="toolbar">
+            <h2>Admin / Roller</h2>
+            <div class="badge">V6</div>
+          </div>
           <div class="row">
             <div>
               <label for="inviteEmail">Bjud in e-post</label>
@@ -129,15 +174,15 @@
             </div>
           </div>
           <div class="btnrow">
-            <button id="btnSaveInvite" class="ghost" type="button">Spara inbjudan (lokalt)</button>
+            <button id="btnSaveInvite" class="ghost" type="button">Spara inbjudan lokalt</button>
           </div>
-          <div id="adminMsg" class="small mt8"></div>
+          <div id="adminMsg" class="muted mt8"></div>
         </div>
       </div>
     </section>
   </main>
 
-  <div class="app-version">V5</div>
+  <div class="version">V6</div>
 
   <script src="./db.js"></script>
   <script src="./auth.js"></script>
