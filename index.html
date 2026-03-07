@@ -1,48 +1,54 @@
+
 <!doctype html>
 <html lang="sv">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NSK Team 18 V6.3</title>
+<title>NSK Team 18 V7</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="stylesheet" href="./app.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-<header class="topbar">
-<h1>NSK Team 18 – V6.3</h1>
-<div class="badge" id="authBadge">Ej inloggad</div>
-<div class="badge" id="syncBadge">lokal</div>
+<header class="top">
+<h1>NSK Team 18 – Matchläge</h1>
+<div id="authStatus">Ej inloggad</div>
 </header>
 
-<section id="loginView" class="view active">
+<section id="loginView">
 <h2>Logga in</h2>
-<input id="loginEmail" placeholder="email">
-<button id="btnSendLink">Magic link</button>
-<div id="loginMsg"></div>
+<input id="email" placeholder="email">
+<button id="loginBtn">Magic link</button>
 </section>
 
-<section id="appView" class="view">
+<section id="appView" style="display:none">
+
 <h2>Poolspel</h2>
 
-<div>
-<label>Namn</label>
-<input id="poolName">
-</div>
+<input id="poolName" placeholder="Poolspel namn">
+<input id="cloudId" placeholder="cloud id">
 
-<div>
-<label>Moln‑ID</label>
-<input id="poolCloudId" placeholder="auto eller ange eget">
-</div>
+<button id="savePool">Spara</button>
+<button id="syncPool">Synka</button>
+<button id="pullPool">Hämta</button>
 
-<button id="btnSavePool">Spara</button>
-<button id="btnSync">Synka</button>
-<button id="btnPull">Hämta</button>
+<h2>Matcher</h2>
 
-<h3>Matcher</h3>
 <div id="matches"></div>
-<button id="btnAddMatch">Ny match</button>
+
+<button id="addMatch">Ny match</button>
+
+<h2>Coachläge</h2>
+
+<div class="coach">
+<div id="current">—</div>
+<div id="next">—</div>
+<div id="timer">00:00</div>
+</div>
+
+<button id="startTimer">Start</button>
+<button id="resetTimer">Reset</button>
 
 </section>
 
