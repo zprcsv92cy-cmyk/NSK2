@@ -36,11 +36,9 @@ window.Auth = (() => {
 
   async function init() {
     if (initPromise) return initPromise;
-
     initPromise = (async () => {
       try {
         await ensureClient();
-
         client.auth.onAuthStateChange(async (_event, nextSession) => {
           session = nextSession || null;
           updateBadges();
@@ -72,7 +70,6 @@ window.Auth = (() => {
         updateBadges();
       }
     })();
-
     return initPromise;
   }
 
