@@ -1,26 +1,20 @@
 window.DB = (() => {
-  const KEY = "nsk_v61_state";
+  const LOCAL_KEY = "nsk_v62_state";
+  const CLOUD_KEY = "team18-main";
 
   function defaults() {
     return {
       pools: [],
-      invites: [],
       players: [],
-      settings: {
-        goalie: "",
-        shiftSeconds: 90,
-        syncEnabled: false,
-        syncStatus: "lokal"
-      }
+      settings: { goalie: "", shiftSeconds: 90, syncStatus: "lokal" }
     };
   }
 
   function load() {
     try {
-      const raw = localStorage.getItem(KEY);
+      const raw = localStorage.getItem(LOCAL_KEY);
       const data = raw ? JSON.parse(raw) : defaults();
       data.pools = Array.isArray(data.pools) ? data.pools : [];
-      data.invites = Array.isArray(data.invites) ? data.invites : [];
       data.players = Array.isArray(data.players) ? data.players : [];
       data.settings = { ...defaults().settings, ...(data.settings || {}) };
       return data;
@@ -30,7 +24,7 @@ window.DB = (() => {
   }
 
   function save(data) {
-    localStorage.setItem(KEY, JSON.stringify(data));
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(data));
   }
 
   function savePool(pool) {
@@ -42,15 +36,6 @@ window.DB = (() => {
     return pool;
   }
 
-  function saveInvite(invite) {
-    const data = load();
-    const idx = data.invites.findIndex(i => i.email.toLowerCase() === invite.email.toLowerCase());
-    if (idx >= 0) data.invites[idx] = invite;
-    else data.invites.unshift(invite);
-    save(data);
-    return invite;
-  }
-
   function savePlayers(players, goalie, shiftSeconds) {
     const data = load();
     data.players = players;
@@ -59,21 +44,48 @@ window.DB = (() => {
     save(data);
   }
 
-  function saveSyncStatus(status) {
+  function setSyncStatus(status) {
     const data = load();
     data.settings.syncStatus = status || "lokal";
     save(data);
   }
 
   async function syncNow(payload) {
-    // Förberett för Supabase-tabell i nästa steg.
-    // Just nu markerar vi bara senaste sync lokalt.
-    const data = load();
-    data.settings.syncStatus = "synkad " + new Date().toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" });
-    if (payload) data.lastSyncedPayload = payload;
-    save(data);
-    return { ok: true, mode: "local-stub" };
+    const client = window.Auth && Auth.getClient ? Auth.getClient() : null;
+    const session = window.Auth && Auth.getSession ? Auth.getSession() : null;
+    if (!client || !session) throw new Error("Inte inloggad.");
+
+    const row = {
+      id: CLOUD_KEY,
+      owner_email: session.user?.email || "",
+      payload,
+      updated_at: new Date().toISOString()
+    };
+
+    const { error } = await client.from("app_state").upsert(row, { onConflict: "id" });
+    if (error) throw error;
+
+    setSyncStatus("synkad");
+    return { ok: true };
   }
 
-  return { load, save, savePool, saveInvite, savePlayers, saveSyncStatus, syncNow };
+  async function pullNow() {
+    const client = window.Auth && Auth.getClient ? Auth.getClient() : null;
+    if (!client) throw new Error("Auth saknas.");
+
+    const { data, error } = await client
+      .from("app_state")
+      .select("payload, updated_at")
+      .eq("id", CLOUD_KEY)
+      .single();
+
+    if (error) throw error;
+    if (!data || !data.payload) throw new Error("Ingen molndata hittades.");
+
+    save(data.payload);
+    setSyncStatus("hämtad");
+    return data.payload;
+  }
+
+  return { load, save, savePool, savePlayers, setSyncStatus, syncNow, pullNow, CLOUD_KEY };
 })();
