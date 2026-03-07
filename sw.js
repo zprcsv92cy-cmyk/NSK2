@@ -1,4 +1,4 @@
-const CACHE_NAME = "nsk-team18-v5";
+const CACHE_NAME = "nsk-team18-v6";
 const ASSETS = [
   "./",
   "./index.html",
@@ -13,17 +13,13 @@ const ASSETS = [
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)).catch(() => {})
-  );
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)).catch(() => {}));
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     Promise.all([
-      caches.keys().then(keys =>
-        Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-      ),
+      caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))),
       self.clients.claim()
     ])
   );
@@ -38,7 +34,6 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
 
   const isHTML = req.mode === "navigate" || (req.headers.get("accept") || "").includes("text/html");
-
   if (isHTML) {
     event.respondWith((async () => {
       try {
