@@ -1,10 +1,14 @@
 window.DB = (() => {
-  const KEY = "nsk_v5_state";
+  const KEY = "nsk_v6_state";
 
   function defaults() {
     return {
       pools: [],
-      invites: []
+      invites: [],
+      players: [],
+      settings: {
+        shiftSeconds: 90
+      }
     };
   }
 
@@ -14,6 +18,8 @@ window.DB = (() => {
       const data = raw ? JSON.parse(raw) : defaults();
       data.pools = Array.isArray(data.pools) ? data.pools : [];
       data.invites = Array.isArray(data.invites) ? data.invites : [];
+      data.players = Array.isArray(data.players) ? data.players : [];
+      data.settings = data.settings || { shiftSeconds: 90 };
       return data;
     } catch {
       return defaults();
@@ -42,5 +48,14 @@ window.DB = (() => {
     return invite;
   }
 
-  return { load, save, savePool, saveInvite };
+  function savePlayers(players, goalie, shiftSeconds) {
+    const data = load();
+    data.players = players;
+    data.settings = data.settings || {};
+    data.settings.goalie = goalie || "";
+    data.settings.shiftSeconds = Number(shiftSeconds) || 90;
+    save(data);
+  }
+
+  return { load, save, savePool, saveInvite, savePlayers };
 })();
