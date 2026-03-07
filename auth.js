@@ -1,3 +1,7 @@
+if(!window.APP_CONFIG){
+  throw new Error("APP_CONFIG saknas. Kontrollera att config.js laddas före auth.js.");
+}
+
 window.Auth = (()=>{
 const SUPABASE_URL = window.APP_CONFIG.SUPABASE_URL;
 const SUPABASE_KEY = window.APP_CONFIG.SUPABASE_KEY;
