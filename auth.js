@@ -1,6 +1,6 @@
 window.Auth = (()=>{
-const SUPABASE_URL="https://tonbbmxzotsjwuimobkn.supabase.co";
-const SUPABASE_KEY="sb_publishable_wA71-rPdeNbdFxrQ9TxOyQ_29eHNl9x";
+const SUPABASE_URL = window.APP_CONFIG.SUPABASE_URL;
+const SUPABASE_KEY = window.APP_CONFIG.SUPABASE_KEY;
 let client=null, session=null, initPromise=null;
 
 function msg(text,color=""){
