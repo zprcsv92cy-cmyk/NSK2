@@ -1,5 +1,5 @@
 window.DB = (() => {
-  const KEY = "nsk_v6_state";
+  const KEY = "nsk_v61_state";
 
   function defaults() {
     return {
@@ -7,7 +7,10 @@ window.DB = (() => {
       invites: [],
       players: [],
       settings: {
-        shiftSeconds: 90
+        goalie: "",
+        shiftSeconds: 90,
+        syncEnabled: false,
+        syncStatus: "lokal"
       }
     };
   }
@@ -19,7 +22,7 @@ window.DB = (() => {
       data.pools = Array.isArray(data.pools) ? data.pools : [];
       data.invites = Array.isArray(data.invites) ? data.invites : [];
       data.players = Array.isArray(data.players) ? data.players : [];
-      data.settings = data.settings || { shiftSeconds: 90 };
+      data.settings = { ...defaults().settings, ...(data.settings || {}) };
       return data;
     } catch {
       return defaults();
@@ -51,11 +54,26 @@ window.DB = (() => {
   function savePlayers(players, goalie, shiftSeconds) {
     const data = load();
     data.players = players;
-    data.settings = data.settings || {};
     data.settings.goalie = goalie || "";
     data.settings.shiftSeconds = Number(shiftSeconds) || 90;
     save(data);
   }
 
-  return { load, save, savePool, saveInvite, savePlayers };
+  function saveSyncStatus(status) {
+    const data = load();
+    data.settings.syncStatus = status || "lokal";
+    save(data);
+  }
+
+  async function syncNow(payload) {
+    // Förberett för Supabase-tabell i nästa steg.
+    // Just nu markerar vi bara senaste sync lokalt.
+    const data = load();
+    data.settings.syncStatus = "synkad " + new Date().toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" });
+    if (payload) data.lastSyncedPayload = payload;
+    save(data);
+    return { ok: true, mode: "local-stub" };
+  }
+
+  return { load, save, savePool, saveInvite, savePlayers, saveSyncStatus, syncNow };
 })();
