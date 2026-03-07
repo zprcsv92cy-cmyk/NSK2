@@ -1,124 +1,37 @@
-const SUPABASE_URL="https://tonbbmxzotsjwuimobkn.supabase.co";
-const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvbmJibXh6b3Rzand1aW1vYmtuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2ODExMTIsImV4cCI6MjA4ODI1NzExMn0.lYByBwAhjbxlSYpOcv8W3JboNkf8ldTiieQ4goMtopc";
-const DEFAULT_PLAYERS=["Alex Andersson","Benjamin Berg","Carl Carlsson","David Dahl","Elias Eriksson","Filip Friberg","Gustav Gran","Hugo Holm"];
-const DEFAULT_COACHES=["Peter","Olle","Fredrik","Tommy"];
-const Store={
-  get(k,f){try{const v=localStorage.getItem(k);return v?JSON.parse(v):f}catch{return f}},
-  set(k,v){localStorage.setItem(k,JSON.stringify(v))},
-  pools(){return this.get('nsk_pools',[])},
-  savePools(v){this.set('nsk_pools',v)},
-  currentPool(){return localStorage.getItem('nsk_current_pool')||''},
-  setCurrentPool(v){localStorage.setItem('nsk_current_pool',v||'')},
-  currentTeam(){return localStorage.getItem('nsk_current_team')||'1'},
-  setCurrentTeam(v){localStorage.setItem('nsk_current_team',String(v||'1'))},
-  reg(){return {players:this.get('nsk_players',DEFAULT_PLAYERS),coaches:this.get('nsk_coaches',DEFAULT_COACHES)}},
-  saveReg(players,coaches){this.set('nsk_players',uniq(players).sort(svSort));this.set('nsk_coaches',uniq(coaches).sort(svSort))}
-};
-const State={teamPickerTarget:'run'};
-function svSort(a,b){return String(a).localeCompare(String(b),'sv')}
-function uniq(arr){const out=[],seen=new Set();(arr||[]).forEach(v=>{v=String(v||'').trim();if(!v)return;const k=v.toLowerCase();if(seen.has(k))return;seen.add(k);out.push(v)});return out}
-function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
-function byId(id){return document.getElementById(id)}
-function selectedValues(sel){return Array.from(sel.selectedOptions||[]).map(o=>o.value).filter(Boolean)}
-function shortName(full){const p=String(full||'').trim().split(/\s+/).filter(Boolean);return p.length<2?(p[0]||''):(p[0]+' '+p[p.length-1][0].toUpperCase())}
-function poolById(id){return Store.pools().find(p=>p.id===id)||null}
-function ensurePool(pool){pool.teams=Array.isArray(pool.teams)&&pool.teams.length?pool.teams.map(String):['1'];pool.teamStatus=pool.teamStatus||{};pool.teams.forEach(t=>pool.teamStatus[t]=pool.teamStatus[t]||{completed:false});return pool}
-function stateKey(poolId,team,match){return `nsk_state_${poolId}_${team}_${match}`}
-function teamCoachKey(poolId,team){return `nsk_team_coaches_${poolId}_${team}`}
-function matchCountKey(poolId,team){return `nsk_match_count_${poolId}_${team}`}
-function shiftDoneKey(poolId,team,match,idx){return `nsk_done_${poolId}_${team}_${match}_${idx}`}
-function loadTeamCoaches(poolId=Store.currentPool(),team=Store.currentTeam()){return Store.get(teamCoachKey(poolId,team),[])}
-function saveTeamCoaches(vals,poolId=Store.currentPool(),team=Store.currentTeam()){Store.set(teamCoachKey(poolId,team),uniq(vals))}
-function loadMatchCount(poolId=Store.currentPool(),team=Store.currentTeam()){const n=parseInt(localStorage.getItem(matchCountKey(poolId,team))||'4',10);return Math.min(30,Math.max(1,n||4))}
-function saveMatchCount(n,poolId=Store.currentPool(),team=Store.currentTeam()){localStorage.setItem(matchCountKey(poolId,team),String(n))}
-function defaultsState(){return{matchTime:'',opponent:'',arena:'1',teamSize:'10',onCourt:'3',periodsCount:'1',periodMin:'15',shiftSec:'90',players:[],goalie:''}}
-function loadMatchState(poolId=Store.currentPool(),team=Store.currentTeam(),match=byId('matchNo')?.value||'1'){return Object.assign(defaultsState(),Store.get(stateKey(poolId,team,match),{}))}
-function saveMatchState(st,poolId=Store.currentPool(),team=Store.currentTeam(),match=byId('matchNo')?.value||'1'){Store.set(stateKey(poolId,team,match),Object.assign(defaultsState(),st));touchPool(poolId)}
-function touchPool(id){const arr=Store.pools();const p=arr.find(x=>x.id===id);if(p){p.updatedAt=Date.now();Store.savePools(arr)}}
-function isShiftDone(poolId,team,match,idx){return localStorage.getItem(shiftDoneKey(poolId,team,match,idx))==='1'}
-function setShiftDone(poolId,team,match,idx,done){localStorage.setItem(shiftDoneKey(poolId,team,match,idx),done?'1':'0');touchPool(poolId)}
-function buildShiftTimes(totalMin,shiftSec){const total=Math.max(1,Math.floor(totalMin*60));const step=Math.max(5,Math.floor(shiftSec||90));const out=[];for(let t=total;t>0;t-=step){out.push(`${String(Math.floor(t/60)).padStart(2,'0')}:${String(t%60).padStart(2,'0')}`)}return [...new Set(out)]}
-function rosterFromState(st){return uniq((st.players||[]).map(x=>String(x||'').trim()).filter(Boolean))}
-function makeLineups(st,globalCounts,times){const roster=rosterFromState(st);const k=Math.min(Math.max(3,parseInt(st.onCourt,10)||3),5,roster.length||3);if(!roster.length)return times.map(()=>[]);roster.forEach(n=>{const key=n.toLowerCase();if(globalCounts[key]==null)globalCounts[key]=0});let prev=[];const out=[];for(let i=0;i<times.length;i++){const sorted=roster.slice().sort((a,b)=>{const ca=globalCounts[a.toLowerCase()]||0,cb=globalCounts[b.toLowerCase()]||0;if(ca!==cb)return ca-cb;const pa=prev.includes(a)?1:0,pb=prev.includes(b)?1:0;if(pa!==pb)return pa-pb;return svSort(a,b)});const lineup=sorted.slice(0,k);lineup.forEach(n=>globalCounts[n.toLowerCase()]++);prev=lineup.slice();out.push(lineup)}return out}
-function lineupText(arr){return (arr||[]).map(shortName).join(', ')||'—'}
-function validateCurrent(){const st=formState();const players=(st.players||[]).map(x=>String(x||'').trim()).filter(Boolean);const set=new Set(players.map(x=>x.toLowerCase()));if(set.size!==players.length)return 'Samma spelare är vald flera gånger.';if(st.goalie&&set.has(String(st.goalie).toLowerCase()))return 'Målvakt kan inte vara utespelare.';if(players.length&&players.length<(parseInt(st.onCourt,10)||3))return 'För få spelare valda för antal på plan.';return ''}
-function formState(){const teamSize=parseInt(byId('teamSize').value||'10',10);const players=[];for(let i=1;i<=teamSize;i++)players.push(byId('p'+i)?.value||'');return{matchTime:byId('matchTime').value||'',opponent:byId('opponent').value||'',arena:byId('arena').value||'1',teamSize:String(teamSize),onCourt:byId('onCourt').value||'3',periodsCount:byId('periodsCount').value||'1',periodMin:byId('periodMin').value||'15',shiftSec:byId('shiftSec').value||'90',players,goalie:byId('goalie').value||''}}
-function setFormState(st){st=Object.assign(defaultsState(),st||{});byId('matchTime').value=st.matchTime||'';byId('opponent').value=st.opponent||'';byId('arena').value=st.arena||'1';byId('teamSize').value=st.teamSize||'10';byId('onCourt').value=st.onCourt||'3';byId('periodsCount').value=st.periodsCount||'1';byId('periodMin').value=st.periodMin||'15';byId('shiftSec').value=st.shiftSec||'90';renderPlayerSelectors(parseInt(st.teamSize,10)||10,st.players||[]);byId('goalie').value=st.goalie||''}
-function renderPlayerSelectors(n,values){const {players}=Store.reg();const box=byId('playersContainer');box.innerHTML='';values=(values||[]).slice(0,n);while(values.length<n)values.push('');for(let i=1;i<=n;i++){const wrap=document.createElement('div');wrap.innerHTML=`<label>Spelare ${i}</label><select id="p${i}"><option value="">Välj...</option>${players.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('')}</select>`;box.appendChild(wrap);const sel=byId('p'+i);sel.value=values[i-1]||'';sel.addEventListener('change',App.persistAndRender)}}
-function fillBasics(){byId('teamCount').innerHTML=[1,2,3].map(n=>`<option value="${n}" ${n===2?'selected':''}>${n} lag</option>`).join('');byId('matchCount').innerHTML=Array.from({length:30},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');byId('arena').innerHTML=[1,2,3,4].map(n=>`<option value="${n}">${n}</option>`).join('');byId('teamSize').innerHTML=Array.from({length:25},(_,i)=>`<option value="${i+1}" ${i+1===10?'selected':''}>${i+1}</option>`).join('');byId('onCourt').innerHTML=[3,4,5].map(n=>`<option value="${n}">${n}</option>`).join('');byId('periodsCount').innerHTML=[1,2,3].map(n=>`<option value="${n}">${n}</option>`).join('');byId('periodMin').innerHTML=Array.from({length:13},(_,i)=>8+i).map(n=>`<option value="${n}" ${n===15?'selected':''}>${n}</option>`).join('');byId('shiftSec').innerHTML=Array.from({length:31},(_,i)=>30+i*5).map(n=>`<option value="${n}" ${n===90?'selected':''}>${n}</option>`).join('')}
-function fillPeople(){const {players,coaches}=Store.reg();byId('goalie').innerHTML='<option value="">Välj...</option>'+players.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');byId('coach').innerHTML=coaches.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('')}
-function syncCoachSelection(){const chosen=new Set(loadTeamCoaches().map(x=>String(x).toLowerCase()));Array.from(byId('coach').options).forEach(o=>o.selected=chosen.has(String(o.value).toLowerCase()))}
-function applyMatchSelectors(){const c=loadMatchCount();byId('matchCount').value=String(c);const current=Math.min(c,parseInt(byId('matchNo').value||'1',10)||1);byId('matchNo').innerHTML=Array.from({length:c},(_,i)=>`<option value="${i+1}">Match ${i+1}</option>`).join('');byId('matchNo').value=String(current)}
-function currentPoolMeta(){const p=poolById(Store.currentPool());return p?`${p.date||'—'} • ${p.place||'—'} • Lag ${Store.currentTeam()}`:`Lag ${Store.currentTeam()}`}
-function allShiftsDoneForTeam(){const poolId=Store.currentPool(),team=Store.currentTeam(),count=loadMatchCount();for(let m=1;m<=count;m++){const st=loadMatchState(poolId,team,String(m));const times=buildShiftTimes((parseInt(st.periodsCount,10)||1)*(parseInt(st.periodMin,10)||15),parseInt(st.shiftSec,10)||90);if(!times.length)return false;for(let i=0;i<times.length;i++)if(!isShiftDone(poolId,team,m,i))return false}return true}
-function setTeamCompleted(done){const arr=Store.pools();const p=arr.find(x=>x.id===Store.currentPool());if(!p)return;ensurePool(p);p.teamStatus[Store.currentTeam()]={completed:!!done,completedAt:done?Date.now():null};p.completed=p.teams.every(t=>p.teamStatus[t]?.completed);p.updatedAt=Date.now();Store.savePools(arr)}
 
-const Auth={
-  client:null,user:null,role:null,
-  isLoggedIn(){return !!this.user},isAdmin(){return this.role==='admin'},canFull(){return this.role==='admin'||this.role==='coach_full'},canRun(){return this.role==='admin'||this.role==='coach_full'||this.role==='coach_run'},canDelete(){return this.role==='admin'},
-  async init(){if(!window.supabase?.createClient)return;this.client=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);this.client.auth.onAuthStateChange(async()=>{await this.refresh()});await this.refresh()},
-  async refresh(){if(!this.client)return;const {data}=await this.client.auth.getSession();this.user=data?.session?.user||null;if(!this.user){this.role=null;this.paint();App.show('loginView');return}let role=await this.fetchRole();if(!role){await this.ensureProfile();role=await this.fetchRole()}this.role=role||'coach_run';this.paint();UI.applyRoleUI();if(byId('loginView').classList.contains('active')) App.backHome()},
-  async fetchRole(){try{const {data,error}=await this.client.from('profiles').select('role').eq('id',this.user.id).single();if(error)return null;return data?.role||null}catch{return null}},
-  async ensureProfile(){try{const payload={id:this.user.id,role:'coach_run',email:this.user.email||null};const {error}=await this.client.from('profiles').insert(payload);if(error&&payload.email) await this.client.from('profiles').insert({id:this.user.id,role:'coach_run'})}catch{}},
-  async sendMagicLink(email){const msg=byId('loginMsg');msg.textContent='';const {error}=await this.client.auth.signInWithOtp({email,options:{emailRedirectTo:window.location.href}});msg.textContent=error?('Kunde inte skicka länk: '+error.message):'Länk skickad! Öppna mejlet på mobilen och klicka på länken.'},
-  async logout(){try{await this.client.auth.signOut()}catch{}},
-  paint(){byId('authStatus').textContent=this.user?'Inloggad':'Ej inloggad';byId('roleStatus').textContent=this.role||'—';byId('btnLogout').classList.toggle('hidden',!this.user);UI.applyRoleUI()}
-};
+const SUPABASE_URL="https://YOURPROJECT.supabase.co"
+const SUPABASE_KEY="PUBLICANONKEY"
 
-const UI={
-  applyRoleUI(){document.querySelectorAll('[data-perm="full"]').forEach(el=>el.style.display=Auth.canFull()?'':'none');document.querySelectorAll('[data-perm="admin"]').forEach(el=>el.style.display=Auth.isAdmin()?'':'none');document.querySelectorAll('[data-perm="run"]').forEach(el=>el.style.display=Auth.canRun()?'':'none')}
-};
+const supabase = window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY)
 
-const Admin={
-  open(){if(!Auth.isAdmin()) return alert('Endast admin.'); App.show('adminView'); this.reload()},
-  async reload(){const msg=byId('adminMsg');msg.textContent='Laddar...';const tbody=byId('adminUsersTbody');tbody.innerHTML='';try{const {data,error}=await Auth.client.from('profiles').select('id,role,email').order('email');if(error){msg.textContent='Kunde inte läsa användare: '+error.message;return}msg.textContent='Antal användare: '+(data?.length||0);(data||[]).forEach(u=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${esc(u.email||'—')}</td><td><code>${esc(u.id)}</code></td><td><select data-userid="${esc(u.id)}"><option value="coach_run" ${u.role==='coach_run'?'selected':''}>coach_run</option><option value="coach_full" ${u.role==='coach_full'?'selected':''}>coach_full</option><option value="admin" ${u.role==='admin'?'selected':''}>admin</option></select></td><td><button type="button" class="ghost" onclick="Admin.saveRole('${esc(u.id)}')">Spara</button></td>`;tbody.appendChild(tr)})}catch(e){msg.textContent='Fel: '+(e?.message||e)}},
-  async saveRole(userId){const sel=document.querySelector(`#adminUsersTbody select[data-userid="${CSS.escape(userId)}"]`);if(!sel)return;const msg=byId('adminMsg');msg.textContent='Sparar...';try{const {error}=await Auth.client.from('profiles').update({role:sel.value}).eq('id',userId);msg.textContent=error?('Kunde inte spara: '+error.message):'Sparat!'}catch(e){msg.textContent='Fel: '+(e?.message||e)}},
-  async saveInvite(){const email=(byId('inviteEmail').value||'').trim().toLowerCase();const role=byId('inviteRole').value||'coach_run';const msg=byId('inviteMsg');if(!email){msg.innerHTML='<span class="error">✖ Skriv en e-post.</span>';return}msg.textContent='Sparar...';try{const {error}=await Auth.client.from('invites').upsert({email,role,updated_at:new Date().toISOString()},{onConflict:'email'});msg.innerHTML=error?`<span class="error">✖ ${esc(error.message)}</span>`:'<span class="ok">✔ Inbjudan sparad.</span>'}catch(e){msg.innerHTML=`<span class="error">✖ ${esc(e?.message||e)}</span>`}}
-};
+const emailInput=document.getElementById("email")
+const status=document.getElementById("status")
 
-const App={
-  show(view){document.querySelectorAll('.view').forEach(el=>el.classList.toggle('active',el.id===view))},
-  openModal(id){byId(id).style.display='block'},
-  closeModal(id){byId(id).style.display='none'},
-  backHome(){this.show(Auth.isLoggedIn()?'homeView':'loginView');if(Auth.isLoggedIn()) this.renderPoolList()},
-  requireRun(){if(!Auth.canRun()) {alert('Du saknar behörighet att köra poolspel.'); return false} return true},
-  requireFull(){if(!Auth.canFull()) {alert('Du saknar behörighet att redigera.'); return false} return true},
-  requireDelete(){if(!Auth.canDelete()) {alert('Endast admin kan ta bort.'); return false} return true},
-  openNewPool(){if(!this.requireFull()) return;const d=new Date();byId('poolDate').value=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;byId('poolPlace').value=localStorage.getItem('nsk_last_place')||'';this.openModal('newPoolModal')},
-  saveNewPool(){if(!this.requireFull()) return;const date=byId('poolDate').value,place=byId('poolPlace').value.trim(),count=parseInt(byId('teamCount').value||'2',10)||2;if(!date||!place)return alert('Fyll i datum och ort.');localStorage.setItem('nsk_last_place',place);const pools=Store.pools();const id=Date.now().toString(36);pools.push(ensurePool({id,date,place,createdAt:Date.now(),updatedAt:Date.now(),completed:false,teams:Array.from({length:count},(_,i)=>String(i+1)),teamStatus:{}}));Store.savePools(pools);Store.setCurrentPool(id);Store.setCurrentTeam('1');this.closeModal('newPoolModal');this.showEdit()},
-  renderPoolList(){const box=byId('poolList');const pools=Store.pools().map(ensurePool).sort((a,b)=>(a.completed-b.completed)||((b.updatedAt||0)-(a.updatedAt||0)));if(!pools.length){box.innerHTML='<div class="small">Inga sparade poolspel ännu.</div>';return}box.innerHTML=pools.map(p=>{const parts=p.teams.map(t=>`Lag ${t}: ${p.teamStatus[t]?.completed?'Avslutad':'Aktiv'}`).join(' • ');return `<div class="card print-card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><b>${esc(p.date)} • ${esc(p.place)}</b><span class="status ${p.completed?'doneStatus':'activeStatus'}">${p.completed?'Avslutad':'Aktiv'}</span></div><div class="small" style="margin-top:6px">${parts}</div><div class="btnrow" style="margin-top:10px"><button type="button" onclick="App.startRun('${p.id}')">Påbörja poolspel</button><button class="ghost" type="button" onclick="App.editPool('${p.id}')">Redigera</button><button class="ghost" type="button" onclick="App.deletePool('${p.id}')">Ta bort</button></div></div>`}).join('')},
-  openTeamPicker(target){const p=poolById(Store.currentPool());if(!p)return;State.teamPickerTarget=target;byId('teamButtons').innerHTML=p.teams.map(t=>`<button type="button" class="${Store.currentTeam()===t?'':'ghost'}" onclick="App.chooseTeam('${t}')">Lag ${t}<br><span class="small">${esc(loadTeamCoaches(Store.currentPool(),t).join(', ')||'—')}</span></button>`).join('');this.openModal('teamSelectModal')},
-  chooseTeam(t){Store.setCurrentTeam(t);this.closeModal('teamSelectModal');State.teamPickerTarget==='edit'?this.showEdit():this.showRun()},
-  editPool(id){if(!this.requireFull()) return;Store.setCurrentPool(id);this.showEdit()},
-  startRun(id){if(!this.requireRun()) return;Store.setCurrentPool(id);this.showRun()},
-  deletePool(id){if(!this.requireDelete()) return;if(!confirm('Ta bort poolspel och all sparad data?'))return;Object.keys(localStorage).forEach(k=>{if(k.startsWith(`nsk_state_${id}_`)||k.startsWith(`nsk_team_coaches_${id}_`)||k.startsWith(`nsk_match_count_${id}_`)||k.startsWith(`nsk_done_${id}_`))localStorage.removeItem(k)});Store.savePools(Store.pools().filter(p=>p.id!==id));if(Store.currentPool()===id)Store.setCurrentPool('');this.renderPoolList()},
-  showEdit(){if(!this.requireFull()) return;if(!Store.currentPool()) return this.backHome();this.show('editView');byId('editSub').textContent=currentPoolMeta();fillPeople();applyMatchSelectors();syncCoachSelection();setFormState(loadMatchState());this.renderEditOutput()},
-  persistAndRender(){saveTeamCoaches(selectedValues(byId('coach')));saveMatchState(formState());App.renderEditOutput();if(byId('runView').classList.contains('active')) App.renderRun()},
-  renderEditOutput(){const err=validateCurrent();byId('msg').innerHTML=err?`<span class="error">✖ ${esc(err)}</span>`:`<span class="ok">✔ OK</span> <span class="small">Inga dubbletter.</span>`;const team=Store.currentTeam();const count=loadMatchCount();let html='';const g={};for(let m=1;m<=count;m++){const st=loadMatchState(Store.currentPool(),team,String(m));const times=buildShiftTimes((parseInt(st.periodsCount,10)||1)*(parseInt(st.periodMin,10)||15),parseInt(st.shiftSec,10)||90);const lines=makeLineups(st,g,times);html+=renderMatchCard(team,m,st,times,lines,true)}html+=`<div class="no-print" style="margin-top:12px;display:flex;justify-content:center"><button type="button" ${allShiftsDoneForTeam()?'':'disabled'} onclick="App.finishTeam()">Avsluta lag</button></div>`;byId('editOutput').innerHTML=html||'<div class="small">Inga matcher.</div>'},
-  showRun(){if(!this.requireRun()) return;if(!Store.currentPool()) return this.backHome();this.show('runView');byId('runSub').textContent=currentPoolMeta();this.renderRun()},
-  renderRun(){const team=Store.currentTeam();const count=loadMatchCount();let html='';const g={};const rows=[];for(let m=1;m<=count;m++){const st=loadMatchState(Store.currentPool(),team,String(m));const times=buildShiftTimes((parseInt(st.periodsCount,10)||1)*(parseInt(st.periodMin,10)||15),parseInt(st.shiftSec,10)||90);const lines=makeLineups(st,g,times);html+=renderMatchCard(team,m,st,times,lines,false);times.forEach((t,idx)=>rows.push({match:m,idx,time:t,players:lineupText(lines[idx]||[]),goalie:st.goalie||'—'}))}html+=`<div class="no-print" style="margin-top:12px;display:flex;justify-content:center"><button type="button" ${allShiftsDoneForTeam()?'':'disabled'} onclick="App.finishTeam()">Avsluta lag</button></div>`;byId('runOutput').innerHTML=html||'<div class="card"><div class="small">Inga matcher.</div></div>';this.renderRunBanner(rows)},
-  renderRunBanner(){const poolId=Store.currentPool(),team=Store.currentTeam();let current=null,next=null;for(let m=1;m<=loadMatchCount();m++){const st=loadMatchState(poolId,team,String(m));const times=buildShiftTimes((parseInt(st.periodsCount,10)||1)*(parseInt(st.periodMin,10)||15),parseInt(st.shiftSec,10)||90);for(let i=0;i<times.length;i++){if(!isShiftDone(poolId,team,m,i)){current={match:m,idx:i,time:times[i],state:st};if(i+1<times.length)next={match:m,idx:i+1,time:times[i+1],state:st};break}}if(current)break}
-    const box=byId('runNowBar');
-    if(!current){box.innerHTML='<div class="hero"><div class="title">Klart</div><div class="main">Alla byten är avbockade</div><div class="small" style="margin-top:8px">Du kan nu avsluta laget.</div></div>';return}
-    const g={};for(let m=1;m<=loadMatchCount();m++){const st=loadMatchState(poolId,team,String(m));const times=buildShiftTimes((parseInt(st.periodsCount,10)||1)*(parseInt(st.periodMin,10)||15),parseInt(st.shiftSec,10)||90);const lines=makeLineups(st,g,times);if(m===current.match){current.players=lineupText(lines[current.idx]||[]);if(next&&next.match===m)next.players=lineupText(lines[next.idx]||[])}else if(next&&next.match===m){next.players=lineupText(lines[next.idx]||[])}}
-    box.innerHTML=`<div class="row"><div class="hero" style="flex:1 1 320px"><div class="title">Pågående byte</div><div class="small" style="margin-top:6px">Match ${current.match} • Målvakt: ${esc(current.state.goalie||'—')}</div><div class="main">${esc(current.players||'—')}</div><div class="small" style="margin-top:8px">Tid kvar: <b>${esc(current.time)}</b></div><div class="btnrow no-print" style="margin-top:12px"><button type="button" onclick="App.tickCurrent()">Bocka pågående</button></div></div>${next?`<div class="hero" style="flex:1 1 320px"><div class="title">Nästa byte</div><div class="small" style="margin-top:6px">Match ${next.match}</div><div class="main">${esc(next.players||'—')}</div><div class="small" style="margin-top:8px">Tid kvar: <b>${esc(next.time)}</b></div></div>`:''}</div>`;box.dataset.match=String(current.match);box.dataset.idx=String(current.idx)},
-  tickCurrent(){const poolId=Store.currentPool(),team=Store.currentTeam(),m=byId('runNowBar').dataset.match,idx=byId('runNowBar').dataset.idx;if(m==null||idx==null)return;setShiftDone(poolId,team,m,idx,true);this.renderEditOutput();this.renderRun()},
-  finishTeam(){if(!allShiftsDoneForTeam())return alert('Alla byten måste vara avbockade innan laget kan avslutas.');if(!confirm('Avsluta poolspelet för detta lag?'))return;setTeamCompleted(true);this.backHome()},
-  exportPDF(){if(!this.requireFull()) return;this.showEdit();setTimeout(()=>window.print(),50)},
-  openRegister(){this.openModal('registerModal');this.renderRegister()},
-  renderRegister(){const {players,coaches}=Store.reg();byId('playerList').innerHTML=players.map((n,i)=>`<div class="listItem"><div>${esc(n)}</div><div class="btnrow" style="flex:0 0 auto"><button class="ghost" type="button" onclick="App.editPlayer(${i})">Redigera</button><button class="ghost" type="button" onclick="App.removePlayer(${i})">Ta bort</button></div></div>`).join('')||'<div class="small">Inga spelare.</div>';byId('coachList').innerHTML=coaches.map((n,i)=>`<div class="listItem"><div>${esc(n)}</div><div class="btnrow" style="flex:0 0 auto"><button class="ghost" type="button" onclick="App.editCoach(${i})">Redigera</button><button class="ghost" type="button" onclick="App.removeCoach(${i})">Ta bort</button></div></div>`).join('')||'<div class="small">Inga tränare.</div>'},
-  addPlayer(){const v=byId('newPlayer').value.trim();if(!v)return;const r=Store.reg();r.players.push(v);Store.saveReg(r.players,r.coaches);byId('newPlayer').value='';this.renderRegister();fillPeople();if(Store.currentPool())this.showEdit()},
-  addCoach(){const v=byId('newCoach').value.trim();if(!v)return;const r=Store.reg();r.coaches.push(v);Store.saveReg(r.players,r.coaches);byId('newCoach').value='';this.renderRegister();fillPeople();syncCoachSelection()},
-  editPlayer(i){const r=Store.reg();const v=prompt('Redigera spelare:',r.players[i]||'');if(v==null||!v.trim())return;r.players[i]=v.trim();Store.saveReg(r.players,r.coaches);this.renderRegister();fillPeople();if(Store.currentPool())this.showEdit()},
-  editCoach(i){const r=Store.reg();const v=prompt('Redigera tränare:',r.coaches[i]||'');if(v==null||!v.trim())return;r.coaches[i]=v.trim();Store.saveReg(r.players,r.coaches);this.renderRegister();fillPeople();syncCoachSelection()},
-  removePlayer(i){const r=Store.reg();r.players.splice(i,1);Store.saveReg(r.players,r.coaches);this.renderRegister();fillPeople();if(Store.currentPool())this.showEdit()},
-  removeCoach(i){const r=Store.reg();r.coaches.splice(i,1);Store.saveReg(r.players,r.coaches);this.renderRegister();fillPeople();syncCoachSelection()},
-  openGoalieStats(){this.openModal('goalieStatsModal');const stats={};Object.keys(localStorage).forEach(k=>{if(!k.startsWith('nsk_state_'))return;const st=Store.get(k,{});const g=String(st.goalie||'').trim();if(g)stats[g]=(stats[g]||0)+1});const names=Object.keys(stats).sort(svSort);byId('goalieStatsList').innerHTML=!names.length?'<div class="small">Ingen statistik ännu.</div>':`<table><thead><tr><th>Spelare</th><th>Matcher som målvakt</th></tr></thead><tbody>${names.map(n=>`<tr><td>${esc(n)}</td><td><b>${stats[n]}</b></td></tr>`).join('')}</tbody></table>`},
-  exportJSON(){const payload={players:Store.reg().players,coaches:Store.reg().coaches,pools:Store.pools(),kv:{}};Object.keys(localStorage).forEach(k=>{if(k.startsWith('nsk_')&&!['nsk_players','nsk_coaches','nsk_pools'].includes(k)){payload.kv[k]=localStorage.getItem(k)}});const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='nsk-team18-v2-auth-backup.json';a.click();URL.revokeObjectURL(a.href);byId('importMsg').innerHTML='<span class="ok">✔ Export klar</span>'}
-};
+document.getElementById("loginBtn").onclick=async()=>{
+const email=emailInput.value
+if(!email)return
 
-function renderMatchCard(team,m,st,times,lineups,edit){const coaches=loadTeamCoaches().join(', ')||'—';const poolId=Store.currentPool();const canTick=edit||Auth.canRun();return `<div class="card print-card matchBlock"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-end"><div><b>Match ${m} • Lag ${team}</b></div><div class="small">Start: <b>${esc(st.matchTime||'—')}</b> • Motståndare: <b>${esc(st.opponent||'—')}</b> • Plan: <b>${esc(st.arena||'—')}</b></div></div><div class="small" style="margin-top:8px"><span class="pill">Tränare</span> ${esc(coaches)} &nbsp; <span class="pill">Målvakt</span> ${esc(st.goalie||'—')}</div><hr style="border:0;border-top:1px solid rgba(255,255,255,.08);margin:10px 0"><table><thead><tr><th></th><th>#</th><th>Tid kvar</th><th>På plan</th></tr></thead><tbody>${times.map((t,i)=>{const done=isShiftDone(poolId,Store.currentTeam(),m,i);return `<tr class="${done?'doneRow':''}"><td><input class="chk" type="checkbox" ${done?'checked':''} ${canTick?'':'disabled'} onchange="setShiftDone('${poolId}','${Store.currentTeam()}',${m},${i},this.checked);App.renderEditOutput();App.renderRun()"></td><td>${i+1}</td><td class="nowrap">${esc(t)}</td><td>${esc(lineupText(lineups[i]||[]))}</td></tr>`}).join('')}</tbody></table></div>`}
+const {error}=await supabase.auth.signInWithOtp({email})
 
-function wire(){['matchTime','opponent','arena','onCourt','periodsCount','periodMin','shiftSec','goalie'].forEach(id=>byId(id).addEventListener('change',()=>App.persistAndRender()));byId('teamSize').addEventListener('change',()=>{renderPlayerSelectors(parseInt(byId('teamSize').value||'10',10),formState().players);App.persistAndRender()});byId('coach').addEventListener('change',()=>App.persistAndRender());byId('matchCount').addEventListener('change',()=>{saveMatchCount(parseInt(byId('matchCount').value||'4',10));applyMatchSelectors();setFormState(loadMatchState());App.renderEditOutput();if(byId('runView').classList.contains('active'))App.renderRun()});byId('matchNo').addEventListener('change',()=>{fillPeople();syncCoachSelection();setFormState(loadMatchState());App.renderEditOutput();if(byId('runView').classList.contains('active'))App.renderRun()});byId('importFile').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{const data=JSON.parse(await f.text());if(Array.isArray(data.players)||Array.isArray(data.coaches))Store.saveReg(data.players||[],data.coaches||[]);if(Array.isArray(data.pools))Store.savePools(data.pools);if(data.kv&&typeof data.kv==='object')Object.entries(data.kv).forEach(([k,v])=>localStorage.setItem(k,String(v)));byId('importMsg').innerHTML='<span class="ok">✔ Import klar</span>';App.renderRegister();App.renderPoolList();if(Store.currentPool())App.showEdit()}catch{byId('importMsg').innerHTML='<span class="error">✖ Import misslyckades</span>'}e.target.value=''});['newPoolModal','teamSelectModal','registerModal','goalieStatsModal'].forEach(id=>byId(id).addEventListener('click',e=>{if(e.target.id===id)App.closeModal(id)}));byId('btnSendLink').addEventListener('click',()=>{const email=(byId('loginEmail').value||'').trim();if(!email){byId('loginMsg').textContent='Skriv din e-post.';return}Auth.sendMagicLink(email)});byId('btnLogout').addEventListener('click',()=>Auth.logout())}
-function init(){fillBasics();fillPeople();wire();App.renderPoolList();Auth.init();if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}))}
-init();
+status.innerText=error?error.message:"Länk skickad"
+}
+
+function exportPDF(){
+window.print()
+}
+
+function backup(){
+const data={date:new Date()}
+const blob=new Blob([JSON.stringify(data,null,2)])
+const a=document.createElement("a")
+a.href=URL.createObjectURL(blob)
+a.download="backup.json"
+a.click()
+}
+
+supabase.auth.onAuthStateChange((event,session)=>{
+if(session){
+document.getElementById("loginView").classList.add("hidden")
+document.getElementById("appView").classList.remove("hidden")
+}
+})
