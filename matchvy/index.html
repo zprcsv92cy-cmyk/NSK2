@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Matchvy</title>
-  <link rel="stylesheet" href="/NSK2/app.css">
+  <link rel="stylesheet" href="/NSK2/app.css?v=91">
 </head>
 <body>
   <div class="wrap">
@@ -18,59 +18,57 @@
       <a href="/NSK2/lag/">Lag</a>
     </nav>
 
-    
-<section class="card match-admin-card">
-  <h1>Matchvy</h1>
-  <div class="row2">
-    <div><label>Matchnamn</label><input id="matchTitle" placeholder="Poolspel / match"></div>
-    <div><label>Motståndare</label><input id="matchOpponent" placeholder="Motståndare"></div>
-    <div><label>Plats</label><input id="matchPlace" placeholder="Nyköping"></div>
-    <div><label>Tid</label><input id="matchTime" placeholder="10:20"></div>
-    <div><label>Bytestid sek</label><input id="matchShiftSeconds" type="number" value="90"></div>
-  </div>
-  <div class="btnrow">
-    <button id="saveMatchBtn">Spara matchinfo</button>
-    <button id="coachFullscreenBtn" class="ghost">Coach-skärm</button>
-  </div>
-  <div id="matchMsg" class="small"></div>
-</section>
+    <section class="card match-admin-card">
+      <h1>Matchvy</h1>
+      <div class="row2">
+        <div><label>Matchnamn</label><input id="matchTitle" placeholder="Poolspel / match"></div>
+        <div><label>Motståndare</label><input id="matchOpponent" placeholder="Motståndare"></div>
+        <div><label>Plats</label><input id="matchPlace" placeholder="Nyköping"></div>
+        <div><label>Tid</label><input id="matchTime" placeholder="10:20"></div>
+        <div><label>Bytestid sek</label><input id="matchShiftSeconds" type="number" value="90"></div>
+      </div>
+      <div class="btnrow">
+        <button id="saveMatchBtn">Spara matchinfo</button>
+        <button id="coachFullscreenBtn" class="ghost">Coach-skärm</button>
+      </div>
+      <div id="matchMsg" class="small"></div>
+    </section>
 
-<section class="card coach-screen-card">
-  <div class="coach-screen-top">
-    <h2 id="shiftLabel">Inget schema</h2>
-    <div id="matchInfo"></div>
-  </div>
+    <section class="card coach-screen-card">
+      <div class="coach-screen-top">
+        <h2 id="shiftLabel">Inget schema</h2>
+        <div id="matchInfo"></div>
+      </div>
 
-  <div class="coach-panels">
-    <div class="coach-panel current-panel">
-      <div class="coach-panel-label">NU</div>
-      <div id="currentPlayers" class="coach-panel-main">—</div>
-    </div>
-    <div class="coach-panel next-panel">
-      <div class="coach-panel-label">NÄSTA</div>
-      <div id="nextPlayers" class="coach-panel-next">—</div>
-    </div>
-  </div>
+      <div class="coach-panels">
+        <div class="coach-panel">
+          <div class="coach-panel-label">NU</div>
+          <div id="currentPlayers" class="coach-panel-main">—</div>
+        </div>
+        <div class="coach-panel">
+          <div class="coach-panel-label">NÄSTA</div>
+          <div id="nextPlayers" class="coach-panel-next">—</div>
+        </div>
+      </div>
 
-  <div class="coach-timer-wrap">
-    <div class="coach-panel-label">BYTE OM</div>
-    <div id="matchTimer" class="coach-timer">00:00</div>
-    <div class="btnrow">
-      <button id="startTimerBtn">Start</button>
-      <button id="stopTimerBtn" class="ghost">Stoppa</button>
-      <button id="nextShiftBtn" class="ghost">Nästa byte</button>
-    </div>
-  </div>
-</section>
-
+      <div class="coach-timer-wrap">
+        <div class="coach-panel-label">BYTE OM</div>
+        <div id="matchTimer" class="coach-timer">00:00</div>
+        <div class="btnrow">
+          <button id="startTimerBtn">Start</button>
+          <button id="stopTimerBtn" class="ghost">Stoppa</button>
+          <button id="nextShiftBtn" class="ghost">Nästa byte</button>
+        </div>
+      </div>
+    </section>
 
     <div id="appError" class="small"></div>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="/NSK2/config.js"></script>
-    <script src="/NSK2/auth.js"></script>
-    <script src="/NSK2/login-patch.js"></script>
-    <script src="/NSK2/db.js"></script>
-    <script src="/NSK2/app.js"></script>
+    <script src="/NSK2/config.js?v=91"></script>
+    <script src="/NSK2/auth.js?v=91"></script>
+    <script src="/NSK2/login-patch.js?v=91"></script>
+    <script src="/NSK2/db.js?v=91"></script>
+    <script src="/NSK2/app.js?v=91"></script>
   </div>
 </body>
 </html>
