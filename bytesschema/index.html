@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Bytesschema</title>
-  <link rel="stylesheet" href="/NSK2/app.css">
+  <link rel="stylesheet" href="/NSK2/app.css?v=91">
 </head>
 <body>
   <div class="wrap">
@@ -18,29 +18,27 @@
       <a href="/NSK2/lag/">Lag</a>
     </nav>
 
-    
-<section class="card">
-  <h1>Bytesschema</h1>
-  <div class="small">Öppna först ett poolspel så att en match väljs.</div>
-  <div class="btnrow">
-    <button id="generateLineupsBtn">Generera hockeyrotation</button>
-  </div>
-  <div id="lineupMsg" class="small"></div>
-</section>
+    <section class="card">
+      <h1>Bytesschema</h1>
+      <div class="small">Spelare sorteras A–Ö. Hockeyrotation genereras automatiskt och synkar live.</div>
+      <div class="btnrow">
+        <button id="generateLineupsBtn">Generera hockeyrotation</button>
+      </div>
+      <div id="lineupMsg" class="small"></div>
+    </section>
 
-<section class="card">
-  <h2>Aktivt schema</h2>
-  <div id="lineupList"></div>
-</section>
-
+    <section class="card">
+      <h2>Aktivt schema</h2>
+      <div id="lineupList"></div>
+    </section>
 
     <div id="appError" class="small"></div>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="/NSK2/config.js"></script>
-    <script src="/NSK2/auth.js"></script>
-    <script src="/NSK2/login-patch.js"></script>
-    <script src="/NSK2/db.js"></script>
-    <script src="/NSK2/app.js"></script>
+    <script src="/NSK2/config.js?v=91"></script>
+    <script src="/NSK2/auth.js?v=91"></script>
+    <script src="/NSK2/login-patch.js?v=91"></script>
+    <script src="/NSK2/db.js?v=91"></script>
+    <script src="/NSK2/app.js?v=91"></script>
   </div>
 </body>
 </html>
