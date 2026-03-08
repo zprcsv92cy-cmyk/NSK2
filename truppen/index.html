@@ -1,25 +1,63 @@
 <!doctype html>
 <html lang="sv">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Truppen</title>
-<link rel="stylesheet" href="/NSK2/app.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Truppen Team 18</title>
+  <link rel="stylesheet" href="/NSK2/app.css">
 </head>
 <body>
+  <div class="sheet">
+    <div class="sheet-top">
+      <div class="sheet-title">Truppen team 18</div>
+      <a class="close-btn" href="/NSK2/startsida/" aria-label="Stäng">×</a>
+    </div>
 
-<h1>Truppen</h1>
+    <section class="block">
+      <div class="toolbar-small">
+        <h2>Spelare</h2>
+        <div id="playersMsg" class="small"></div>
+      </div>
+      <input id="playerInput" class="name-input" placeholder="Förnamn Efternamn">
+      <button id="addPlayerBtn" class="big-add">Lägg till</button>
+      <div id="playersList"></div>
+      <div class="muted-note">Sorteras A–Ö. Sparas i molnet.</div>
+    </section>
 
-<input id="playerInput" placeholder="Spelare">
-<button id="addPlayerBtn">Lägg till</button>
+    <section class="block">
+      <div class="toolbar-small">
+        <h2>Tränare</h2>
+        <div id="coachesMsg" class="small"></div>
+      </div>
+      <input id="coachInput" class="name-input" placeholder="Förnamn Efternamn">
+      <button id="addCoachBtn" class="big-add">Lägg till</button>
+      <div id="coachesList"></div>
+      <div class="muted-note">Sorteras A–Ö. Sparas i molnet.</div>
+    </section>
 
-<div id="playersList"></div>
+    <section class="block">
+      <h2>Backup / Flytta till annan telefon</h2>
+      <div class="muted-note">Export/Import av register + alla poolspel från Supabase.</div>
 
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<script src="/NSK2/config.js"></script>
-<script src="/NSK2/auth.js"></script>
-<script src="/NSK2/db.js"></script>
-<script src="/NSK2/app.js"></script>
+      <div class="backup-actions">
+        <button id="exportBtn" class="ghost big-export">Exportera JSON</button>
+      </div>
 
+      <div class="import-wrap">
+        <label for="importFile" class="import-label">Importera JSON</label>
+        <input id="importFile" type="file" accept="application/json,.json">
+      </div>
+
+      <div id="backupMsg" class="small"></div>
+    </section>
+
+    <div id="appError" class="small"></div>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="/NSK2/config.js"></script>
+    <script src="/NSK2/auth.js"></script>
+    <script src="/NSK2/login-patch.js"></script>
+    <script src="/NSK2/db.js"></script>
+    <script src="/NSK2/app.js"></script>
+  </div>
 </body>
 </html>
