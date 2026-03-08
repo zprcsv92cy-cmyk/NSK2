@@ -1,14 +1,15 @@
 <!doctype html>
 <html lang="sv">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Lag</title>
-<link rel="stylesheet" href="/NSK2/app.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Lag</title>
+  <link rel="stylesheet" href="/NSK2/app.css">
 </head>
 <body>
-<div class="wrap">
-  <nav class="mainmenu">
+  <div class="wrap">
+    
+<nav class="mainmenu">
   <a href="/NSK2/startsida/">Startsida</a>
   <a href="/NSK2/truppen/">Truppen</a>
   <a href="/NSK2/skapapoolspel/">Skapa poolspel</a>
@@ -17,15 +18,23 @@
   <a href="/NSK2/matchvy/">Matchvy</a>
   <a href="/NSK2/lag/">Lag</a>
 </nav>
-  <section class="card">
-    <h1>Lag</h1>
-    <div class="listrow">Förening: NSK</div>
-    <div class="listrow">Lag: Team 18</div>
-    <div class="listrow">Spelare: <span id="playersTotal"></span></div>
-    <div class="listrow">Tränare: <span id="coachesTotal"></span></div>
-    <div class="listrow">Poolspel: <span id="poolsTotal"></span></div>
-  </section>
-</div>
+
+    <section class="card">
+      <h1>Lag</h1>
+      <div class="listrow">Förening: NSK</div>
+      <div class="listrow">Lag: Team 18</div>
+      <div class="listrow">Spelare: <span id="playersTotal"></span></div>
+      <div class="listrow">Tränare: <span id="coachesTotal"></span></div>
+      <div class="listrow">Poolspel: <span id="poolsTotal"></span></div>
+    </section>
+    
+<div id="appError" class="small"></div>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="/NSK2/config.js"></script>
+<script src="/NSK2/auth.js"></script>
+<script src="/NSK2/db.js"></script>
 <script src="/NSK2/app.js"></script>
+
+  </div>
 </body>
 </html>
