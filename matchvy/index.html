@@ -1,36 +1,299 @@
 <!doctype html>
 <html lang="sv">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Matchvy</title>
-<link rel="stylesheet" href="/NSK2/app.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>NSK2 Matchvy V8</title>
+  <link rel="stylesheet" href="/NSK2/app.css">
+  <style>
+    .coach-stage{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:16px;
+    }
+    .coach-big{
+      background:#111217;
+      border:1px solid #2d2f36;
+      border-radius:24px;
+      padding:22px;
+    }
+    .coach-big-label{
+      font-size:18px;
+      letter-spacing:.16em;
+      color:var(--muted);
+      font-weight:900;
+      text-transform:uppercase;
+    }
+    .coach-big-meta{
+      margin-top:8px;
+      font-size:22px;
+      color:var(--muted);
+    }
+    .coach-big-main{
+      margin-top:12px;
+      font-size:82px;
+      line-height:1.0;
+      font-weight:950;
+    }
+    .coach-big-next{
+      margin-top:12px;
+      font-size:54px;
+      line-height:1.04;
+      font-weight:900;
+    }
+    .coach-timer-box{
+      background:#111217;
+      border:1px solid #2d2f36;
+      border-radius:24px;
+      padding:22px;
+      text-align:center;
+    }
+    .coach-timer{
+      font-size:120px;
+      line-height:1;
+      font-weight:950;
+    }
+    .coach-controls{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-top:16px;
+    }
+    .coach-controls button{
+      font-size:22px;
+      padding:18px 22px;
+    }
+    .coach-fullscreen{
+      width:100%;
+      min-height:100vh;
+    }
+    .coach-fullscreen .topbar,
+    .coach-fullscreen .mainmenu{
+      display:none;
+    }
+    .coach-fullscreen .wrap{
+      max-width:none;
+      padding:8px;
+    }
+    .coach-fullscreen .coach-big{
+      min-height:30vh;
+    }
+    .coach-fullscreen .coach-big-main{
+      font-size:110px;
+    }
+    .coach-fullscreen .coach-big-next{
+      font-size:74px;
+    }
+    .coach-fullscreen .coach-big-meta{
+      font-size:28px;
+    }
+    .coach-fullscreen .coach-timer{
+      font-size:150px;
+    }
+    @media (max-width:900px){
+      .coach-big-main{font-size:56px}
+      .coach-big-next{font-size:34px}
+      .coach-big-meta{font-size:16px}
+      .coach-timer{font-size:72px}
+      .coach-controls button{font-size:18px;padding:14px 16px}
+      .coach-fullscreen .coach-big-main{font-size:72px}
+      .coach-fullscreen .coach-big-next{font-size:46px}
+      .coach-fullscreen .coach-timer{font-size:98px}
+    }
+  </style>
 </head>
 <body>
-<div class="wrap">
+  <div class="wrap">
+    <header class="topbar">
+      <div>
+        <h1>NSK2</h1>
+        <div class="sub">Team 18 • Superstor coach-skärm</div>
+      </div>
+    </header>
 
-<header class="topbar">
-<div>
-<h1>NSK2</h1>
-<div class="sub">Team 18</div>
-</div>
-</header>
+    <nav class="mainmenu">
+      <a href="/NSK2/startsida/">Startsida</a>
+      <a href="/NSK2/truppen/">Truppen</a>
+      <a href="/NSK2/malvaktsstatistik/">Målvaktsstatistik</a>
+      <a href="/NSK2/skapapoolspel/">Skapa poolspel</a>
+      <a href="/NSK2/bytesschema/">Bytesschema</a>
+      <a href="/NSK2/matchvy/" class="active">Matchvy</a>
+      <a href="/NSK2/lag/">Lag</a>
+    </nav>
 
-<nav class="mainmenu">
-<a href="/NSK2/startsida/">Startsida</a>
-<a href="/NSK2/truppen/">Truppen</a>
-<a href="/NSK2/malvaktsstatistik/">Målvaktsstatistik</a>
-<a href="/NSK2/skapapoolspel/">Skapa poolspel</a>
-<a href="/NSK2/bytesschema/">Bytesschema</a>
-<a href="/NSK2/matchvy/" class="active">Matchvy</a>
-<a href="/NSK2/lag/">Lag</a>
+    <section class="card">
+      <div class="row2">
+        <div>
+          <label>Motståndare</label>
+          <input id="v8Opponent" placeholder="Trosa">
+        </div>
+        <div>
+          <label>Plan</label>
+          <input id="v8Field" placeholder="Plan 2">
+        </div>
+      </div>
+      <div class="row2">
+        <div>
+          <label>Tid</label>
+          <input id="v8Time" placeholder="10:20">
+        </div>
+        <div>
+          <label>Bytestid (sek)</label>
+          <input id="v8ShiftSeconds" type="number" min="20" max="300" value="90">
+        </div>
+      </div>
+      <div class="coach-controls">
+        <button id="v8SaveMeta">Spara matchinfo</button>
+        <button id="v8Fullscreen" class="ghost">Fullscreen</button>
+      </div>
+    </section>
 
-</nav>
+    <section class="coach-stage">
+      <div class="coach-big">
+        <div class="coach-big-label">NU</div>
+        <div id="v8CurrentMeta" class="coach-big-meta">Motståndare: — • Plan: — • Tid: —</div>
+        <div id="v8CurrentPlayers" class="coach-big-main">Alex • Ben • Hugo</div>
+      </div>
 
-<section class="card">
-<h2>Matchvy</h2><p>Coachvy för pågående match.</p>
-</section>
+      <div class="coach-big">
+        <div class="coach-big-label">NÄSTA</div>
+        <div id="v8NextMeta" class="coach-big-meta">Nästa byte</div>
+        <div id="v8NextPlayers" class="coach-big-next">Leo • Max • Olle</div>
+      </div>
 
-</div>
+      <div class="coach-timer-box">
+        <div id="v8Timer" class="coach-timer">00:00</div>
+        <div class="coach-controls" style="justify-content:center">
+          <button id="v8Start">Start</button>
+          <button id="v8Pause" class="ghost">Pausa</button>
+          <button id="v8Reset" class="ghost">Reset</button>
+          <button id="v8NextShift" class="ghost">Nästa byte</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (() => {
+      const STORE_KEY = "nsk2_v8_matchview";
+      const defaultState = {
+        opponent: "",
+        field: "",
+        time: "",
+        shiftSeconds: 90,
+        currentIndex: 0,
+        elapsed: 0,
+        running: false,
+        players: [
+          ["Alex", "Ben", "Hugo"],
+          ["Leo", "Max", "Olle"],
+          ["Sam", "Theo", "Viggo"],
+          ["Alex", "Leo", "Sam"]
+        ]
+      };
+
+      const state = load();
+      let timerHandle = null;
+
+      function load(){
+        try{
+          return { ...defaultState, ...JSON.parse(localStorage.getItem(STORE_KEY) || "{}") };
+        }catch{
+          return { ...defaultState };
+        }
+      }
+
+      function save(){
+        localStorage.setItem(STORE_KEY, JSON.stringify(state));
+      }
+
+      function byId(id){ return document.getElementById(id); }
+      function mmss(total){
+        const m = String(Math.floor(total / 60)).padStart(2, "0");
+        const s = String(total % 60).padStart(2, "0");
+        return m + ":" + s;
+      }
+
+      function render(){
+        byId("v8Opponent").value = state.opponent || "";
+        byId("v8Field").value = state.field || "";
+        byId("v8Time").value = state.time || "";
+        byId("v8ShiftSeconds").value = state.shiftSeconds || 90;
+
+        const current = state.players[state.currentIndex] || [];
+        const next = state.players[(state.currentIndex + 1) % state.players.length] || [];
+
+        byId("v8CurrentMeta").textContent =
+          "Motståndare: " + (state.opponent || "—") + " • Plan: " + (state.field || "—") + " • Tid: " + (state.time || "—");
+        byId("v8CurrentPlayers").textContent = current.join(" • ") || "—";
+        byId("v8NextMeta").textContent = "Byte " + (state.currentIndex + 2);
+        byId("v8NextPlayers").textContent = next.join(" • ") || "—";
+        byId("v8Timer").textContent = mmss(state.elapsed);
+      }
+
+      function saveMeta(){
+        state.opponent = byId("v8Opponent").value.trim();
+        state.field = byId("v8Field").value.trim();
+        state.time = byId("v8Time").value.trim();
+        state.shiftSeconds = Math.max(20, Math.min(300, Number(byId("v8ShiftSeconds").value || 90)));
+        save();
+        render();
+      }
+
+      function nextShift(){
+        state.currentIndex = (state.currentIndex + 1) % state.players.length;
+        state.elapsed = 0;
+        save();
+        render();
+        try{ navigator.vibrate && navigator.vibrate([200,100,200]); }catch{}
+      }
+
+      function start(){
+        if (timerHandle) return;
+        timerHandle = setInterval(() => {
+          state.elapsed += 1;
+          if (state.elapsed >= state.shiftSeconds) {
+            nextShift();
+          } else {
+            save();
+            render();
+          }
+        }, 1000);
+      }
+
+      function pause(){
+        clearInterval(timerHandle);
+        timerHandle = null;
+        save();
+      }
+
+      function reset(){
+        pause();
+        state.elapsed = 0;
+        save();
+        render();
+      }
+
+      async function toggleFullscreen(){
+        document.body.classList.toggle("coach-fullscreen");
+        try{
+          if (!document.fullscreenElement) {
+            await document.documentElement.requestFullscreen?.();
+          } else {
+            await document.exitFullscreen?.();
+          }
+        }catch{}
+      }
+
+      byId("v8SaveMeta").addEventListener("click", saveMeta);
+      byId("v8Start").addEventListener("click", start);
+      byId("v8Pause").addEventListener("click", pause);
+      byId("v8Reset").addEventListener("click", reset);
+      byId("v8NextShift").addEventListener("click", nextShift);
+      byId("v8Fullscreen").addEventListener("click", toggleFullscreen);
+
+      render();
+    })();
+  </script>
 </body>
 </html>
