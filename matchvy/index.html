@@ -1,82 +1,15 @@
 <!doctype html>
 <html lang="sv">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Matchvy</title>
-  <link rel="stylesheet" href="/NSK2/app.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Matchvy</title>
+<link rel="stylesheet" href="/NSK2/app.css">
 </head>
 <body>
-  <div class="wrap">
-    
-<nav class="mainmenu">
-  <a href="/NSK2/startsida/">Startsida</a>
-  <a href="/NSK2/truppen/">Truppen</a>
-  <a href="/NSK2/skapapoolspel/">Skapa poolspel</a>
-  <a href="/NSK2/malvaktsstatistik/">Målvaktsstatistik</a>
-  <a href="/NSK2/bytesschema/">Bytesschema</a>
-  <a href="/NSK2/matchvy/">Matchvy</a>
-  <a href="/NSK2/lag/">Lag</a>
-</nav>
 
-    <section class="card">
-      <h1>Matchvy</h1>
-      <div class="row2">
-        <div>
-          <label>Matchnamn</label>
-          <input id="matchTitle" placeholder="Poolspel / match">
-        </div>
-        <div>
-          <label>Motståndare</label>
-          <input id="matchOpponent" placeholder="Motståndare">
-        </div>
-        <div>
-          <label>Plats</label>
-          <input id="matchPlace" placeholder="Nyköping">
-        </div>
-        <div>
-          <label>Tid</label>
-          <input id="matchTime" placeholder="10:20">
-        </div>
-        <div>
-          <label>Bytestid sek</label>
-          <input id="matchShiftSeconds" type="number" value="90">
-        </div>
-      </div>
-      <button id="saveMatchBtn">Spara matchinfo</button>
-      <div id="matchMsg" class="small"></div>
-    </section>
+<h1>Matchvy</h1>
+<p>Här visas aktuell match.</p>
 
-    <section class="card">
-      <h2 id="shiftLabel">Inget schema</h2>
-      <div id="matchInfo"></div>
-      <div class="coach-grid">
-        <div class="coach-box">
-          <div class="coach-label">NU</div>
-          <div id="currentPlayers" class="coach-main">—</div>
-        </div>
-        <div class="coach-box">
-          <div class="coach-label">NÄSTA</div>
-          <div id="nextPlayers" class="coach-next">—</div>
-        </div>
-      </div>
-      <div class="timerwrap">
-        <div id="matchTimer" class="timer">00:00</div>
-        <div class="btnrow">
-          <button id="startTimerBtn">Start</button>
-          <button id="stopTimerBtn" class="ghost">Stoppa</button>
-          <button id="nextShiftBtn" class="ghost">Nästa byte</button>
-        </div>
-      </div>
-    </section>
-    
-<div id="appError" class="small"></div>
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<script src="/NSK2/config.js"></script>
-<script src="/NSK2/auth.js"></script>
-<script src="/NSK2/db.js"></script>
-<script src="/NSK2/app.js"></script>
-
-  </div>
 </body>
 </html>
