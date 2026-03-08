@@ -24,9 +24,7 @@ window.App = (() => {
     }
   }
 
-  function saveLocal() {
-    DB.save({ pool: state.pool });
-  }
+  function saveLocal() { DB.save({ pool: state.pool }); }
 
   function splitPlayers(text) {
     return String(text || "").split(/\n|,/).map(s => s.trim()).filter(Boolean);
@@ -269,11 +267,25 @@ window.App = (() => {
     scheduleAutosync();
   }
 
+  function advanceToNextMatchIfDone() {
+    const matches = state.pool.matches || [];
+    const current = matches[state.currentMatchIndex];
+    if (!current) return;
+    const allDone = (current.lineups || []).length > 0 && (current.lineups || []).every(x => x.done);
+    if (!allDone) return;
+    if (state.currentMatchIndex < matches.length - 1) {
+      state.currentMatchIndex += 1;
+      resetTimer();
+    }
+  }
+
   function tickLineup(matchIndex, lineupIndex) {
     const match = state.pool.matches[matchIndex];
     if (!match || !match.lineups[lineupIndex]) return;
     match.lineups[lineupIndex].done = !match.lineups[lineupIndex].done;
-    match.activeShift = Math.max(0, match.lineups.findIndex(x => !x.done));
+    const nextOpen = match.lineups.findIndex(x => !x.done);
+    match.activeShift = nextOpen >= 0 ? nextOpen : Math.max(0, match.lineups.length - 1);
+    advanceToNextMatchIfDone();
     saveLocal();
     renderMatches();
     scheduleAutosync();
