@@ -1,15 +1,49 @@
 <!doctype html>
 <html lang="sv">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../app.css">
+
 <title>Målvaktsstatistik</title>
-<link rel="stylesheet" href="/NSK2/app.css">
 </head>
 <body>
+<div class="wrap">
 
+<nav class="mainmenu">
+  <a href="../startsida/">Startsida</a>
+  <a href="../truppen/">Truppen</a>
+  <a href="../skapapoolspel/">Skapa poolspel</a>
+  <a href="../malvaktsstatistik/">Målvaktsstatistik</a>
+  <a href="../bytesschema/">Bytesschema</a>
+  <a href="../matchvy/">Matchvy</a>
+  <a href="../lag/">Lag</a>
+</nav>
+
+
+<section class="card">
 <h1>Målvaktsstatistik</h1>
-<p>Här visas målvaktsstatistik.</p>
 
+<input id="goalieName" placeholder="Målvakt">
+<input id="goalieShots" placeholder="Skott">
+<input id="goalieSaves" placeholder="Räddningar">
+<input id="goalieGoals" placeholder="Insläppta">
+
+<button id="saveGoalieStatBtn">Spara</button>
+
+<div id="goalieStatsList"></div>
+</section>
+
+
+<div id="appError" class="small"></div>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="../config.js"></script>
+<script src="../auth.js"></script>
+<script src="../login-patch.js"></script>
+<script src="../db.js"></script>
+<script src="../app.js"></script>
+
+</div>
 </body>
 </html>
