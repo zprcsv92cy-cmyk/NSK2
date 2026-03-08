@@ -202,7 +202,6 @@ window.DB = (() => {
 
   async function replaceLineups(matchId, lineups) {
     const client = await requireClient();
-
     const { data: oldRows, error: oldError } = await client.from("nsk_lineups").select("id").eq("match_id", matchId);
     if (oldError) throw oldError;
 
