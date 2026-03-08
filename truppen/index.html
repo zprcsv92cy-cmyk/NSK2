@@ -3,48 +3,44 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Truppen</title>
   <link rel="stylesheet" href="../app.css">
-
-<title>Truppen</title>
 </head>
 <body>
-<div class="wrap">
+  <div class="wrap">
+    <nav class="mainmenu">
+      <a href="../startsida/">Startsida</a>
+      <a href="../truppen/">Truppen</a>
+      <a href="../skapapoolspel/">Skapa poolspel</a>
+      <a href="../malvaktsstatistik/">Målvaktsstatistik</a>
+      <a href="../bytesschema/">Bytesschema</a>
+      <a href="../matchvy/">Matchvy</a>
+      <a href="../lag/">Lag</a>
+    </nav>
 
-<nav class="mainmenu">
-  <a href="../startsida/">Startsida</a>
-  <a href="../truppen/">Truppen</a>
-  <a href="../skapapoolspel/">Skapa poolspel</a>
-  <a href="../malvaktsstatistik/">Målvaktsstatistik</a>
-  <a href="../bytesschema/">Bytesschema</a>
-  <a href="../matchvy/">Matchvy</a>
-  <a href="../lag/">Lag</a>
-</nav>
-
-
+    
 <section class="card">
-<h1>Spelare</h1>
-<input id="playerInput" placeholder="Förnamn Efternamn">
-<button id="addPlayerBtn">Lägg till</button>
-<div id="playersList"></div>
+  <h1>Spelare</h1>
+  <input id="playerInput" placeholder="Förnamn Efternamn">
+  <button id="addPlayerBtn">Lägg till</button>
+  <div id="playersList"></div>
 </section>
 
 <section class="card">
-<h1>Tränare</h1>
-<input id="coachInput" placeholder="Förnamn Efternamn">
-<button id="addCoachBtn">Lägg till</button>
-<div id="coachesList"></div>
+  <h1>Tränare</h1>
+  <input id="coachInput" placeholder="Förnamn Efternamn">
+  <button id="addCoachBtn">Lägg till</button>
+  <div id="coachesList"></div>
 </section>
 
 
-<div id="appError" class="small"></div>
-
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<script src="../config.js"></script>
-<script src="../auth.js"></script>
-<script src="../login-patch.js"></script>
-<script src="../db.js"></script>
-<script src="../app.js"></script>
-
-</div>
+    <div id="appError" class="small"></div>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="../config.js"></script>
+    <script src="../auth.js"></script>
+    <script src="../login-patch.js"></script>
+    <script src="../db.js"></script>
+    <script src="../app.js"></script>
+  </div>
 </body>
 </html>
