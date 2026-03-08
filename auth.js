@@ -29,19 +29,14 @@ window.Auth = (() => {
   async function login(email) {
     const c = getClient();
     const clean = String(email || "").trim();
-
-    if (!clean) {
-      throw new Error("Skriv en e-postadress.");
-    }
+    if (!clean) throw new Error("Skriv en e-postadress.");
 
     const redirectTo =
       window.location.origin + (window.APP_CONFIG?.REDIRECT_PATH || "/NSK2/");
 
     const { error } = await c.auth.signInWithOtp({
       email: clean,
-      options: {
-        emailRedirectTo: redirectTo
-      }
+      options: { emailRedirectTo: redirectTo }
     });
 
     if (error) throw error;
@@ -50,23 +45,4 @@ window.Auth = (() => {
 
   async function logout() {
     const c = getClient();
-    const { error } = await c.auth.signOut();
-    if (error) throw error;
-    return true;
-  }
-
-  async function refreshSession() {
-    const c = getClient();
-    const { error } = await c.auth.refreshSession();
-    if (error) throw error;
-    return true;
-  }
-
-  return {
-    init,
-    getClient,
-    login,
-    logout,
-    refreshSession
-  };
-})();
+    const { error } = await c
