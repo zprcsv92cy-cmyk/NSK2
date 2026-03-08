@@ -1,48 +1,27 @@
-window.DB = (() => {
-  const LOCAL = "nsk_v73";
+Byt till denna scriptordning i sidorna:
 
-  function defaults() {
-    return { pool: { id:"", cloud_id:"", name:"", players:[], goalie:"", shiftSeconds:90, matches:[] } };
-  }
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="/NSK2/config.js"></script>
+<script src="/NSK2/auth.js"></script>
+<script src="/NSK2/db.js"></script>
+<script src="/NSK2/app.js"></script>
 
-  function load() {
-    try { return JSON.parse(localStorage.getItem(LOCAL)) || defaults(); }
-    catch { return defaults(); }
-  }
+db.js V2 använder riktiga tabeller:
+- nsk_teams
+- nsk_players
+- nsk_coaches
+- nsk_pools
+- nsk_matches
+- nsk_lineups
+- nsk_lineup_players
+- nsk_goalie_stats
 
-  function save(data) {
-    localStorage.setItem(LOCAL, JSON.stringify(data));
-  }
+Exempel:
+const players = await DB.listPlayers();
+await DB.addPlayer("Ny spelare");
+const pools = await DB.listPools();
 
-  async function upsertPool(pool) {
-    const client = Auth.getClient();
-    if (!client) throw new Error("Ingen Supabase-klient.");
-    const row = { cloud_id: pool.cloud_id, payload: pool, updated_at: new Date().toISOString() };
-    const { error } = await client.from("pools").upsert(row, { onConflict: "cloud_id" });
-    if (error) throw error;
-  }
-
-  async function fetchPool(cloud_id) {
-    const client = Auth.getClient();
-    const { data, error } = await client.from("pools").select("payload").eq("cloud_id", cloud_id).single();
-    if (error) throw error;
-    return data.payload;
-  }
-
-  function subscribePool(cloud_id, callback) {
-    const client = Auth.getClient();
-    if (!client) return null;
-    return client.channel("pools-" + cloud_id)
-      .on("postgres_changes", {
-        event: "*",
-        schema: "public",
-        table: "pools",
-        filter: "cloud_id=eq." + cloud_id
-      }, payload => {
-        if (payload?.new?.payload) callback(payload.new.payload);
-      })
-      .subscribe();
-  }
-
-  return { load, save, upsertPool, fetchPool, subscribePool };
-})();
+Realtime:
+const channel = await DB.subscribe("nsk_players", () => {
+  // ladda om listan
+});
