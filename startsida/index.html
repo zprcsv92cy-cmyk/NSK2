@@ -1,151 +1,246 @@
 <!doctype html>
 <html lang="sv">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>NSK2 Startsida</title>
-  <link rel="stylesheet" href="/NSK2/app.css">
-  <style>
-    .home-wrap{display:grid;gap:16px}
-    .hero-card{
-      display:grid;
-      grid-template-columns:92px 1fr;
-      gap:16px;
-      align-items:center;
-      padding:18px;
-      background:linear-gradient(135deg,#7a0c18 0%, #d51f35 45%, #8d1020 100%);
-      border:1px solid rgba(255,255,255,.12);
-      border-radius:28px;
-      box-shadow:0 14px 28px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.08);
-    }
-    .hero-logo{
-      width:92px;height:92px;border-radius:22px;background:#fff;
-      object-fit:contain;padding:6px;border:1px solid rgba(255,255,255,.18)
-    }
-    .hero-title{font-size:32px;font-weight:950;line-height:1.05;margin:0}
-    .hero-sub{margin-top:8px;color:rgba(255,255,255,.84);font-size:15px}
-    .actions-card{padding:18px}
-    .big-actions{display:grid;gap:14px}
-    .big-link{
-      display:flex;align-items:center;justify-content:center;
-      min-height:92px;padding:18px;border-radius:26px;text-decoration:none;
-      font-size:24px;font-weight:900;letter-spacing:-.02em;
-      border:1px solid #2d2f36;box-shadow:0 10px 24px rgba(0,0,0,.18)
-    }
-    .big-link.primary{
-      color:#fff;background:linear-gradient(180deg,#e11d3d,#9f0d20);
-      border-color:#7f0d1a;
-    }
-    .big-link.secondary{
-      color:#fff;background:linear-gradient(180deg,#23252c,#1a1b20);
-    }
-    .subtle-row{
-      display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:10px
-    }
-    .ghost-link{
-      text-decoration:none;color:#fff;background:#202127;border:1px solid #34343b;
-      padding:12px 14px;border-radius:14px;font-weight:800;display:inline-flex;align-items:center;justify-content:center
-    }
-    .section-card{padding:18px}
-    .section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
-    .section-head h2{margin:0;font-size:24px}
-    .pool-list{display:grid;gap:14px}
-    .pool-item{
-      background:#14161b;border:1px solid #2b2d33;border-radius:22px;padding:16px;
-    }
-    .pool-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-    .pool-title{font-size:24px;font-weight:900;line-height:1.08}
-    .pool-meta{margin-top:4px;color:var(--muted);font-size:14px}
-    .status-badge{
-      padding:8px 14px;border-radius:999px;border:2px solid #2ad66f;color:#2ad66f;
-      font-weight:800;background:rgba(42,214,111,.07);white-space:nowrap
-    }
-    .pool-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px}
-    .pool-actions button{min-width:150px}
-    .pool-actions .ghost{min-width:130px}
-    @media (max-width:720px){
-      .hero-card{grid-template-columns:72px 1fr;padding:14px}
-      .hero-logo{width:72px;height:72px;border-radius:18px}
-      .hero-title{font-size:26px}
-      .big-link{min-height:78px;font-size:20px}
-      .pool-title{font-size:20px}
-      .pool-actions button,.ghost-link{min-width:0;flex:1}
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NSK2 Startsida</title>
+
+<link rel="stylesheet" href="/NSK2/app.css">
+
+<style>
+
+.home-wrap{display:grid;gap:16px}
+
+.hero-card{
+display:grid;
+grid-template-columns:92px 1fr;
+gap:16px;
+align-items:center;
+padding:18px;
+background:linear-gradient(135deg,#7a0c18 0%, #d51f35 45%, #8d1020 100%);
+border:1px solid rgba(255,255,255,.12);
+border-radius:28px;
+box-shadow:0 14px 28px rgba(0,0,0,.28);
+}
+
+.hero-logo{
+width:92px;
+height:92px;
+border-radius:22px;
+background:#fff;
+object-fit:contain;
+padding:6px;
+}
+
+.hero-title{
+font-size:32px;
+font-weight:950;
+line-height:1.05;
+margin:0;
+}
+
+.hero-sub{
+margin-top:8px;
+color:rgba(255,255,255,.84);
+font-size:15px;
+}
+
+.actions-card{padding:18px}
+
+.big-actions{display:grid;gap:14px}
+
+.big-link{
+display:flex;
+align-items:center;
+justify-content:center;
+min-height:92px;
+padding:18px;
+border-radius:26px;
+text-decoration:none;
+font-size:24px;
+font-weight:900;
+border:1px solid #2d2f36;
+box-shadow:0 10px 24px rgba(0,0,0,.18);
+}
+
+.big-link.primary{
+color:#fff;
+background:linear-gradient(180deg,#e11d3d,#9f0d20);
+}
+
+.big-link.secondary{
+color:#fff;
+background:linear-gradient(180deg,#23252c,#1a1b20);
+}
+
+.subtle-row{
+display:flex;
+justify-content:flex-end;
+gap:8px;
+margin-top:10px;
+}
+
+.ghost-link{
+text-decoration:none;
+color:#fff;
+background:#202127;
+border:1px solid #34343b;
+padding:12px 14px;
+border-radius:14px;
+font-weight:800;
+}
+
+.section-card{padding:18px}
+
+.section-head{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:10px;
+}
+
+.section-head h2{
+margin:0;
+font-size:24px;
+}
+
+.pool-list{
+display:grid;
+gap:14px;
+}
+
+.pool-item{
+background:#14161b;
+border:1px solid #2b2d33;
+border-radius:22px;
+padding:16px;
+}
+
+.pool-top{
+display:flex;
+justify-content:space-between;
+align-items:flex-start;
+}
+
+.pool-title{
+font-size:24px;
+font-weight:900;
+}
+
+.pool-meta{
+margin-top:4px;
+color:#aaa;
+font-size:14px;
+}
+
+.status-badge{
+padding:8px 14px;
+border-radius:999px;
+border:2px solid #2ad66f;
+color:#2ad66f;
+font-weight:800;
+background:rgba(42,214,111,.07);
+}
+
+.pool-actions{
+display:flex;
+gap:12px;
+margin-top:14px;
+}
+
+</style>
 </head>
+
 <body>
-  <div class="wrap home-wrap">
-    <section class="hero-card">
-      <img src="/NSK2/icon-192.png" alt="NSK" class="hero-logo">
-      <div>
-        <h1 class="hero-title">Nyköpings Sportklubb<br>• Team 18</h1>
-        <div class="hero-sub">Poolspel • PDF <span style="opacity:.7">• Behörigheter</span></div>
-      </div>
-    </section>
 
-    <section class="card actions-card">
-      <div class="big-actions">
-        <a class="big-link primary" href="/NSK2/truppen/">Truppen team 18</a>
-        <a class="big-link secondary" href="/NSK2/skapapoolspel/">Skapa nytt poolspel</a>
-        <a class="big-link primary" href="/NSK2/malvaktsstatistik/">Statistik målvakter</a>
-      </div>
-      <div class="subtle-row">
-        <a class="ghost-link" href="/NSK2/behorigheter/">Behörigheter</a>
-      </div>
-    </section>
+<div class="wrap home-wrap">
 
-    <section class="card section-card">
-      <div class="section-head">
-        <h2>Sparade poolspel</h2>
-      </div>
+<section class="hero-card">
 
-      <div class="pool-list">
-        <article class="pool-item">
-          <div class="pool-top">
-            <div>
-              <div class="pool-title">2026-03-05 • Nyköping</div>
-              <div class="pool-meta">Lag 1: Aktiv • Lag 2: Aktiv</div>
-            </div>
-            <div class="status-badge">Aktiv</div>
-          </div>
-          <div class="pool-actions">
-            <button>Påbörja poolspel</button>
-            <button class="ghost">Redigera</button>
-            <button class="ghost">Ta bort</button>
-          </div>
-        </article>
+<img src="/NSK2/icon-192.png" class="hero-logo">
 
-        <article class="pool-item">
-          <div class="pool-top">
-            <div>
-              <div class="pool-title">2026-03-05 • Nyköping</div>
-              <div class="pool-meta">Lag 1: Aktiv • Lag 2: Aktiv</div>
-            </div>
-            <div class="status-badge">Aktiv</div>
-          </div>
-          <div class="pool-actions">
-            <button>Påbörja poolspel</button>
-            <button class="ghost">Redigera</button>
-            <button class="ghost">Ta bort</button>
-          </div>
-        </article>
+<div>
+<h1 class="hero-title">
+Nyköpings Sportklubb<br>
+• Team 18
+</h1>
 
-        <article class="pool-item">
-          <div class="pool-top">
-            <div>
-              <div class="pool-title">2026-02-26 • Hy</div>
-              <div class="pool-meta">Lag 1: Avslutad • Lag 2: Aktiv</div>
-            </div>
-            <div class="status-badge">Aktiv</div>
-          </div>
-          <div class="pool-actions">
-            <button>Påbörja poolspel</button>
-            <button class="ghost">Redigera</button>
-            <button class="ghost">Ta bort</button>
-          </div>
-        </article>
-      </div>
-    </section>
-  </div>
+<div class="hero-sub">
+Poolspel • PDF • Behörigheter
+</div>
+</div>
+
+</section>
+
+<section class="card actions-card">
+
+<div class="big-actions">
+
+<a class="big-link primary" href="/NSK2/truppen/">
+Truppen team 18
+</a>
+
+<a class="big-link secondary" href="/NSK2/skapapoolspel/">
+Skapa nytt poolspel
+</a>
+
+<a class="big-link primary" href="/NSK2/malvaktsstatistik/">
+Statistik målvakter
+</a>
+
+</div>
+
+<div class="subtle-row">
+<a class="ghost-link" href="/NSK2/behorigheter/">
+Behörigheter
+</a>
+</div>
+
+</section>
+
+<section class="card section-card">
+
+<div class="section-head">
+<h2>Sparade poolspel</h2>
+</div>
+
+<div class="pool-list">
+
+<article class="pool-item">
+
+<div class="pool-top">
+
+<div>
+<div class="pool-title">
+2026-03-05 • Nyköping
+</div>
+
+<div class="pool-meta">
+Lag 1: Aktiv • Lag 2: Aktiv
+</div>
+</div>
+
+<div class="status-badge">
+Aktiv
+</div>
+
+</div>
+
+<div class="pool-actions">
+
+<button>Påbörja poolspel</button>
+<button class="ghost">Redigera</button>
+<button class="ghost">Ta bort</button>
+
+</div>
+
+</article>
+
+</div>
+
+</section>
+
+</div>
+
 </body>
 </html>
