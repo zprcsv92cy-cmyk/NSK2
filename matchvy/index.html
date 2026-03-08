@@ -3,60 +3,53 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Matchvy</title>
   <link rel="stylesheet" href="../app.css">
-
-<title>Matchvy</title>
 </head>
 <body>
-<div class="wrap">
+  <div class="wrap">
+    <nav class="mainmenu">
+      <a href="../startsida/">Startsida</a>
+      <a href="../truppen/">Truppen</a>
+      <a href="../skapapoolspel/">Skapa poolspel</a>
+      <a href="../malvaktsstatistik/">Målvaktsstatistik</a>
+      <a href="../bytesschema/">Bytesschema</a>
+      <a href="../matchvy/">Matchvy</a>
+      <a href="../lag/">Lag</a>
+    </nav>
 
-<nav class="mainmenu">
-  <a href="../startsida/">Startsida</a>
-  <a href="../truppen/">Truppen</a>
-  <a href="../skapapoolspel/">Skapa poolspel</a>
-  <a href="../malvaktsstatistik/">Målvaktsstatistik</a>
-  <a href="../bytesschema/">Bytesschema</a>
-  <a href="../matchvy/">Matchvy</a>
-  <a href="../lag/">Lag</a>
-</nav>
-
-
+    
 <section class="card">
-<h1>Matchvy</h1>
-<div id="matchInfo"></div>
-
-<div class="coach">
-<div>
-<h2>NU</h2>
-<div id="currentPlayers"></div>
-</div>
-
-<div>
-<h2>NÄSTA</h2>
-<div id="nextPlayers"></div>
-</div>
-
-<div>
-<h2>BYTE OM</h2>
-<div id="matchTimer">00:00</div>
-</div>
-
-<button id="startTimerBtn">Start</button>
-<button id="stopTimerBtn">Stop</button>
-<button id="nextShiftBtn">Nästa byte</button>
-</div>
+  <h1>Matchvy</h1>
+  <div id="matchInfo"></div>
+  <div class="coach-grid">
+    <div class="coach-box">
+      <div class="coach-label">NU</div>
+      <div id="currentPlayers" class="coach-main">—</div>
+    </div>
+    <div class="coach-box">
+      <div class="coach-label">NÄSTA</div>
+      <div id="nextPlayers" class="coach-next">—</div>
+    </div>
+  </div>
+  <div class="timerwrap">
+    <div id="matchTimer" class="timer">00:00</div>
+    <div class="btnrow">
+      <button id="startTimerBtn">Start</button>
+      <button id="stopTimerBtn" class="ghost">Stoppa</button>
+      <button id="nextShiftBtn" class="ghost">Nästa byte</button>
+    </div>
+  </div>
 </section>
 
 
-<div id="appError" class="small"></div>
-
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<script src="../config.js"></script>
-<script src="../auth.js"></script>
-<script src="../login-patch.js"></script>
-<script src="../db.js"></script>
-<script src="../app.js"></script>
-
-</div>
+    <div id="appError" class="small"></div>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="../config.js"></script>
+    <script src="../auth.js"></script>
+    <script src="../login-patch.js"></script>
+    <script src="../db.js"></script>
+    <script src="../app.js"></script>
+  </div>
 </body>
 </html>
