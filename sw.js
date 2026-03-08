@@ -1,16 +1,16 @@
-const CACHE = "nsk2-v10-safe-1";
+const CACHE = "nsk2-v10-2";
 const ASSETS = [
-  "./",
-  "./index.html",
-  "./app.css",
-  "./config.js",
-  "./auth.js",
-  "./login-patch.js",
-  "./db.js",
-  "./app.js",
-  "./manifest.webmanifest",
-  "./icon-192.png",
-  "./icon-512.png"
+  "/NSK2/",
+  "/NSK2/index.html",
+  "/NSK2/app.css",
+  "/NSK2/config.js",
+  "/NSK2/auth.js",
+  "/NSK2/login-patch.js",
+  "/NSK2/db.js",
+  "/NSK2/app.js",
+  "/NSK2/manifest.webmanifest",
+  "/NSK2/icon-192.png",
+  "/NSK2/icon-512.png"
 ];
 
 self.addEventListener("install", event => {
@@ -35,21 +35,19 @@ self.addEventListener("fetch", event => {
   const req = event.request;
   if (req.method !== "GET") return;
 
-  // Never cache Supabase/auth/api requests
   const url = new URL(req.url);
+
   if (
     url.hostname.includes("supabase.co") ||
     url.pathname.includes("/auth/") ||
-    url.pathname.includes("/storage/") ||
-    url.pathname.includes("/rest/v1/")
+    url.pathname.includes("/rest/v1/") ||
+    url.pathname.includes("/storage/")
   ) {
     event.respondWith(fetch(req));
     return;
   }
 
-  // Network-first for HTML to avoid stale pages
-  const acceptsHTML = req.headers.get("accept") && req.headers.get("accept").includes("text/html");
-  if (req.mode === "navigate" || acceptsHTML) {
+  if (req.mode === "navigate") {
     event.respondWith((async () => {
       try {
         const fresh = await fetch(req);
@@ -58,13 +56,12 @@ self.addEventListener("fetch", event => {
         return fresh;
       } catch {
         const cached = await caches.match(req);
-        return cached || Response.error();
+        return cached || caches.match("/NSK2/index.html");
       }
     })());
     return;
   }
 
-  // Cache-first for static assets
   event.respondWith((async () => {
     const cached = await caches.match(req);
     if (cached) return cached;
