@@ -1,5 +1,5 @@
 const CACHE_NAME="nsk-team18-v74";
-const ASSETS=["./","./index.html","./config.js?v=73","./app.css?v=73","./auth.js?v=73","./db.js?v=73","./app.js?v=73","./manifest.webmanifest","./icon-192.png","./icon-512.png"];
+const ASSETS=["./","./index.html","./config.js?v=74","./app.css?v=74","./auth.js?v=74","./db.js?v=74","./app.js?v=74","./manifest.webmanifest","./icon-192.png","./icon-512.png"];
 self.addEventListener("install",e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(ASSETS)).catch(()=>{}));});
 self.addEventListener("activate",e=>{e.waitUntil(Promise.all([caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))),self.clients.claim()]));});
 self.addEventListener("fetch",event=>{
