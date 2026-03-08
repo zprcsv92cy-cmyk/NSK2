@@ -1,35 +1,36 @@
-<div class="card">
-<h2>Truppen – Team 18</h2>
-<p>Lägg till och hantera lagets spelare.</p>
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Truppen</title>
+<link rel="stylesheet" href="/NSK2/app.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="topbar">
+<div>
+<h1>NSK2</h1>
+<div class="sub">Team 18</div>
 </div>
+</header>
 
-<div class="grid">
+<nav class="mainmenu">
+<a href="/NSK2/startsida/">Startsida</a>
+<a href="/NSK2/truppen/" class="active">Truppen</a>
+<a href="/NSK2/malvaktsstatistik/">Målvaktsstatistik</a>
+<a href="/NSK2/skapapoolspel/">Skapa poolspel</a>
+<a href="/NSK2/bytesschema/">Bytesschema</a>
+<a href="/NSK2/matchvy/">Matchvy</a>
+<a href="/NSK2/lag/">Lag</a>
 
-<div class="card">
-<label>Spelarnamn</label>
-<input placeholder="Namn">
+</nav>
 
-<label>Tröjnummer</label>
-<input type="number">
-
-<label>Position</label>
-<select>
-<option>Utespelare</option>
-<option>Målvakt</option>
-</select>
-
-<button>Lägg till spelare</button>
-</div>
-
-<div class="card">
-<h3>Aktuell trupp</h3>
-
-<div class="listrow">Alex</div>
-<div class="listrow">Ben</div>
-<div class="listrow">Hugo</div>
-<div class="listrow">Leo</div>
-<div class="listrow">Max</div>
+<section class="card">
+<h2>Truppen</h2><p>Här hanterar du lagets spelare.</p>
+</section>
 
 </div>
-
-</div>
+</body>
+</html>
