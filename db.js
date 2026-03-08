@@ -1,4 +1,7 @@
-
+if (!window.Auth || !Auth.init) {
+  window.Auth = window.Auth || {};
+  Auth.init = async () => {};
+}
 // db.js — NSK Team 18 (robust team lookup + realtime compatible)
 
 window.DB = (() => {
