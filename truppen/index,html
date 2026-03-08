@@ -1,21 +1,35 @@
-<nav>
-<a href="/NSK2/startsida/">Startsida</a>
-<a href="/NSK2/truppen/">Truppen</a>
-<a href="/NSK2/malvaktsstatistik/">Målvaktsstatistik</a>
-<a href="/NSK2/skapapoolspel/">Skapa poolspel</a>
-<a href="/NSK2/bytesschema/">Bytesschema</a>
-<a href="/NSK2/matchvy/">Matchvy</a>
-<a href="/NSK2/lag/">Lag</a>
-</nav>
+<div class="card">
+<h2>Truppen – Team 18</h2>
+<p>Lägg till och hantera lagets spelare.</p>
+</div>
 
-<h1>Truppen Team 18</h1>
-<p>Här hanterar du lagets spelare.</p>
+<div class="grid">
 
-<input placeholder="Spelarnamn">
+<div class="card">
+<label>Spelarnamn</label>
+<input placeholder="Namn">
+
+<label>Tröjnummer</label>
+<input type="number">
+
+<label>Position</label>
+<select>
+<option>Utespelare</option>
+<option>Målvakt</option>
+</select>
+
 <button>Lägg till spelare</button>
+</div>
 
-<ul>
-<li>Alex</li>
-<li>Ben</li>
-<li>Hugo</li>
-</ul>
+<div class="card">
+<h3>Aktuell trupp</h3>
+
+<div class="listrow">Alex</div>
+<div class="listrow">Ben</div>
+<div class="listrow">Hugo</div>
+<div class="listrow">Leo</div>
+<div class="listrow">Max</div>
+
+</div>
+
+</div>
