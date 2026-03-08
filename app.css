@@ -46,10 +46,16 @@ button.ghost{background:#202127;border-color:#34343b}
 .timer{font-size:62px;font-weight:950;line-height:1}
 .fullscreen-mode{padding:8px}
 .fullscreen-mode .topbar, .fullscreen-mode .card:not(.coach-card){display:none}
-.fullscreen-mode .coach-card{grid-column:1/-1;min-height:calc(100vh - 32px)}
-.fullscreen-mode .coach-main{font-size:64px}
-.fullscreen-mode .coach-next{font-size:42px}
-@media (max-width:800px){
+.fullscreen-mode .coach-card{grid-column:1/-1;min-height:calc(100vh - 16px);padding:24px}
+.fullscreen-mode .coach-grid{gap:20px}
+.fullscreen-mode .coach-box{padding:24px;border-radius:24px}
+.fullscreen-mode .coach-label{font-size:22px}
+.fullscreen-mode .coach-meta{font-size:24px}
+.fullscreen-mode .coach-main{font-size:92px;line-height:1}
+.fullscreen-mode .coach-next{font-size:64px;line-height:1.02}
+.fullscreen-mode .timer{font-size:110px}
+.fullscreen-mode .btnrow button{font-size:24px;padding:18px 22px}
+@media (max-width:900px){
   .grid{grid-template-columns:1fr}
   .span2{grid-column:span 1}
   .coach-grid{grid-template-columns:1fr}
@@ -57,4 +63,8 @@ button.ghost{background:#202127;border-color:#34343b}
   .coach-main{font-size:28px}
   .coach-next{font-size:22px}
   .timer{font-size:46px}
+  .fullscreen-mode .coach-main{font-size:64px}
+  .fullscreen-mode .coach-next{font-size:46px}
+  .fullscreen-mode .coach-meta{font-size:18px}
+  .fullscreen-mode .timer{font-size:78px}
 }
