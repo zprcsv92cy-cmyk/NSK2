@@ -3,40 +3,51 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Startsida</title>
-  <link rel="stylesheet" href="../app.css">
+  <title>NSK Team 18</title>
+  <link rel="stylesheet" href="/NSK2/app.css">
 </head>
 <body>
   <div class="wrap">
     <nav class="mainmenu">
-      <a href="../startsida/">Startsida</a>
-      <a href="../truppen/">Truppen</a>
-      <a href="../skapapoolspel/">Skapa poolspel</a>
-      <a href="../malvaktsstatistik/">Målvaktsstatistik</a>
-      <a href="../bytesschema/">Bytesschema</a>
-      <a href="../matchvy/">Matchvy</a>
-      <a href="../lag/">Lag</a>
+      <a href="/NSK2/startsida/">Startsida</a>
+      <a href="/NSK2/truppen/">Truppen</a>
+      <a href="/NSK2/skapapoolspel/">Skapa poolspel</a>
+      <a href="/NSK2/malvaktsstatistik/">Målvaktsstatistik</a>
+      <a href="/NSK2/bytesschema/">Bytesschema</a>
+      <a href="/NSK2/matchvy/">Matchvy</a>
+      <a href="/NSK2/lag/">Lag</a>
     </nav>
 
     
-<section class="card">
-  <h1>NSK Team 18</h1>
-  <p class="small">V10 Safe • relativa paths • stabil cache</p>
+<section class="hero-card">
+  <img src="/NSK2/icon-192.png" alt="NSK" class="hero-logo">
+  <div>
+    <h1 class="hero-title">NSK Team 18</h1>
+    <div class="hero-sub">V10.1 Stable • rätt /NSK2-paths</div>
+  </div>
 </section>
 
-<section class="card">
-  <h2>Sparade poolspel</h2>
-  <div id="savedPoolsList"></div>
+<section class="card actions-card">
+  <div class="big-actions">
+    <a class="big-link primary" href="/NSK2/truppen/">Truppen team 18</a>
+    <a class="big-link secondary" href="/NSK2/skapapoolspel/">Skapa nytt poolspel</a>
+    <a class="big-link primary" href="/NSK2/malvaktsstatistik/">Statistik målvakter</a>
+  </div>
+</section>
+
+<section class="card section-card">
+  <div class="section-head"><h2>Sparade poolspel</h2></div>
+  <div id="savedPoolsList" class="pool-list"></div>
 </section>
 
 
     <div id="appError" class="small"></div>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="../config.js"></script>
-    <script src="../auth.js"></script>
-    <script src="../login-patch.js"></script>
-    <script src="../db.js"></script>
-    <script src="../app.js"></script>
+    <script src="/NSK2/config.js"></script>
+    <script src="/NSK2/auth.js"></script>
+    <script src="/NSK2/login-patch.js"></script>
+    <script src="/NSK2/db.js"></script>
+    <script src="/NSK2/app.js"></script>
   </div>
 </body>
 </html>
