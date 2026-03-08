@@ -68,3 +68,58 @@ button.ghost{background:#202127;border-color:#34343b}
   .fullscreen-mode .coach-meta{font-size:18px}
   .fullscreen-mode .timer{font-size:78px}
 }
+/* Gemensam wrapper för flersidor */
+.wrap{
+  max-width:1100px;
+  margin:0 auto;
+  padding:0;
+}
+
+/* Huvudmeny för NSK2 */
+.mainmenu{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:16px;
+}
+
+.mainmenu a{
+  text-decoration:none;
+  color:#fff;
+  background:#1c1d22;
+  border:1px solid #2d2f36;
+  padding:10px 14px;
+  border-radius:12px;
+  font-weight:700;
+}
+
+.mainmenu a:hover,
+.mainmenu a.active{
+  background:var(--red);
+  border-color:#8f1020;
+}
+
+/* Enkel lista/rad för infosidor */
+.listrow{
+  padding:10px 0;
+  border-top:1px solid rgba(255,255,255,.06);
+}
+
+/* Kod/etikett-rutor */
+code{
+  background:#111217;
+  border:1px solid #2b2b31;
+  border-radius:8px;
+  padding:2px 6px;
+  color:#f5f5f7;
+}
+
+/* Vanliga länkar inne i kort */
+.card a{
+  color:#fff;
+}
+
+/* Lite snyggare stycken på infosidor */
+p{
+  line-height:1.5;
+}
