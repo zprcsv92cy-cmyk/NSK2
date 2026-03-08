@@ -1,13 +1,111 @@
-body{
-font-family:Arial;
-background:#0f0f10;
-color:white;
-padding:20px;
+/* NSK V9 - coach screen + hockey rotation */
+.match-admin-card{
+  margin-bottom:16px;
 }
-a{color:#ff4050}
-.card{
-background:#1a1a1a;
-padding:20px;
-border-radius:10px;
-margin-bottom:20px;
+.coach-screen-card{
+  padding:22px;
+}
+.coach-screen-top{
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  align-items:flex-start;
+  flex-wrap:wrap;
+}
+.coach-panels{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+  margin-top:16px;
+}
+.coach-panel{
+  background:#111217;
+  border:1px solid #2d2f36;
+  border-radius:22px;
+  padding:20px;
+  min-height:220px;
+}
+.coach-panel-label{
+  font-size:13px;
+  letter-spacing:.14em;
+  color:var(--muted);
+  font-weight:900;
+}
+.coach-panel-main{
+  margin-top:12px;
+  font-size:52px;
+  font-weight:950;
+  line-height:1.02;
+}
+.coach-panel-next{
+  margin-top:12px;
+  font-size:40px;
+  font-weight:900;
+  line-height:1.05;
+}
+.coach-timer-wrap{
+  margin-top:18px;
+  background:#111217;
+  border:1px solid #2d2f36;
+  border-radius:22px;
+  padding:20px;
+}
+.coach-timer{
+  font-size:88px;
+  font-weight:950;
+  line-height:1;
+  margin:10px 0 16px;
+}
+body.coach-fullscreen{
+  padding:8px;
+}
+body.coach-fullscreen .mainmenu,
+body.coach-fullscreen .match-admin-card{
+  display:none;
+}
+body.coach-fullscreen .wrap{
+  max-width:none;
+}
+body.coach-fullscreen .coach-screen-card{
+  min-height:calc(100vh - 16px);
+  margin:0;
+}
+body.coach-fullscreen .coach-panels{
+  gap:22px;
+}
+body.coach-fullscreen .coach-panel{
+  min-height:320px;
+  padding:26px;
+}
+body.coach-fullscreen .coach-panel-main{
+  font-size:82px;
+}
+body.coach-fullscreen .coach-panel-next{
+  font-size:62px;
+}
+body.coach-fullscreen .coach-timer{
+  font-size:140px;
+}
+@media (max-width:900px){
+  .coach-panels{
+    grid-template-columns:1fr;
+  }
+  .coach-panel-main{
+    font-size:38px;
+  }
+  .coach-panel-next{
+    font-size:30px;
+  }
+  .coach-timer{
+    font-size:64px;
+  }
+  body.coach-fullscreen .coach-panel-main{
+    font-size:56px;
+  }
+  body.coach-fullscreen .coach-panel-next{
+    font-size:44px;
+  }
+  body.coach-fullscreen .coach-timer{
+    font-size:92px;
+  }
 }
