@@ -3,21 +3,21 @@ window.NSK2App=(()=>{
 function byId(id){return document.getElementById(id);}
 
 async function loadPlayers(){
- if(!byId("playersList")) return;
+ if(!byId("playersList"))return;
  const players=await DB.listPlayers();
  byId("playersList").innerHTML=players.map(p=>"<div>"+p.full_name+"</div>").join("");
 }
 
 async function addPlayer(){
  const name=byId("playerInput").value.trim();
- if(!name) return;
+ if(!name)return;
  await DB.addPlayer(name);
  byId("playerInput").value="";
  loadPlayers();
 }
 
 async function loadPools(){
- if(!byId("savedPoolsList")) return;
+ if(!byId("savedPoolsList"))return;
  const pools=await DB.listPools();
  byId("savedPoolsList").innerHTML=pools.map(p=>"<div>"+p.title+"</div>").join("");
 }
@@ -31,13 +31,13 @@ async function addPool(){
 }
 
 function init(){
- if(byId("addPlayerBtn")) byId("addPlayerBtn").onclick=addPlayer;
- if(byId("savePoolBtn")) byId("savePoolBtn").onclick=addPool;
+ if(byId("addPlayerBtn"))byId("addPlayerBtn").onclick=addPlayer;
+ if(byId("savePoolBtn"))byId("savePoolBtn").onclick=addPool;
  loadPlayers();
  loadPools();
 }
 
-return {init};
+return{init};
 
 })();
 
