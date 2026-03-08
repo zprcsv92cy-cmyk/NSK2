@@ -1,383 +1,436 @@
-window.App = (() => {
-  let state = {
-    pool: { id:"", cloud_id:"", name:"", players:[], goalie:"", shiftSeconds:90, matches:[] },
-    currentMatchIndex: 0,
-    timerSeconds: 0,
-    timerHandle: null,
-    subscription: null,
-    syncTimer: null
-  };
+window.NSK2 = (() => {
+  const KEY = "nsk2_v1_state";
 
-  function uid(){ return Math.random().toString(36).slice(2,10); }
-  function el(id){ return document.getElementById(id); }
+  const state = load();
 
-  function setSync(text){
-    const s = el("syncStatus");
-    if (s) s.textContent = text;
+  function defaults() {
+    return {
+      players: [
+        "Agnes Danielsson","Albert Zillén","Albin Andersson","Aron Warensjö-Sommar","August Hasselberg",
+        "Benjamin Linderström","Charlie Carman","Emil Tranborg","Enzo Olsson","Gunnar Englund",
+        "Henry Gauffin","Linus Stolt","Melker Axbom","Måns Åkvist","Nelson Östergren",
+        "Nicky Selander","Nikola Kosoderc","Noé Bonnafous Sand","Oliver Engström","Oliver Zoumblïos",
+        "Pelle Åstrand","Simon Misiorny","Sixten Bratt","Theo Ydrenius","Viggo Kronvall","Yuktha reddy Semberi"
+      ],
+      coaches: [
+        "Fredrik Selander","Joakim Lund","Linus Öhman","Niklas Gauffin",
+        "Olle Åstrand","Peter Hasselberg","Tommy Englund","William Åkvist"
+      ],
+      pools: [],
+      goalieStats: [],
+      lineups: [],
+      currentMatch: {
+        title: "",
+        opponent: "",
+        place: "",
+        time: "",
+        activeIndex: 0,
+        shiftSeconds: 90
+      }
+    };
   }
 
-  function setMsg(id, text, color=""){
-    const e = el(id);
-    if (e) {
-      e.textContent = text || "";
-      e.style.color = color;
+  function load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      return raw ? { ...defaults(), ...JSON.parse(raw) } : defaults();
+    } catch {
+      return defaults();
     }
   }
 
-  function saveLocal() { DB.save({ pool: state.pool }); }
-
-  function splitPlayers(text) {
-    return String(text || "").split(/\n|,/).map(s => s.trim()).filter(Boolean);
+  function save() {
+    localStorage.setItem(KEY, JSON.stringify(state));
   }
 
-  function formatTime(sec) {
-    const m = String(Math.floor(sec/60)).padStart(2,"0");
-    const s = String(sec%60).padStart(2,"0");
-    return m + ":" + s;
+  function byId(id) { return document.getElementById(id); }
+
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"]/g, m => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"
+    }[m]));
   }
 
-  function escapeHtml(v){
-    return String(v || "").replace(/[&<>"]/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;" }[m]));
+  function norm(s) { return String(s || "").trim(); }
+
+  function setText(id, text) {
+    const el = byId(id);
+    if (el) el.textContent = text || "";
   }
 
-  function buildLineups(players, shiftSeconds, matchIndex) {
-    const list = [...players];
-    if (!list.length) return [];
-    const size = Math.min(5, Math.max(3, Math.ceil(list.length / 2)));
-    const rotations = Math.max(4, Math.ceil((list.length * 1.5) / size));
-    const rotated = list.map((_,i)=>list[(i+matchIndex)%list.length]);
-    const out = [];
-    for (let i=0;i<rotations;i++) {
-      const names = [];
-      for (let j=0;j<size;j++) names.push(rotated[(i*size+j)%rotated.length]);
-      out.push({ no:i+1, players:[...new Set(names)], done:false, seconds:shiftSeconds });
+  function setHtml(id, html) {
+    const el = byId(id);
+    if (el) el.innerHTML = html || "";
+  }
+
+  function sorted(list) {
+    return [...list].sort((a, b) => a.localeCompare(b, "sv"));
+  }
+
+  function uniquePush(list, value) {
+    if (!list.some(x => x.toLowerCase() === value.toLowerCase())) {
+      list.push(value);
+      return true;
     }
-    return out;
+    return false;
   }
 
-  function ensureLineups() {
-    state.pool.matches = (state.pool.matches || []).map((m, idx) => ({
-      ...m,
-      title: m.title || ("Match " + (idx + 1)),
-      opponent: m.opponent || "",
-      field: m.field || "",
-      time: m.time || "",
-      activeShift: Number.isFinite(Number(m.activeShift)) ? Number(m.activeShift) : 0,
-      lineups: Array.isArray(m.lineups) && m.lineups.length ? m.lineups : buildLineups(state.pool.players || [], state.pool.shiftSeconds || 90, idx)
-    }));
+  function currentPath() {
+    return location.pathname;
   }
 
-  function fillForm() {
-    el("poolName").value = state.pool.name || "";
-    el("cloudId").value = state.pool.cloud_id || "";
-    el("playersInput").value = (state.pool.players || []).join("\n");
-    el("goalieInput").value = state.pool.goalie || "";
-    el("shiftSeconds").value = state.pool.shiftSeconds || 90;
+  function activateMenu() {
+    document.querySelectorAll(".mainmenu a").forEach(a => {
+      const href = a.getAttribute("href");
+      if (href && currentPath().startsWith(href)) a.classList.add("active");
+    });
   }
 
-  function currentLineup(match) {
-    if (!match) return null;
-    const idx = (match.lineups || []).findIndex(x => !x.done);
-    return idx >= 0 ? match.lineups[idx] : (match.lineups?.[match.lineups.length - 1] || null);
-  }
-
-  function nextLineup(match, nextMatch) {
-    if (match) {
-      const idx = (match.lineups || []).findIndex(x => !x.done);
-      if (idx >= 0 && match.lineups[idx + 1]) return match.lineups[idx + 1];
-    }
-    return currentLineup(nextMatch);
-  }
-
-  function coachMeta(match, lineup) {
-    if (!match || !lineup) return "—";
-    return [match.title, match.time || "—", match.opponent ? "mot " + match.opponent : "mot —", match.field ? "plan " + match.field : "plan —", state.pool.goalie ? "mv " + state.pool.goalie : "", "byte " + lineup.no].filter(Boolean).join(" • ");
-  }
-
-  function renderCoach() {
-    const matches = state.pool.matches || [];
-    if (!matches.length) {
-      el("coachCurrentMatch").textContent = "—";
-      el("coachCurrentPlayers").textContent = "—";
-      el("coachNextMatch").textContent = "—";
-      el("coachNextPlayers").textContent = "—";
+  // ---------- Startsida ----------
+  function renderHome() {
+    const box = byId("savedPoolsList");
+    if (!box) return;
+    if (!state.pools.length) {
+      box.innerHTML = '<div class="listrow">Inga sparade poolspel ännu.</div>';
       return;
     }
-    state.currentMatchIndex = Math.min(Math.max(0, state.currentMatchIndex), matches.length - 1);
-    const match = matches[state.currentMatchIndex];
-    const nextMatchObj = matches[state.currentMatchIndex + 1] || null;
-    const cur = currentLineup(match);
-    const nxt = nextLineup(match, nextMatchObj);
-    el("coachCurrentMatch").textContent = coachMeta(match, cur);
-    el("coachCurrentPlayers").textContent = cur ? (cur.players || []).join(", ") : "—";
-    el("coachNextMatch").textContent = nxt ? coachMeta(nextMatchObj && nxt === currentLineup(nextMatchObj) ? nextMatchObj : match, nxt) : "—";
-    el("coachNextPlayers").textContent = nxt ? (nxt.players || []).join(", ") : "—";
-  }
-
-  function renderMatches() {
-    const wrap = el("matches");
-    const matches = state.pool.matches || [];
-    if (!matches.length) {
-      wrap.innerHTML = '<div class="small">Inga matcher ännu.</div>';
-      renderCoach();
-      return;
-    }
-    wrap.innerHTML = matches.map((m, i) => `
-      <div class="match">
-        <div class="match-top">
-          <div>
-            <div class="match-title">${escapeHtml(m.title)}</div>
-            <div class="small">${escapeHtml(m.time || "—")} • ${m.opponent ? "mot " + escapeHtml(m.opponent) : "mot —"} • ${m.field ? "plan " + escapeHtml(m.field) : "plan —"}</div>
-          </div>
-          <div class="btnrow">
-            <button class="ghost" data-action="focus" data-index="${i}">Coach</button>
-            <button class="ghost" data-action="delete" data-index="${i}">Ta bort</button>
-          </div>
-        </div>
-        <div class="row2">
-          <input data-field="title" data-index="${i}" value="${escapeHtml(m.title)}" placeholder="Matchnamn">
-          <input data-field="time" data-index="${i}" value="${escapeHtml(m.time || "")}" placeholder="10:20">
-          <input data-field="opponent" data-index="${i}" value="${escapeHtml(m.opponent || "")}" placeholder="Motståndare">
-          <input data-field="field" data-index="${i}" value="${escapeHtml(m.field || "")}" placeholder="Plan">
-        </div>
-        <div>
-          ${(m.lineups || []).map((l, idx) => `
-            <div class="lineup-row ${l.done ? "done" : ""}">
-              <div>#${l.no}</div>
-              <div>${(l.players || []).map(p => `<span class="pill">${escapeHtml(p)}</span>`).join("")}</div>
-              <div><button class="ghost" data-action="tick" data-index="${i}" data-lineup="${idx}">${l.done ? "✓" : "○"}</button></div>
+    box.innerHTML = state.pools
+      .slice()
+      .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+      .map((p, i) => `
+        <article class="pool-item">
+          <div class="pool-top">
+            <div>
+              <div class="pool-title">${esc(p.date || "Utan datum")} • ${esc(p.place || "Utan plats")}</div>
+              <div class="pool-meta">${esc(p.name || "Poolspel")} ${p.matches?.length ? "• " + p.matches.length + " matcher" : ""}</div>
             </div>
-          `).join("")}
-        </div>
+            <div class="status-badge">${esc(p.status || "Aktiv")}</div>
+          </div>
+          <div class="pool-actions">
+            <button data-open-pool="${i}">Påbörja poolspel</button>
+            <button class="ghost" data-edit-pool="${i}">Redigera</button>
+            <button class="ghost" data-delete-pool="${i}">Ta bort</button>
+          </div>
+        </article>
+      `).join("");
+  }
+
+  // ---------- Truppen ----------
+  function renderPeople(containerId, list, type) {
+    const container = byId(containerId);
+    if (!container) return;
+    container.innerHTML = sorted(list).map(name => `
+      <div class="person-row">
+        <div class="person-name">${esc(name)}</div>
+        <button class="row-btn" data-edit="${type}" data-name="${encodeURIComponent(name)}">Redigera</button>
+        <button class="row-btn" data-remove="${type}" data-name="${encodeURIComponent(name)}">Ta bort</button>
+      </div>
+    `).join("") || `<div class="muted-note">Tom lista.</div>`;
+  }
+
+  function renderTeamPage() {
+    renderPeople("playersList", state.players, "player");
+    renderPeople("coachesList", state.coaches, "coach");
+    setText("teamCount", String(state.players.length));
+  }
+
+  function addPerson(type, inputId, msgId) {
+    const value = norm(byId(inputId)?.value);
+    if (!value) return setText(msgId, "Skriv ett namn.");
+    const list = type === "player" ? state.players : state.coaches;
+    if (!uniquePush(list, value)) return setText(msgId, "Finns redan.");
+    save();
+    renderTeamPage();
+    byId(inputId).value = "";
+    setText(msgId, "Sparad.");
+  }
+
+  function removePerson(type, name) {
+    const decoded = decodeURIComponent(name);
+    const list = type === "player" ? state.players : state.coaches;
+    const idx = list.findIndex(x => x === decoded);
+    if (idx >= 0) {
+      list.splice(idx, 1);
+      save();
+      renderTeamPage();
+    }
+  }
+
+  function editPerson(type, name) {
+    const decoded = decodeURIComponent(name);
+    const next = prompt("Redigera namn", decoded);
+    const clean = norm(next);
+    if (!clean || clean === decoded) return;
+    const list = type === "player" ? state.players : state.coaches;
+    const idx = list.findIndex(x => x === decoded);
+    if (idx >= 0) {
+      list[idx] = clean;
+      save();
+      renderTeamPage();
+    }
+  }
+
+  function exportJson() {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "nsk2-backup.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setText("backupMsg", "Export klar.");
+  }
+
+  function importJson(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(String(reader.result || "{}"));
+        state.players = Array.isArray(data.players) ? data.players.map(norm).filter(Boolean) : [];
+        state.coaches = Array.isArray(data.coaches) ? data.coaches.map(norm).filter(Boolean) : [];
+        state.pools = Array.isArray(data.pools) ? data.pools : [];
+        state.goalieStats = Array.isArray(data.goalieStats) ? data.goalieStats : [];
+        state.lineups = Array.isArray(data.lineups) ? data.lineups : [];
+        state.currentMatch = typeof data.currentMatch === "object" && data.currentMatch ? data.currentMatch : defaults().currentMatch;
+        save();
+        renderAll();
+        setText("backupMsg", "Import klar.");
+      } catch {
+        setText("backupMsg", "Kunde inte läsa filen.");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // ---------- Poolspel ----------
+  function renderPoolPage() {
+    const list = byId("poolPageList");
+    if (!list) return;
+    if (!state.pools.length) {
+      list.innerHTML = '<div class="listrow">Inga poolspel ännu.</div>';
+      return;
+    }
+    list.innerHTML = state.pools.map((p, i) => `
+      <div class="listrow">
+        <strong>${esc(p.name || "Poolspel")}</strong> – ${esc(p.date || "utan datum")} – ${esc(p.place || "utan plats")}
+        <button class="ghost" data-load-pool="${i}" style="margin-left:10px">Ladda</button>
       </div>
     `).join("");
-    renderCoach();
-  }
-
-  function scheduleAutosync() {
-    if (!state.pool.cloud_id || !Auth.getSession()) return;
-    clearTimeout(state.syncTimer);
-    state.syncTimer = setTimeout(async () => {
-      try {
-        setSync("synkar...");
-        saveLocal();
-        await DB.upsertPool(state.pool);
-        setSync("synkad");
-      } catch {
-        setSync("fel");
-      }
-    }, 400);
   }
 
   function savePool() {
-    state.pool.name = el("poolName").value.trim();
-    state.pool.cloud_id = el("cloudId").value.trim() || ("pool_" + uid());
-    state.pool.id = state.pool.id || uid();
-    el("cloudId").value = state.pool.cloud_id;
-    ensureLineups();
-    saveLocal();
-    subscribeCurrentPool();
-    scheduleAutosync();
-    setMsg("poolMsg", "Poolspelet sparat.", "#35d07f");
-  }
-
-  async function pullPool() {
-    try {
-      const id = el("cloudId").value.trim();
-      if (!id) return;
-      const pool = await DB.fetchPool(id);
-      state.pool = pool;
-      ensureLineups();
-      fillForm();
-      renderMatches();
-      saveLocal();
-      subscribeCurrentPool();
-      setSync("hämtad");
-      setMsg("poolMsg", "Poolspel hämtat.", "#35d07f");
-    } catch (e) {
-      setMsg("poolMsg", e.message || String(e), "#ff6b6b");
-    }
-  }
-
-  function subscribeCurrentPool() {
-    if (state.subscription && Auth.getClient()) {
-      try { Auth.getClient().removeChannel(state.subscription); } catch {}
-      state.subscription = null;
-    }
-    if (!state.pool.cloud_id || !Auth.getSession()) return;
-    state.subscription = DB.subscribePool(state.pool.cloud_id, (pool) => {
-      state.pool = pool;
-      ensureLineups();
-      fillForm();
-      renderMatches();
-      saveLocal();
-      setSync("live");
+    const name = norm(byId("poolName")?.value);
+    const place = norm(byId("poolPlace")?.value);
+    const date = norm(byId("poolDate")?.value);
+    if (!name) return setText("poolMsg", "Skriv namn på poolspelet.");
+    state.pools.unshift({
+      name, place, date,
+      status: "Aktiv",
+      matches: []
     });
+    save();
+    renderPoolPage();
+    renderHome();
+    setText("poolMsg", "Poolspel sparat.");
+    ["poolName","poolPlace","poolDate"].forEach(id => { const el = byId(id); if (el) el.value = ""; });
   }
 
-  function newPool() {
-    state.pool = { id:"", cloud_id:"", name:"", players:[], goalie:"", shiftSeconds:90, matches:[] };
-    state.currentMatchIndex = 0;
-    saveLocal();
-    fillForm();
-    renderMatches();
-    setSync("lokal");
-  }
-
-  function savePlayers() {
-    state.pool.players = splitPlayers(el("playersInput").value);
-    state.pool.goalie = el("goalieInput").value.trim();
-    state.pool.shiftSeconds = Math.max(20, Math.min(300, Number(el("shiftSeconds").value || 90)));
-    state.pool.matches = (state.pool.matches || []).map((m, idx) => ({ ...m, lineups: buildLineups(state.pool.players, state.pool.shiftSeconds, idx), activeShift: 0 }));
-    saveLocal();
-    renderMatches();
-    scheduleAutosync();
-    setMsg("playersMsg", "Spelare sparade och bytesschema byggt.", "#35d07f");
-  }
-
-  function addMatch() {
-    state.pool.matches.push({
-      id: uid(),
-      title: "Match " + (state.pool.matches.length + 1),
-      time: "",
-      opponent: "",
-      field: "",
-      activeShift: 0,
-      lineups: buildLineups(state.pool.players || [], state.pool.shiftSeconds || 90, state.pool.matches.length)
-    });
-    saveLocal();
-    renderMatches();
-    scheduleAutosync();
-  }
-
-  function updateMatch(index, field, value) {
-    const m = state.pool.matches[index];
-    if (!m) return;
-    m[field] = value;
-    saveLocal();
-    renderMatches();
-    scheduleAutosync();
-  }
-
-  function deleteMatch(index) {
-    state.pool.matches.splice(index, 1);
-    state.currentMatchIndex = Math.min(state.currentMatchIndex, Math.max(0, state.pool.matches.length - 1));
-    saveLocal();
-    renderMatches();
-    scheduleAutosync();
-  }
-
-  function advanceToNextMatchIfDone() {
-    const matches = state.pool.matches || [];
-    const current = matches[state.currentMatchIndex];
-    if (!current) return;
-    const allDone = (current.lineups || []).length > 0 && (current.lineups || []).every(x => x.done);
-    if (!allDone) return;
-    if (state.currentMatchIndex < matches.length - 1) {
-      state.currentMatchIndex += 1;
-      resetTimer();
+  // ---------- Målvaktsstatistik ----------
+  function renderGoalieStats() {
+    const list = byId("goalieStatsList");
+    if (!list) return;
+    if (!state.goalieStats.length) {
+      list.innerHTML = '<div class="listrow">Ingen statistik ännu.</div>';
+      return;
     }
+    list.innerHTML = state.goalieStats.map(g => {
+      const shots = Number(g.shots || 0);
+      const saves = Number(g.saves || 0);
+      const pct = shots > 0 ? Math.round((saves / shots) * 100) : 0;
+      return `<div class="listrow"><strong>${esc(g.name)}</strong> – Skott: ${shots}, Räddningar: ${saves}, Insläppta: ${esc(g.goals)}, Räddningsprocent: ${pct}%</div>`;
+    }).join("");
   }
 
-  function tickLineup(matchIndex, lineupIndex) {
-    const match = state.pool.matches[matchIndex];
-    if (!match || !match.lineups[lineupIndex]) return;
-    match.lineups[lineupIndex].done = !match.lineups[lineupIndex].done;
-    const nextOpen = match.lineups.findIndex(x => !x.done);
-    match.activeShift = nextOpen >= 0 ? nextOpen : Math.max(0, match.lineups.length - 1);
-    advanceToNextMatchIfDone();
-    saveLocal();
-    renderMatches();
-    scheduleAutosync();
+  function saveGoalieStat() {
+    const name = norm(byId("goalieName")?.value);
+    const shots = norm(byId("goalieShots")?.value);
+    const saves = norm(byId("goalieSaves")?.value);
+    const goals = norm(byId("goalieGoals")?.value);
+    if (!name) return setText("goalieMsg", "Skriv målvaktens namn.");
+    state.goalieStats.unshift({ name, shots, saves, goals });
+    save();
+    renderGoalieStats();
+    setText("goalieMsg", "Statistik sparad.");
+    ["goalieName","goalieShots","goalieSaves","goalieGoals"].forEach(id => { const el = byId(id); if (el) el.value = ""; });
   }
 
-  function focusMatch(index) {
-    state.currentMatchIndex = index;
-    renderCoach();
+  // ---------- Bytesschema ----------
+  function generateLineups() {
+    const names = [...state.players];
+    if (!names.length) return setText("lineupMsg", "Lägg till spelare i truppen först.");
+    const size = Math.min(5, Math.max(3, Math.ceil(names.length / 2)));
+    const out = [];
+    for (let i = 0; i < 4; i++) {
+      const block = [];
+      for (let j = 0; j < size; j++) block.push(names[(i * size + j) % names.length]);
+      out.push({ no: i + 1, players: [...new Set(block)] });
+    }
+    state.lineups = out;
+    save();
+    renderLineups();
+    setText("lineupMsg", "Bytesschema genererat.");
+  }
+
+  function renderLineups() {
+    const list = byId("lineupList");
+    if (!list) return;
+    if (!state.lineups.length) {
+      list.innerHTML = '<div class="listrow">Inget bytesschema ännu.</div>';
+      return;
+    }
+    list.innerHTML = state.lineups.map(l => `<div class="listrow"><strong>Byte ${l.no}</strong> – ${l.players.map(esc).join(", ")}</div>`).join("");
+  }
+
+  // ---------- Matchvy ----------
+  let timerHandle = null;
+
+  function renderMatch() {
+    setHtml("matchInfo", `
+      <div class="listrow">Match: ${esc(state.currentMatch.title || "—")}</div>
+      <div class="listrow">Motståndare: ${esc(state.currentMatch.opponent || "—")}</div>
+      <div class="listrow">Plats: ${esc(state.currentMatch.place || "—")}</div>
+      <div class="listrow">Tid: ${esc(state.currentMatch.time || "—")}</div>
+    `);
+
+    const current = state.lineups[state.currentMatch.activeIndex] || { players: [] };
+    const next = state.lineups[(state.currentMatch.activeIndex + 1) % Math.max(state.lineups.length, 1)] || { players: [] };
+    setText("currentPlayers", current.players.join(" • ") || "—");
+    setText("nextPlayers", next.players.join(" • ") || "—");
+    setText("shiftLabel", state.lineups.length ? `Byte ${state.currentMatch.activeIndex + 1} / ${state.lineups.length}` : "Inget schema");
+  }
+
+  function saveMatchMeta() {
+    state.currentMatch.title = norm(byId("matchTitle")?.value);
+    state.currentMatch.opponent = norm(byId("matchOpponent")?.value);
+    state.currentMatch.place = norm(byId("matchPlace")?.value);
+    state.currentMatch.time = norm(byId("matchTime")?.value);
+    state.currentMatch.shiftSeconds = Math.max(20, Math.min(300, Number(byId("matchShiftSeconds")?.value || 90)));
+    save();
+    renderMatch();
+    setText("matchMsg", "Matchinfo sparad.");
+  }
+
+  function nextShift() {
+    if (!state.lineups.length) return;
+    state.currentMatch.activeIndex = (state.currentMatch.activeIndex + 1) % state.lineups.length;
+    save();
+    renderMatch();
   }
 
   function startTimer() {
-    if (state.timerHandle) return;
-    state.timerHandle = setInterval(() => {
-      state.timerSeconds += 1;
-      el("timer").textContent = formatTime(state.timerSeconds);
-      const shiftLen = Number(state.pool.shiftSeconds || 90);
-      if (shiftLen && state.timerSeconds > 0 && state.timerSeconds % shiftLen === 0) {
-        try { navigator.vibrate && navigator.vibrate([200,100,200]); } catch {}
+    if (timerHandle) return;
+    let elapsed = 0;
+    const timer = byId("matchTimer");
+    timerHandle = setInterval(() => {
+      elapsed += 1;
+      const m = String(Math.floor(elapsed / 60)).padStart(2, "0");
+      const s = String(elapsed % 60).padStart(2, "0");
+      if (timer) timer.textContent = `${m}:${s}`;
+      if (elapsed >= (state.currentMatch.shiftSeconds || 90)) {
+        elapsed = 0;
+        nextShift();
       }
     }, 1000);
   }
 
-  function pauseTimer() {
-    clearInterval(state.timerHandle);
-    state.timerHandle = null;
+  function stopTimer() {
+    clearInterval(timerHandle);
+    timerHandle = null;
   }
 
-  function resetTimer() {
-    pauseTimer();
-    state.timerSeconds = 0;
-    el("timer").textContent = "00:00";
+  // ---------- Lag ----------
+  function renderClubPage() {
+    setText("playersTotal", String(state.players.length));
+    setText("coachesTotal", String(state.coaches.length));
+    setText("poolsTotal", String(state.pools.length));
   }
 
-  async function toggleFullscreen() {
-    document.body.classList.toggle("fullscreen-mode");
-    const card = el("coachCard");
-    try {
-      if (!document.fullscreenElement) await card.requestFullscreen?.();
-      else await document.exitFullscreen?.();
-    } catch {}
+  function renderAll() {
+    activateMenu();
+    renderHome();
+    renderTeamPage();
+    renderPoolPage();
+    renderGoalieStats();
+    renderLineups();
+    renderMatch();
+    renderClubPage();
   }
 
   function bind() {
-    el("loginBtn").onclick = () => Auth.login(el("email").value);
-    el("refreshBtn").onclick = () => Auth.refresh();
-    el("savePool").onclick = savePool;
-    el("pullPool").onclick = pullPool;
-    el("newPool").onclick = newPool;
-    el("savePlayers").onclick = savePlayers;
-    el("rebuildLineups").onclick = savePlayers;
-    el("addMatch").onclick = addMatch;
-    el("startTimer").onclick = startTimer;
-    el("pauseTimer").onclick = pauseTimer;
-    el("resetTimer").onclick = resetTimer;
-    el("tickShift").onclick = () => {
-      const match = state.pool.matches[state.currentMatchIndex];
-      if (!match) return;
-      const idx = (match.lineups || []).findIndex(x => !x.done);
-      if (idx >= 0) tickLineup(state.currentMatchIndex, idx);
-    };
-    el("prevMatch").onclick = () => { state.currentMatchIndex = Math.max(0, state.currentMatchIndex - 1); renderCoach(); };
-    el("nextMatch").onclick = () => { state.currentMatchIndex = Math.min(Math.max(0, state.pool.matches.length - 1), state.currentMatchIndex + 1); renderCoach(); };
-    el("coachFullscreen").onclick = toggleFullscreen;
-
-    el("matches").addEventListener("input", (e) => {
-      const t = e.target;
-      if (!(t instanceof HTMLInputElement)) return;
-      updateMatch(Number(t.dataset.index), t.dataset.field, t.value);
+    byId("addPlayerBtn")?.addEventListener("click", () => addPerson("player", "playerInput", "playersMsg"));
+    byId("addCoachBtn")?.addEventListener("click", () => addPerson("coach", "coachInput", "coachesMsg"));
+    byId("exportBtn")?.addEventListener("click", exportJson);
+    byId("importFile")?.addEventListener("change", (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) importJson(file);
     });
 
-    el("matches").addEventListener("click", (e) => {
+    byId("savePoolBtn")?.addEventListener("click", savePool);
+    byId("saveGoalieStatBtn")?.addEventListener("click", saveGoalieStat);
+    byId("generateLineupsBtn")?.addEventListener("click", generateLineups);
+    byId("saveMatchBtn")?.addEventListener("click", saveMatchMeta);
+    byId("nextShiftBtn")?.addEventListener("click", nextShift);
+    byId("startTimerBtn")?.addEventListener("click", startTimer);
+    byId("stopTimerBtn")?.addEventListener("click", stopTimer);
+
+    document.addEventListener("click", (e) => {
       const t = e.target;
       if (!(t instanceof HTMLElement)) return;
-      const action = t.dataset.action;
-      const index = Number(t.dataset.index);
-      if (action === "delete") deleteMatch(index);
-      if (action === "focus") focusMatch(index);
-      if (action === "tick") tickLineup(index, Number(t.dataset.lineup));
+
+      if (t.dataset.remove) removePerson(t.dataset.remove, t.dataset.name);
+      if (t.dataset.edit) editPerson(t.dataset.edit, t.dataset.name);
+
+      if (t.dataset.deletePool) {
+        state.pools.splice(Number(t.dataset.deletePool), 1);
+        save();
+        renderHome();
+        renderPoolPage();
+      }
+
+      if (t.dataset.editPool) {
+        const idx = Number(t.dataset.editPool);
+        const p = state.pools[idx];
+        if (!p) return;
+        const nextName = prompt("Redigera poolspel", p.name || "");
+        if (nextName) {
+          p.name = norm(nextName);
+          save();
+          renderHome();
+          renderPoolPage();
+        }
+      }
+
+      if (t.dataset.openPool || t.dataset.loadPool) {
+        const idx = Number(t.dataset.openPool ?? t.dataset.loadPool);
+        const p = state.pools[idx];
+        if (!p) return;
+        state.currentMatch.title = p.name || "";
+        state.currentMatch.place = p.place || "";
+        state.currentMatch.time = p.date || "";
+        save();
+        location.href = "/NSK2/matchvy/";
+      }
     });
   }
 
   function init() {
     bind();
-    const data = DB.load();
-    state.pool = data.pool || state.pool;
-    ensureLineups();
-    fillForm();
-    renderMatches();
-    Auth.init().then(() => subscribeCurrentPool());
+    renderAll();
   }
 
-  return { init };
+  return { init, state };
 })();
 
-window.addEventListener("load", () => App.init());
+window.addEventListener("DOMContentLoaded", () => window.NSK2.init());
