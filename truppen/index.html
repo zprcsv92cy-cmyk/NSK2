@@ -5,38 +5,38 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Truppen Team 18</title>
 <link rel="stylesheet" href="/NSK2/app.css">
-<style>
-.wrap{max-width:1100px;margin:0 auto;padding:16px}
-.mainmenu{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
-.mainmenu a{text-decoration:none;color:#fff;background:#1c1d22;border:1px solid #2d2f36;padding:10px 14px;border-radius:12px;font-weight:700}
-</style>
 </head>
 <body>
+<div class="sheet">
+  <div class="sheet-top">
+    <div class="sheet-title">Truppen team 18</div>
+    <a class="close-btn" href="/NSK2/startsida/" aria-label="Stäng">×</a>
+  </div>
 
-<div class="wrap">
+  <section class="block">
+    <div class="toolbar-small"><h2>Spelare</h2><div id="playersMsg" class="mini-msg"></div></div>
+    <input id="playerInput" class="name-input" placeholder="Förnamn Efternamn">
+    <button id="addPlayerBtn" class="big-add">Lägg till</button>
+    <div id="playersList"></div>
+    <div class="muted-note">Antal spelare: <span id="teamCount"></span></div>
+  </section>
 
-<header>
-<h1>Truppen Team 18</h1>
-<p>NSK Team 18</p>
-</header>
+  <section class="block">
+    <div class="toolbar-small"><h2>Tränare</h2><div id="coachesMsg" class="mini-msg"></div></div>
+    <input id="coachInput" class="name-input" placeholder="Förnamn Efternamn">
+    <button id="addCoachBtn" class="big-add">Lägg till</button>
+    <div id="coachesList"></div>
+  </section>
 
-
-<nav class="mainmenu">
-<a href="/NSK2/startsida/">Startsida</a>
-<a href="/NSK2/truppen/" class="active">Truppen</a>
-<a href="/NSK2/skapapoolspel/">Skapa poolspel</a>
-<a href="/NSK2/malvaktsstatistik/">Målvaktsstatistik</a>
-<a href="/NSK2/bytesschema/">Bytesschema</a>
-<a href="/NSK2/matchvy/">Matchvy</a>
-<a href="/NSK2/lag/">Lag</a>
-</nav>
-
-
-<section>
-<p>Hantera spelare och tränare.</p>
-</section>
-
+  <section class="block">
+    <h2>Backup / Flytta till annan telefon</h2>
+    <button id="exportBtn" class="big-add">Exportera JSON</button>
+    <div style="margin-top:12px">
+      <input id="importFile" type="file" accept="application/json">
+    </div>
+    <div id="backupMsg" class="muted-note"></div>
+  </section>
 </div>
-
+<script src="/NSK2/app.js"></script>
 </body>
 </html>
