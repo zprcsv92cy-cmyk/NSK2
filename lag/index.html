@@ -5,38 +5,27 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Lag</title>
 <link rel="stylesheet" href="/NSK2/app.css">
-<style>
-.wrap{max-width:1100px;margin:0 auto;padding:16px}
-.mainmenu{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
-.mainmenu a{text-decoration:none;color:#fff;background:#1c1d22;border:1px solid #2d2f36;padding:10px 14px;border-radius:12px;font-weight:700}
-</style>
 </head>
 <body>
-
 <div class="wrap">
-
-<header>
-<h1>Lag</h1>
-<p>NSK Team 18</p>
-</header>
-
-
-<nav class="mainmenu">
-<a href="/NSK2/startsida/">Startsida</a>
-<a href="/NSK2/truppen/">Truppen</a>
-<a href="/NSK2/skapapoolspel/">Skapa poolspel</a>
-<a href="/NSK2/malvaktsstatistik/">Målvaktsstatistik</a>
-<a href="/NSK2/bytesschema/">Bytesschema</a>
-<a href="/NSK2/matchvy/">Matchvy</a>
-<a href="/NSK2/lag/" class="active">Lag</a>
+  <nav class="mainmenu">
+  <a href="/NSK2/startsida/">Startsida</a>
+  <a href="/NSK2/truppen/">Truppen</a>
+  <a href="/NSK2/skapapoolspel/">Skapa poolspel</a>
+  <a href="/NSK2/malvaktsstatistik/">Målvaktsstatistik</a>
+  <a href="/NSK2/bytesschema/">Bytesschema</a>
+  <a href="/NSK2/matchvy/">Matchvy</a>
+  <a href="/NSK2/lag/">Lag</a>
 </nav>
-
-
-<section>
-<p>Lagöversikt.</p>
-</section>
-
+  <section class="card">
+    <h1>Lag</h1>
+    <div class="listrow">Förening: NSK</div>
+    <div class="listrow">Lag: Team 18</div>
+    <div class="listrow">Spelare: <span id="playersTotal"></span></div>
+    <div class="listrow">Tränare: <span id="coachesTotal"></span></div>
+    <div class="listrow">Poolspel: <span id="poolsTotal"></span></div>
+  </section>
 </div>
-
+<script src="/NSK2/app.js"></script>
 </body>
 </html>
