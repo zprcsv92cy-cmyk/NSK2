@@ -1,0 +1,11 @@
+<h1>Truppen Team 18</h1>
+<p>Här hanterar du lagets spelare.</p>
+
+<input placeholder="Spelarnamn">
+<button>Lägg till spelare</button>
+
+<ul>
+<li>Alex</li>
+<li>Ben</li>
+<li>Hugo</li>
+</ul>
