@@ -4,13 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Truppen</title>
-  <link rel="stylesheet" href="/NSK2/app.css?v=180">
+  <link rel="stylesheet" href="/NSK2/app.css?v=190">
 </head>
 <body>
   <div class="wrap">
     <nav class="mainmenu">
       <a href="/NSK2/startsida/">Startsida</a>
-      <a href="/NSK2/truppen/">Truppen</a>
+      <a href="/NSK2/truppen/" class="active">Truppen</a>
       <a href="/NSK2/skapapoolspel/">Skapa poolspel</a>
       <a href="/NSK2/malvaktsstatistik/">Målvaktsstatistik</a>
       <a href="/NSK2/bytesschema/">Bytesschema</a>
@@ -31,10 +31,12 @@
         <h2>Spelare</h2>
         <div id="playersMsg" class="small"></div>
       </div>
+
       <div class="truppen-add-row">
         <input id="playerInput" class="name-input" placeholder="Förnamn Efternamn">
         <button id="addPlayerBtn" class="big-add">Lägg till</button>
       </div>
+
       <div id="playersList" class="person-list"></div>
       <div class="muted-note">Swipe vänster för ta bort. Dra handtaget för att sortera. Tryck Enter eller Spara för inline-edit.</div>
     </section>
@@ -44,10 +46,12 @@
         <h2>Tränare</h2>
         <div id="coachesMsg" class="small"></div>
       </div>
+
       <div class="truppen-add-row">
         <input id="coachInput" class="name-input" placeholder="Förnamn Efternamn">
         <button id="addCoachBtn" class="big-add">Lägg till</button>
       </div>
+
       <div id="coachesList" class="person-list"></div>
       <div class="muted-note">Swipe vänster för ta bort. Dra handtaget för att sortera. Tryck Enter eller Spara för inline-edit.</div>
     </section>
@@ -55,11 +59,11 @@
     <div id="appError" class="small"></div>
 
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="/NSK2/config.js?v=180"></script>
-    <script src="/NSK2/auth.js?v=180"></script>
-    <script src="/NSK2/login-patch.js?v=180"></script>
-    <script src="/NSK2/db.js?v=180"></script>
-    <script src="/NSK2/app.js?v=180"></script>
+    <script src="/NSK2/config.js?v=190"></script>
+    <script src="/NSK2/auth.js?v=190"></script>
+    <script src="/NSK2/login-patch.js?v=190"></script>
+    <script src="/NSK2/db.js?v=190"></script>
+    <script src="/NSK2/app.js?v=190"></script>
   </div>
 </body>
 </html>
