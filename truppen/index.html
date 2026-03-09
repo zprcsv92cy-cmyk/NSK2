@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Truppen Team 18 V12 Debug</title>
-  <link rel="stylesheet" href="/NSK2/app.css?v=120">
+  <title>Truppen</title>
+  <link rel="stylesheet" href="/NSK2/app.css?v=170">
 </head>
 <body>
   <div class="wrap">
@@ -18,44 +18,52 @@
       <a href="/NSK2/lag/">Lag</a>
     </nav>
 
-    <div class="sheet">
-      <div class="sheet-top">
-        <div class="sheet-title">Truppen team 18</div>
-        <a class="close-btn" href="/NSK2/startsida/" aria-label="Stäng">×</a>
+    <section class="hero-card">
+      <img src="/NSK2/icon-192.png" alt="NSK" class="hero-logo">
+      <div>
+        <h1 class="hero-title">NSK Lag</h1>
+        <div class="hero-sub">Truppen • Spelare • Tränare • Molnsynk</div>
+      </div>
+    </section>
+
+    <section class="card truppen-card">
+      <div class="section-head">
+        <h2>Spelare</h2>
+        <div id="playersMsg" class="small"></div>
       </div>
 
-      <section class="block">
-        <div class="toolbar-small">
-          <h2>Spelare</h2>
-        </div>
+      <div class="truppen-add-row">
         <input id="playerInput" class="name-input" placeholder="Förnamn Efternamn">
-        <button id="addPlayerBtn" class="big-add">Lägg till spelare</button>
-        <div id="playersList"></div>
-      </section>
+        <button id="addPlayerBtn" class="big-add">Lägg till</button>
+      </div>
 
-      <section class="block">
-        <div class="toolbar-small">
-          <h2>Tränare</h2>
-        </div>
+      <div id="playersList" class="person-list"></div>
+      <div class="muted-note">Sorteras A–Ö. Sparas i molnet.</div>
+    </section>
+
+    <section class="card truppen-card">
+      <div class="section-head">
+        <h2>Tränare</h2>
+        <div id="coachesMsg" class="small"></div>
+      </div>
+
+      <div class="truppen-add-row">
         <input id="coachInput" class="name-input" placeholder="Förnamn Efternamn">
-        <button id="addCoachBtn" class="big-add">Lägg till tränare</button>
-        <div id="coachesList"></div>
-      </section>
+        <button id="addCoachBtn" class="big-add">Lägg till</button>
+      </div>
 
-      <section class="block">
-        <h2>Debug</h2>
-        <div class="muted-note">Visar exakt varför spelare inte laddas: Auth, config, team_id, Supabase eller RLS.</div>
-        <pre id="debugBox" style="white-space:pre-wrap;color:#fff;background:#111217;border:1px solid #2d2f36;border-radius:18px;padding:16px;min-height:180px;"></pre>
-      </section>
-    </div>
+      <div id="coachesList" class="person-list"></div>
+      <div class="muted-note">Sorteras A–Ö. Sparas i molnet.</div>
+    </section>
 
     <div id="appError" class="small"></div>
+
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="/NSK2/config.js?v=120"></script>
-    <script src="/NSK2/auth.js?v=120"></script>
-    <script src="/NSK2/login-patch.js?v=120"></script>
-    <script src="/NSK2/db.js?v=120"></script>
-    <script src="/NSK2/app.js?v=120"></script>
+    <script src="/NSK2/config.js?v=170"></script>
+    <script src="/NSK2/auth.js?v=170"></script>
+    <script src="/NSK2/login-patch.js?v=170"></script>
+    <script src="/NSK2/db.js?v=170"></script>
+    <script src="/NSK2/app.js?v=170"></script>
   </div>
 </body>
 </html>
