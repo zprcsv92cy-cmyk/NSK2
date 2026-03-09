@@ -1,195 +1,135 @@
-// --- autosave skapa poolspel per lag + match ---
-(function () {
-  if (!window.NSK2App) return;
+// app.js patch — truppen NSK layout + redigera / ta bort
+(function(){
+  if(!window.NSK2App) return;
 
-  function byId(id) {
-    return document.getElementById(id);
+  function byId(id){ return document.getElementById(id); }
+  function esc(s){
+    return String(s ?? "").replace(/[&<>"]/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[m]));
   }
-
-  function val(id) {
-    return byId(id)?.value ?? "";
-  }
-
-  function setVal(id, value) {
+  function setMsg(id, txt){
     const el = byId(id);
-    if (el) el.value = value ?? "";
+    if(el) el.textContent = txt || "";
   }
 
-  function setMsg(text) {
-    const el = byId("poolConfigMsg");
-    if (el) el.textContent = text || "";
+  let truppenPlayers = [];
+  let truppenCoaches = [];
+  let truppenBound = false;
+
+  async function renderPlayers(){
+    if(!window.DB?.listPlayers) return;
+    truppenPlayers = await window.DB.listPlayers();
+    const el = byId("playersList");
+    if(!el) return;
+
+    el.innerHTML = truppenPlayers.length ? truppenPlayers.map(p => `
+      <div class="person-row">
+        <div class="person-name">${esc(p.full_name)}</div>
+        <div class="row-actions">
+          <button class="row-btn" data-edit-player="${p.id}">Redigera</button>
+          <button class="row-btn danger" data-delete-player="${p.id}">Ta bort</button>
+        </div>
+      </div>
+    `).join("") : '<div class="muted-note">Inga spelare ännu.</div>';
   }
 
-  function getSelectedConfig() {
-    return {
-      team_no: val("cfgTeamNo"),
-      matches_total: val("cfgMatchesTotal"),
-      match_no: val("cfgMatchNo"),
-      start_time: val("cfgStartTime"),
-      opponent: val("cfgOpponent"),
-      field: val("cfgField"),
-      players_total: val("cfgPlayersTotal"),
-      players_on_field: val("cfgPlayersOnField"),
-      periods: val("cfgPeriods"),
-      period_minutes: val("cfgPeriodMinutes"),
-      shift_seconds: val("cfgShiftSeconds"),
-      player_1: val("matchPlayer1"),
-      player_2: val("matchPlayer2"),
-      player_3: val("matchPlayer3"),
-      player_4: val("matchPlayer4"),
-      player_5: val("matchPlayer5"),
-      goalie_name: val("matchGoalie")
-    };
+  async function renderCoaches(){
+    if(!window.DB?.listCoaches) return;
+    truppenCoaches = await window.DB.listCoaches();
+    const el = byId("coachesList");
+    if(!el) return;
+
+    el.innerHTML = truppenCoaches.length ? truppenCoaches.map(c => `
+      <div class="person-row">
+        <div class="person-name">${esc(c.full_name)}</div>
+        <div class="row-actions">
+          <button class="row-btn" data-edit-coach="${c.id}">Redigera</button>
+          <button class="row-btn danger" data-delete-coach="${c.id}">Ta bort</button>
+        </div>
+      </div>
+    `).join("") : '<div class="muted-note">Inga tränare ännu.</div>';
   }
 
-  let saveTimer = null;
-  let loadingConfig = false;
-
-  async function fillPlayerDropdowns() {
-    if (!window.DB.listPlayers) return;
-
-    const ids = [
-      "matchPlayer1",
-      "matchPlayer2",
-      "matchPlayer3",
-      "matchPlayer4",
-      "matchPlayer5",
-      "matchGoalie"
-    ];
-
-    const players = await window.DB.listPlayers();
-
-    ids.forEach((id) => {
-      const el = byId(id);
-      if (!el) return;
-
-      const current = el.value || "";
-      el.innerHTML =
-        '<option value="">Välj...</option>' +
-        players
-          .map((p) => {
-            const name = String(p.full_name || "");
-            const safe = name.replace(/"/g, "&quot;");
-            return `<option value="${safe}">${name}</option>`;
-          })
-          .join("");
-
-      if (current) el.value = current;
-    });
+  async function addPlayerTruppen(){
+    const input = byId("playerInput");
+    const name = input?.value?.trim();
+    if(!name) return setMsg("playersMsg", "Skriv ett namn.");
+    await window.DB.addPlayer(name);
+    input.value = "";
+    setMsg("playersMsg", "Spelare sparad.");
+    await renderPlayers();
   }
 
-  async function loadSelectedConfig() {
-    if (!window.DB.getMatchConfig) return;
+  async function addCoachTruppen(){
+    const input = byId("coachInput");
+    const name = input?.value?.trim();
+    if(!name) return setMsg("coachesMsg", "Skriv ett namn.");
+    await window.DB.addCoach(name);
+    input.value = "";
+    setMsg("coachesMsg", "Tränare sparad.");
+    await renderCoaches();
+  }
 
-    const teamNo = val("cfgTeamNo") || "1";
-    const matchNo = val("cfgMatchNo") || "1";
+  async function editPlayerTruppen(id){
+    const current = truppenPlayers.find(x => x.id === id);
+    const next = prompt("Redigera spelare", current?.full_name || "");
+    if(!next || !next.trim()) return;
+    await window.DB.updatePlayer(id, next.trim());
+    setMsg("playersMsg", "Spelare uppdaterad.");
+    await renderPlayers();
+  }
 
-    loadingConfig = true;
-    try {
-      const row = await window.DB.getMatchConfig(teamNo, matchNo);
+  async function editCoachTruppen(id){
+    const current = truppenCoaches.find(x => x.id === id);
+    const next = prompt("Redigera tränare", current?.full_name || "");
+    if(!next || !next.trim()) return;
+    await window.DB.updateCoach(id, next.trim());
+    setMsg("coachesMsg", "Tränare uppdaterad.");
+    await renderCoaches();
+  }
 
-      if (row) {
-        setVal("cfgMatchesTotal", row.matches_total);
-        setVal("cfgStartTime", row.start_time);
-        setVal("cfgOpponent", row.opponent);
-        setVal("cfgField", row.field);
-        setVal("cfgPlayersTotal", row.players_total);
-        setVal("cfgPlayersOnField", row.players_on_field);
-        setVal("cfgPeriods", row.periods);
-        setVal("cfgPeriodMinutes", row.period_minutes);
-        setVal("cfgShiftSeconds", row.shift_seconds);
-        setVal("matchPlayer1", row.player_1);
-        setVal("matchPlayer2", row.player_2);
-        setVal("matchPlayer3", row.player_3);
-        setVal("matchPlayer4", row.player_4);
-        setVal("matchPlayer5", row.player_5);
-        setVal("matchGoalie", row.goalie_name);
-        setMsg("Laddad från Supabase.");
-      } else {
-        setMsg("Ny konfiguration.");
+  async function deletePlayerTruppen(id){
+    if(!confirm("Ta bort spelaren?")) return;
+    await window.DB.deletePlayer(id);
+    setMsg("playersMsg", "Spelare borttagen.");
+    await renderPlayers();
+  }
+
+  async function deleteCoachTruppen(id){
+    if(!confirm("Ta bort tränaren?")) return;
+    await window.DB.deleteCoach(id);
+    setMsg("coachesMsg", "Tränare borttagen.");
+    await renderCoaches();
+  }
+
+  function bindTruppen(){
+    if(truppenBound) return;
+    truppenBound = true;
+
+    byId("addPlayerBtn")?.addEventListener("click", addPlayerTruppen);
+    byId("addCoachBtn")?.addEventListener("click", addCoachTruppen);
+
+    document.addEventListener("click", async (e) => {
+      const t = e.target;
+      if(!(t instanceof HTMLElement)) return;
+
+      try{
+        if(t.dataset.editPlayer) await editPlayerTruppen(t.dataset.editPlayer);
+        if(t.dataset.deletePlayer) await deletePlayerTruppen(t.dataset.deletePlayer);
+        if(t.dataset.editCoach) await editCoachTruppen(t.dataset.editCoach);
+        if(t.dataset.deleteCoach) await deleteCoachTruppen(t.dataset.deleteCoach);
+      }catch(err){
+        const errorBox = byId("appError");
+        if(errorBox) errorBox.textContent = err.message || String(err);
       }
-    } catch (err) {
-      const e = byId("appError");
-      if (e) e.textContent = err.message || String(err);
-    } finally {
-      loadingConfig = false;
-    }
-  }
-
-  async function saveSelectedConfig() {
-    if (loadingConfig || !window.DB.upsertMatchConfig) return;
-
-    try {
-      await window.DB.upsertMatchConfig(getSelectedConfig());
-      setMsg("Autosparat i Supabase.");
-    } catch (err) {
-      const e = byId("appError");
-      if (e) e.textContent = err.message || String(err);
-    }
-  }
-
-  function queueSave() {
-    if (loadingConfig) return;
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(saveSelectedConfig, 400);
-  }
-
-  function bindAutosave() {
-    const ids = [
-      "cfgTeamNo",
-      "cfgMatchesTotal",
-      "cfgMatchNo",
-      "cfgStartTime",
-      "cfgOpponent",
-      "cfgField",
-      "cfgPlayersTotal",
-      "cfgPlayersOnField",
-      "cfgPeriods",
-      "cfgPeriodMinutes",
-      "cfgShiftSeconds",
-      "matchPlayer1",
-      "matchPlayer2",
-      "matchPlayer3",
-      "matchPlayer4",
-      "matchPlayer5",
-      "matchGoalie"
-    ];
-
-    ids.forEach((id) => {
-      const el = byId(id);
-      if (!el) return;
-
-      const eventName =
-        el.tagName === "INPUT" && el.type === "text" ? "input" : "change";
-
-      el.addEventListener(eventName, async () => {
-        if (id === "cfgTeamNo" || id === "cfgMatchNo") {
-          await loadSelectedConfig();
-        } else {
-          queueSave();
-        }
-      });
     });
-
-    byId("saveMatchConfigBtn")?.addEventListener("click", saveSelectedConfig);
   }
 
   const oldInit = window.NSK2App.init;
-
-  window.NSK2App.init = async function () {
-    if (oldInit) await oldInit();
-
-    if (!byId("cfgTeamNo")) return;
-
-    await fillPlayerDropdowns();
-    bindAutosave();
-    await loadSelectedConfig();
-
-    if (window.DB.subscribeMatchConfigs) {
-      await window.DB.subscribeMatchConfigs(async () => {
-        await fillPlayerDropdowns();
-        await loadSelectedConfig();
-      });
-    }
+  window.NSK2App.init = async function(){
+    if(oldInit) await oldInit();
+    if(!byId("playersList") && !byId("coachesList")) return;
+    bindTruppen();
+    await renderPlayers();
+    await renderCoaches();
   };
 })();
