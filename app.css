@@ -1,4 +1,26 @@
-/* app.css patch — truppen NSK layout */
+/* app.css patch — NSK V14 Truppen */
+.hero-card{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  margin-bottom:22px;
+}
+
+.hero-logo{
+  width:56px;
+  height:56px;
+}
+
+.hero-title{
+  margin:0;
+  font-size:28px;
+  font-weight:900;
+}
+
+.hero-sub{
+  opacity:.75;
+}
+
 .truppen-card{
   padding:22px;
 }
@@ -14,9 +36,9 @@
 .truppen-add-row{
   display:grid;
   grid-template-columns:1fr auto;
-  gap:14px;
+  gap:12px;
   align-items:center;
-  margin-bottom:18px;
+  margin-bottom:16px;
 }
 
 .name-input{
@@ -36,23 +58,64 @@
   gap:12px;
 }
 
-.person-row{
-  display:grid;
-  grid-template-columns:1fr auto;
-  gap:12px;
-  align-items:center;
-  padding:14px 0;
-  border-top:1px solid rgba(255,255,255,0.16);
+.swipe-wrap{
+  position:relative;
+  overflow:hidden;
+  border-top:1px solid rgba(255,255,255,.15);
 }
 
-.person-row:first-child{
+.swipe-wrap:first-child{
   border-top:0;
 }
 
-.person-name{
-  font-size:20px;
-  line-height:1.25;
-  word-break:break-word;
+.swipe-delete-btn{
+  position:absolute;
+  right:0;
+  top:50%;
+  transform:translateY(-50%);
+  height:52px;
+  min-width:118px;
+  border:none;
+  border-radius:16px;
+  font-weight:800;
+}
+
+.person-row{
+  position:relative;
+  z-index:2;
+  display:grid;
+  grid-template-columns:32px 1fr auto;
+  gap:12px;
+  align-items:center;
+  padding:14px 0;
+  background:transparent;
+  transition:transform .2s ease;
+}
+
+.swipe-wrap.swiped .person-row{
+  transform:translateX(-108px);
+}
+
+.draggable-row.dragging{
+  opacity:.45;
+}
+
+.drag-handle{
+  font-size:24px;
+  opacity:.75;
+  user-select:none;
+  cursor:grab;
+}
+
+.person-main{
+  min-width:0;
+}
+
+.inline-name-input{
+  width:100%;
+  min-height:50px;
+  border-radius:14px;
+  padding:12px 14px;
 }
 
 .row-actions{
@@ -63,17 +126,22 @@
 }
 
 .row-btn{
-  min-width:120px;
-  min-height:52px;
-  border-radius:16px;
+  min-width:104px;
+  min-height:48px;
+  border-radius:14px;
   font-weight:800;
 }
 
-.row-btn.danger{
-  opacity:.92;
+.desktop-delete{
+  display:inline-flex;
 }
 
-@media (max-width: 700px){
+.muted-note{
+  margin-top:12px;
+  opacity:.75;
+}
+
+@media (max-width:700px){
   .truppen-add-row{
     grid-template-columns:1fr;
   }
@@ -84,76 +152,15 @@
   }
 
   .person-row{
-    grid-template-columns:1fr;
+    grid-template-columns:28px 1fr;
   }
 
   .row-actions{
-    justify-content:stretch;
+    grid-column:2;
+    justify-content:flex-start;
   }
 
-  .row-btn{
-    flex:1 1 140px;
+  .desktop-delete{
+    display:none;
   }
-}
-/* TRUPPEN NSK LAYOUT */
-
-.hero-card{
-display:flex;
-align-items:center;
-gap:16px;
-margin-bottom:25px;
-}
-
-.hero-logo{
-width:70px;
-}
-
-.hero-title{
-font-size:32px;
-font-weight:800;
-}
-
-.hero-sub{
-opacity:.7;
-}
-
-.truppen-card{
-background:rgba(255,255,255,0.06);
-border-radius:20px;
-padding:20px;
-margin-bottom:20px;
-backdrop-filter:blur(16px);
-border:1px solid rgba(255,255,255,0.12);
-}
-
-.truppen-add-row{
-display:grid;
-grid-template-columns:1fr auto;
-gap:12px;
-margin-bottom:20px;
-}
-
-.person-row{
-display:flex;
-justify-content:space-between;
-align-items:center;
-padding:12px 0;
-border-top:1px solid rgba(255,255,255,0.15);
-}
-
-.person-name{
-font-size:18px;
-}
-
-.row-actions{
-display:flex;
-gap:10px;
-}
-
-.row-btn{
-padding:8px 12px;
-border-radius:10px;
-border:none;
-background:#222;
-color:white;
 }
