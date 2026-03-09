@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Skapa poolspel</title>
-  <link rel="stylesheet" href="/NSK2/app.css?v=151">
+  <link rel="stylesheet" href="/NSK2/app.css?v=160">
 </head>
 <body>
   <div class="wrap">
@@ -18,30 +18,50 @@
       <a href="/NSK2/lag/">Lag</a>
     </nav>
 
-    <section class="card">
-      <h1>Skapa poolspel</h1>
+    <section class="hero-card">
+      <img src="/NSK2/icon-192.png" alt="NSK" class="hero-logo">
+      <div>
+        <h1 class="hero-title">Skapa poolspel</h1>
+        <div class="hero-sub">Poolinfo • Matchinställningar • Spelare</div>
+      </div>
+    </section>
 
-      <label for="poolName">Namn på poolspel</label>
-      <input id="poolName" placeholder="Rosvalla Poolspel">
+    <section class="card form-card">
+      <div class="section-head">
+        <h2>Poolspel</h2>
+      </div>
 
-      <label for="poolPlace">Plats</label>
-      <input id="poolPlace" placeholder="Nyköping">
+      <div class="form-grid">
+        <div class="field full">
+          <label for="poolName">Namn på poolspel</label>
+          <input id="poolName" placeholder="Rosvalla Poolspel">
+        </div>
 
-      <label for="poolDate">Datum</label>
-      <input id="poolDate" type="date">
+        <div class="field">
+          <label for="poolPlace">Plats</label>
+          <input id="poolPlace" placeholder="Nyköping">
+        </div>
 
-      <div class="btnrow">
+        <div class="field">
+          <label for="poolDate">Datum</label>
+          <input id="poolDate" type="date">
+        </div>
+      </div>
+
+      <div class="btnrow top-gap">
         <button id="savePoolBtn">Spara poolspel</button>
       </div>
 
-      <div id="poolMsg" class="small"></div>
+      <div id="poolMsg" class="small top-gap"></div>
     </section>
 
-    <section class="card">
-      <h2>Matchinställningar</h2>
+    <section class="card form-card">
+      <div class="section-head">
+        <h2>Matchinställningar</h2>
+      </div>
 
-      <div class="row2">
-        <div>
+      <div class="form-grid">
+        <div class="field">
           <label for="cfgTeamNo">Lag</label>
           <select id="cfgTeamNo">
             <option value="1">Lag 1</option>
@@ -50,7 +70,7 @@
           </select>
         </div>
 
-        <div>
+        <div class="field">
           <label for="cfgMatchesTotal">Antal matcher</label>
           <select id="cfgMatchesTotal">
             <option value="1">1</option>
@@ -62,7 +82,7 @@
           </select>
         </div>
 
-        <div>
+        <div class="field">
           <label for="cfgMatchNo">Match</label>
           <select id="cfgMatchNo">
             <option value="1">Match 1</option>
@@ -74,17 +94,17 @@
           </select>
         </div>
 
-        <div>
+        <div class="field">
           <label for="cfgStartTime">Starttid</label>
           <input id="cfgStartTime" type="time">
         </div>
 
-        <div>
+        <div class="field full">
           <label for="cfgOpponent">Motståndare</label>
           <input id="cfgOpponent" type="text" placeholder="Skriv motståndare">
         </div>
 
-        <div>
+        <div class="field">
           <label for="cfgField">Plan</label>
           <select id="cfgField">
             <option value="Plan 1">Plan 1</option>
@@ -94,7 +114,7 @@
           </select>
         </div>
 
-        <div>
+        <div class="field">
           <label for="cfgPlayersTotal">Antal i laget</label>
           <select id="cfgPlayersTotal">
             <option value="6">6</option>
@@ -108,7 +128,7 @@
           </select>
         </div>
 
-        <div>
+        <div class="field">
           <label for="cfgPlayersOnField">Antal på plan</label>
           <select id="cfgPlayersOnField">
             <option value="3" selected>3</option>
@@ -117,7 +137,7 @@
           </select>
         </div>
 
-        <div>
+        <div class="field">
           <label for="cfgPeriods">Perioder per match</label>
           <select id="cfgPeriods">
             <option value="1" selected>1</option>
@@ -126,7 +146,7 @@
           </select>
         </div>
 
-        <div>
+        <div class="field">
           <label for="cfgPeriodMinutes">Periodtid (min)</label>
           <select id="cfgPeriodMinutes">
             <option value="10">10</option>
@@ -136,7 +156,7 @@
           </select>
         </div>
 
-        <div>
+        <div class="field">
           <label for="cfgShiftSeconds">Bytestid (sek)</label>
           <select id="cfgShiftSeconds">
             <option value="60">60</option>
@@ -147,64 +167,68 @@
         </div>
       </div>
 
-      <div class="btnrow">
+      <div class="btnrow top-gap">
         <button id="saveMatchConfigBtn" class="ghost">Redo</button>
       </div>
 
-      <div id="poolConfigMsg" class="small"></div>
+      <div id="poolConfigMsg" class="small top-gap"></div>
     </section>
 
-    <section class="card">
-      <h2>Spelare (denna match)</h2>
+    <section class="card form-card">
+      <div class="section-head">
+        <h2>Spelare denna match</h2>
+      </div>
 
-      <div class="row2">
-        <div>
+      <div class="form-grid">
+        <div class="field">
           <label for="matchPlayer1">Spelare 1</label>
           <select id="matchPlayer1"></select>
         </div>
 
-        <div>
+        <div class="field">
           <label for="matchPlayer2">Spelare 2</label>
           <select id="matchPlayer2"></select>
         </div>
 
-        <div>
+        <div class="field">
           <label for="matchPlayer3">Spelare 3</label>
           <select id="matchPlayer3"></select>
         </div>
 
-        <div>
+        <div class="field">
           <label for="matchPlayer4">Spelare 4</label>
           <select id="matchPlayer4"></select>
         </div>
 
-        <div>
+        <div class="field">
           <label for="matchPlayer5">Spelare 5</label>
           <select id="matchPlayer5"></select>
         </div>
 
-        <div>
+        <div class="field">
           <label for="matchGoalie">Målvakt</label>
           <select id="matchGoalie"></select>
         </div>
       </div>
 
-      <div id="matchPlayersMsg" class="small"></div>
+      <div id="matchPlayersMsg" class="small top-gap"></div>
     </section>
 
-    <section class="card">
-      <h2>Sparade poolspel</h2>
+    <section class="card form-card">
+      <div class="section-head">
+        <h2>Sparade poolspel</h2>
+      </div>
       <div id="poolPageList"></div>
     </section>
 
     <div id="appError" class="small"></div>
 
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="/NSK2/config.js?v=151"></script>
-    <script src="/NSK2/auth.js?v=151"></script>
-    <script src="/NSK2/login-patch.js?v=151"></script>
-    <script src="/NSK2/db.js?v=151"></script>
-    <script src="/NSK2/app.js?v=151"></script>
+    <script src="/NSK2/config.js?v=160"></script>
+    <script src="/NSK2/auth.js?v=160"></script>
+    <script src="/NSK2/login-patch.js?v=160"></script>
+    <script src="/NSK2/db.js?v=160"></script>
+    <script src="/NSK2/app.js?v=160"></script>
   </div>
 </body>
 </html>
