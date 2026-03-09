@@ -1,4 +1,4 @@
-/* app.css — NSK Team 18 full file */
+/* app.css — NSK V14 stable */
 :root{
   --bg:#090d16;
   --card:rgba(255,255,255,.06);
@@ -73,7 +73,7 @@ body{
   opacity:.78;
 }
 
-.card, .hero-shell{
+.card{
   background:var(--card);
   backdrop-filter:blur(18px);
   border:1px solid var(--line);
@@ -95,11 +95,11 @@ label{
   color:var(--muted);
 }
 
-input, select, button, textarea{
+input, select, button{
   font:inherit;
 }
 
-input, select, textarea{
+input, select{
   width:100%;
   min-height:56px;
   padding:14px 16px;
@@ -110,7 +110,7 @@ input, select, textarea{
   outline:none;
 }
 
-input::placeholder, textarea::placeholder{
+input::placeholder{
   color:rgba(255,255,255,.5);
 }
 
@@ -125,40 +125,11 @@ button{
   cursor:pointer;
 }
 
-button.ghost, .row-btn, .swipe-delete-btn{
-  background:var(--btn);
-  border:1px solid var(--line);
-}
-
-.row2, .form-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:16px;
-}
-
-.btnrow{
-  display:flex;
-  gap:12px;
-  align-items:center;
-  justify-content:space-between;
-  flex-wrap:wrap;
-}
-
-.small, .helper, .muted-note{
+.small, .muted-note{
   color:var(--muted);
   font-size:14px;
 }
 
-.listrow{
-  padding:12px 0;
-  border-top:1px solid var(--line);
-}
-
-.listrow:first-child{
-  border-top:0;
-}
-
-/* Truppen V14 */
 .truppen-card{
   padding:22px;
 }
@@ -214,6 +185,8 @@ button.ghost, .row-btn, .swipe-delete-btn{
   border-radius:16px;
   font-weight:800;
   z-index:1;
+  background:var(--btn);
+  border:1px solid var(--line);
 }
 
 .person-row{
@@ -264,15 +237,18 @@ button.ghost, .row-btn, .swipe-delete-btn{
   min-height:48px;
   border-radius:14px;
   font-weight:800;
+  background:var(--btn);
+  border:1px solid var(--line);
+}
+
+.row-btn.danger{
+  background:rgba(180,30,50,.22);
+  border:1px solid rgba(255,255,255,.12);
 }
 
 .desktop-delete{
   display:inline-flex;
 }
-
-/* Layout helpers */
-.full{grid-column:1 / -1}
-.top-gap{margin-top:14px}
 
 @media (max-width:700px){
   .mainmenu{
@@ -280,12 +256,6 @@ button.ghost, .row-btn, .swipe-delete-btn{
   }
   .mainmenu a{
     padding:12px 14px;
-  }
-  .row2, .form-grid{
-    grid-template-columns:1fr;
-  }
-  .full{
-    grid-column:auto;
   }
   .truppen-add-row{
     grid-template-columns:1fr;
