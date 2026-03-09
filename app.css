@@ -1,4 +1,4 @@
-/* app.css — NSK V14 stable */
+/* app.css — NSK V15 final */
 :root{
   --bg:#090d16;
   --card:rgba(255,255,255,.06);
@@ -130,6 +130,48 @@ button{
   font-size:14px;
 }
 
+.listrow{
+  padding:12px 0;
+  border-top:1px solid var(--line);
+}
+
+.listrow:first-child{
+  border-top:0;
+}
+
+.pool-item{
+  padding:14px 0;
+  border-top:1px solid var(--line);
+}
+
+.pool-item:first-child{
+  border-top:0;
+}
+
+.pool-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+}
+
+.pool-title{
+  font-weight:800;
+}
+
+.pool-meta{
+  opacity:.8;
+  margin-top:4px;
+}
+
+.status-badge{
+  background:var(--btn);
+  border:1px solid var(--line);
+  padding:8px 12px;
+  border-radius:14px;
+  font-weight:700;
+}
+
 .truppen-card{
   padding:22px;
 }
@@ -185,15 +227,15 @@ button{
   border-radius:16px;
   font-weight:800;
   z-index:1;
-  background:var(--btn);
-  border:1px solid var(--line);
+  background:rgba(180,30,50,.22);
+  border:1px solid rgba(255,255,255,.12);
 }
 
 .person-row{
   position:relative;
   z-index:2;
   display:grid;
-  grid-template-columns:32px 1fr auto;
+  grid-template-columns:32px minmax(0,1fr) auto;
   gap:12px;
   align-items:center;
   padding:14px 0;
@@ -214,6 +256,7 @@ button{
   opacity:.75;
   user-select:none;
   cursor:grab;
+  align-self:center;
 }
 
 .person-main{
@@ -251,45 +294,11 @@ button{
 }
 
 @media (max-width:700px){
-  .mainmenu{
-    gap:10px;
-  }
-  .mainmenu a{
-    padding:12px 14px;
-  }
-  .truppen-add-row{
-    grid-template-columns:1fr;
-  }
-  .big-add{
-    width:100%;
-    min-width:0;
-  }
-  .person-row{
-    grid-template-columns:28px 1fr;
-  }
-  .row-actions{
-    grid-column:2;
-    justify-content:flex-start;
-  }
-  .desktop-delete{
-    display:none;
-  }
-}
-.person-row{
-display:grid;
-grid-template-columns:32px 1fr auto;
-align-items:center;
-gap:12px;
-}
-
-.row-actions{
-display:flex;
-gap:10px;
-flex-wrap:wrap;
-justify-content:flex-end;
-}
-
-.row-btn{
-min-width:90px;
-min-height:44px;
+  .mainmenu{ gap:10px; }
+  .mainmenu a{ padding:12px 14px; }
+  .truppen-add-row{ grid-template-columns:1fr; }
+  .big-add{ width:100%; min-width:0; }
+  .person-row{ grid-template-columns:28px minmax(0,1fr); }
+  .row-actions{ grid-column:2; justify-content:flex-start; }
+  .desktop-delete{ display:none; }
 }
