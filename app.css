@@ -1,117 +1,97 @@
-/* ======================
-NSK TEAM 18 – V13 LAYOUT
-====================== */
-
-body{
-background:#0b0f18;
-color:white;
-font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto;
-margin:0;
+/* app.css patch — truppen NSK layout */
+.truppen-card{
+  padding:22px;
 }
 
-.wrap{
-max-width:950px;
-margin:auto;
-padding:20px;
+.section-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom:14px;
 }
 
-/* HERO */
-
-.hero{
-display:flex;
-align-items:center;
-gap:16px;
-margin-bottom:20px;
+.truppen-add-row{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:14px;
+  align-items:center;
+  margin-bottom:18px;
 }
 
-.hero img{
-width:54px;
-height:54px;
+.name-input{
+  min-height:58px;
 }
 
-.hero-title{
-font-size:28px;
-font-weight:800;
+.big-add{
+  min-height:58px;
+  min-width:180px;
+  border-radius:18px;
+  font-weight:900;
 }
 
-.hero-sub{
-font-size:14px;
-opacity:.7;
+.person-list{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
 }
 
-/* GLASS CARD */
-
-.glass{
-background:rgba(255,255,255,0.06);
-border-radius:22px;
-padding:22px;
-backdrop-filter:blur(18px);
-border:1px solid rgba(255,255,255,0.18);
-box-shadow:0 12px 40px rgba(0,0,0,.6);
-margin-bottom:22px;
+.person-row{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:12px;
+  align-items:center;
+  padding:14px 0;
+  border-top:1px solid rgba(255,255,255,0.16);
 }
 
-/* GRID */
-
-.grid2{
-display:grid;
-grid-template-columns:1fr 1fr;
-gap:18px;
+.person-row:first-child{
+  border-top:0;
 }
 
-.full{
-grid-column:1/-1;
+.person-name{
+  font-size:20px;
+  line-height:1.25;
+  word-break:break-word;
 }
 
-/* FIELDS */
-
-.field label{
-font-size:14px;
-opacity:.8;
-display:block;
-margin-bottom:6px;
+.row-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
 }
 
-.field input,
-.field select{
-width:100%;
-padding:14px;
-border-radius:14px;
-border:1px solid rgba(255,255,255,.18);
-background:rgba(255,255,255,.05);
-color:white;
-font-size:16px;
+.row-btn{
+  min-width:120px;
+  min-height:52px;
+  border-radius:16px;
+  font-weight:800;
 }
 
-/* BUTTON */
-
-.primary-btn{
-background:rgba(255,255,255,.12);
-padding:10px 18px;
-border-radius:16px;
-border:none;
-color:white;
-font-weight:700;
+.row-btn.danger{
+  opacity:.92;
 }
 
-/* SMALL TEXT */
+@media (max-width: 700px){
+  .truppen-add-row{
+    grid-template-columns:1fr;
+  }
 
-.helper{
-font-size:13px;
-opacity:.7;
-margin-top:12px;
-}
+  .big-add{
+    width:100%;
+    min-width:0;
+  }
 
-/* MOBILE */
+  .person-row{
+    grid-template-columns:1fr;
+  }
 
-@media(max-width:700px){
+  .row-actions{
+    justify-content:stretch;
+  }
 
-.grid2{
-grid-template-columns:1fr;
-}
-
-.full{
-grid-column:auto;
-}
-
+  .row-btn{
+    flex:1 1 140px;
+  }
 }
