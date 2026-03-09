@@ -1,4 +1,3 @@
-// db.js — NSK Team 18 full file
 window.DB = (() => {
   const TEAM_NAME = "NSK Team 18";
   const TEAM_SEASON = "2026";
@@ -55,14 +54,12 @@ window.DB = (() => {
   async function listPlayers() {
     const client = await getClient();
     const teamId = await getTeamId();
-
     const { data, error } = await client
       .from("nsk_players")
       .select("id, full_name, sort_order")
       .eq("team_id", teamId)
       .order("sort_order", { ascending: true, nullsFirst: false })
       .order("full_name", { ascending: true });
-
     if (error) throw error;
     return data || [];
   }
@@ -71,7 +68,7 @@ window.DB = (() => {
     const client = await getClient();
     const teamId = await getTeamId();
 
-    const { data: maxData } = await client
+    const { data:maxData } = await client
       .from("nsk_players")
       .select("sort_order")
       .eq("team_id", teamId)
@@ -82,11 +79,7 @@ window.DB = (() => {
 
     const { data, error } = await client
       .from("nsk_players")
-      .insert({
-        team_id: teamId,
-        full_name: String(name || "").trim(),
-        sort_order: nextSort
-      })
+      .insert({ team_id: teamId, full_name: String(name || "").trim(), sort_order: nextSort })
       .select("*")
       .single();
 
@@ -102,18 +95,13 @@ window.DB = (() => {
       .eq("id", id)
       .select("*")
       .single();
-
     if (error) throw error;
     return data;
   }
 
   async function deletePlayer(id) {
     const client = await getClient();
-    const { error } = await client
-      .from("nsk_players")
-      .delete()
-      .eq("id", id);
-
+    const { error } = await client.from("nsk_players").delete().eq("id", id);
     if (error) throw error;
     return true;
   }
@@ -133,14 +121,12 @@ window.DB = (() => {
   async function listCoaches() {
     const client = await getClient();
     const teamId = await getTeamId();
-
     const { data, error } = await client
       .from("nsk_coaches")
       .select("id, full_name, sort_order, role")
       .eq("team_id", teamId)
       .order("sort_order", { ascending: true, nullsFirst: false })
       .order("full_name", { ascending: true });
-
     if (error) throw error;
     return data || [];
   }
@@ -149,7 +135,7 @@ window.DB = (() => {
     const client = await getClient();
     const teamId = await getTeamId();
 
-    const { data: maxData } = await client
+    const { data:maxData } = await client
       .from("nsk_coaches")
       .select("sort_order")
       .eq("team_id", teamId)
@@ -160,12 +146,7 @@ window.DB = (() => {
 
     const { data, error } = await client
       .from("nsk_coaches")
-      .insert({
-        team_id: teamId,
-        full_name: String(name || "").trim(),
-        role: "Tränare",
-        sort_order: nextSort
-      })
+      .insert({ team_id: teamId, full_name: String(name || "").trim(), role: "Tränare", sort_order: nextSort })
       .select("*")
       .single();
 
@@ -181,18 +162,13 @@ window.DB = (() => {
       .eq("id", id)
       .select("*")
       .single();
-
     if (error) throw error;
     return data;
   }
 
   async function deleteCoach(id) {
     const client = await getClient();
-    const { error } = await client
-      .from("nsk_coaches")
-      .delete()
-      .eq("id", id);
-
+    const { error } = await client.from("nsk_coaches").delete().eq("id", id);
     if (error) throw error;
     return true;
   }
@@ -212,14 +188,12 @@ window.DB = (() => {
   async function listPools() {
     const client = await getClient();
     const teamId = await getTeamId();
-
     const { data, error } = await client
       .from("nsk_pools")
       .select("*")
       .eq("team_id", teamId)
       .order("pool_date", { ascending: false })
       .order("created_at", { ascending: false });
-
     if (error) throw error;
     return data || [];
   }
@@ -227,7 +201,6 @@ window.DB = (() => {
   async function addPool(payload) {
     const client = await getClient();
     const teamId = await getTeamId();
-
     const row = {
       team_id: teamId,
       title: payload.title || payload.pool_name || "Poolspel",
@@ -235,37 +208,11 @@ window.DB = (() => {
       pool_date: payload.pool_date || null,
       status: payload.status || "Aktiv"
     };
-
     const { data, error } = await client
       .from("nsk_pools")
       .insert(row)
       .select("*")
       .single();
-
-    if (error) throw error;
-    return data;
-  }
-
-  async function listMatchesByPool(poolId) {
-    const client = await getClient();
-    const { data, error } = await client
-      .from("nsk_matches")
-      .select("*")
-      .eq("pool_id", poolId)
-      .order("created_at", { ascending: true });
-
-    if (error) throw error;
-    return data || [];
-  }
-
-  async function addMatch(payload) {
-    const client = await getClient();
-    const { data, error } = await client
-      .from("nsk_matches")
-      .insert(payload)
-      .select("*")
-      .single();
-
     if (error) throw error;
     return data;
   }
@@ -273,17 +220,14 @@ window.DB = (() => {
   async function getCurrentPoolId() {
     const saved = sessionStorage.getItem("nsk2_current_pool_id");
     if (saved) return saved;
-
     const pools = await listPools();
     if (pools.length) return pools[0].id;
-
     throw new Error("Inget aktivt poolspel valt.");
   }
 
   async function upsertMatchConfig(payload) {
     const client = await getClient();
     const pool_id = payload.pool_id || await getCurrentPoolId();
-
     const row = {
       pool_id,
       team_no: Number(payload.team_no || 1),
@@ -305,13 +249,11 @@ window.DB = (() => {
       player_5: payload.player_5 || null,
       updated_at: new Date().toISOString()
     };
-
     const { data, error } = await client
       .from("nsk_match_configs")
       .upsert(row, { onConflict: "pool_id,team_no,match_no" })
       .select("*")
       .single();
-
     if (error) throw error;
     return data;
   }
@@ -319,7 +261,6 @@ window.DB = (() => {
   async function getMatchConfig(teamNo, matchNo, poolId) {
     const client = await getClient();
     const pool_id = poolId || await getCurrentPoolId();
-
     const { data, error } = await client
       .from("nsk_match_configs")
       .select("*")
@@ -328,7 +269,6 @@ window.DB = (() => {
       .eq("match_no", Number(matchNo))
       .limit(1)
       .maybeSingle();
-
     if (error) throw error;
     return data || null;
   }
@@ -338,7 +278,6 @@ window.DB = (() => {
     const { data, error } = await client
       .from("nsk_goalie_stats")
       .select("goalie_name, match_id");
-
     if (error) throw error;
     return data || [];
   }
@@ -346,7 +285,7 @@ window.DB = (() => {
   async function subscribeTruppen(callback) {
     const client = await getClient();
     return client
-      .channel("realtime-truppen")
+      .channel("realtime-truppen-stable")
       .on("postgres_changes", { event: "*", schema: "public", table: "nsk_players" }, payload => callback("players", payload))
       .on("postgres_changes", { event: "*", schema: "public", table: "nsk_coaches" }, payload => callback("coaches", payload))
       .subscribe();
@@ -355,7 +294,7 @@ window.DB = (() => {
   async function subscribeMatchConfigs(callback) {
     const client = await getClient();
     return client
-      .channel("realtime-match-configs")
+      .channel("realtime-match-configs-stable")
       .on("postgres_changes", { event: "*", schema: "public", table: "nsk_match_configs" }, payload => callback(payload))
       .subscribe();
   }
@@ -374,8 +313,6 @@ window.DB = (() => {
     saveCoachOrder,
     listPools,
     addPool,
-    listMatchesByPool,
-    addMatch,
     getCurrentPoolId,
     upsertMatchConfig,
     getMatchConfig,
