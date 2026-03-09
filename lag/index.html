@@ -1,39 +1,15 @@
-<!doctype html>
-<html lang="sv">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Lag</title>
-  <link rel="stylesheet" href="../app.css">
-</head>
-<body>
-  <div class="wrap">
-    <nav class="mainmenu">
-      <a href="../startsida/">Startsida</a>
-      <a href="../truppen/">Truppen</a>
-      <a href="../skapapoolspel/">Skapa poolspel</a>
-      <a href="../malvaktsstatistik/">Målvaktsstatistik</a>
-      <a href="../bytesschema/">Bytesschema</a>
-      <a href="../matchvy/">Matchvy</a>
-      <a href="../lag/">Lag</a>
-    </nav>
-
-    
 <section class="card">
-  <h1>Lag</h1>
-  <div class="listrow">Spelare: <span id="playersTotal"></span></div>
-  <div class="listrow">Tränare: <span id="coachesTotal"></span></div>
-  <div class="listrow">Poolspel: <span id="poolsTotal"></span></div>
+
+<h2>Välj lag</h2>
+
+<div class="team-buttons">
+
+<button class="teamBtn" data-team="1">Lag 1</button>
+<button class="teamBtn" data-team="2">Lag 2</button>
+<button class="teamBtn" data-team="3">Lag 3</button>
+
+</div>
+
+<div id="activeTeam"></div>
+
 </section>
-
-
-    <div id="appError" class="small"></div>
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="../config.js"></script>
-    <script src="../auth.js"></script>
-    <script src="../login-patch.js"></script>
-    <script src="../db.js"></script>
-    <script src="../app.js"></script>
-  </div>
-</body>
-</html>
