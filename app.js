@@ -1,12 +1,7 @@
 window.NSK2App = (() => {
   function byId(id) { return document.getElementById(id); }
   function esc(s) {
-    return String(s ?? "").replace(/[&<>"]/g, m => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;"
-    }[m]));
+    return String(s ?? "").replace(/[&<>"]/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]));
   }
   function setText(id, text) {
     const el = byId(id);
@@ -17,10 +12,38 @@ window.NSK2App = (() => {
   let coaches = [];
   let truppenRealtime = null;
   let truppenBound = false;
+  let startsidaPoolsLoaded = false;
 
   async function init() {
     if (window.Auth?.init) await Auth.init();
+    await initStartsidaPage();
     await initTruppenPage();
+    await initGoalieStatsPage();
+  }
+
+  async function initStartsidaPage() {
+    const savedPoolsList = byId("savedPoolsList");
+    if (!savedPoolsList || startsidaPoolsLoaded) return;
+    startsidaPoolsLoaded = true;
+
+    try {
+      const pools = await DB.listPools();
+      savedPoolsList.innerHTML = pools.length
+        ? pools.map(p => `
+          <article class="pool-item">
+            <div class="pool-top">
+              <div>
+                <div class="pool-title">${esc(p.pool_date || "Utan datum")} • ${esc(p.place || "Utan plats")}</div>
+                <div class="pool-meta">${esc(p.title || "Poolspel")}</div>
+              </div>
+              <div class="status-badge">${esc(p.status || "Aktiv")}</div>
+            </div>
+          </article>
+        `).join("")
+        : '<div class="listrow">Inga sparade poolspel ännu.</div>';
+    } catch (err) {
+      setText("appError", err.message || String(err));
+    }
   }
 
   function rowHtml(item, type) {
@@ -165,11 +188,8 @@ window.NSK2App = (() => {
       const dragging = root.querySelector(".dragging");
       if (!dragging) return;
       const wrap = dragging.parentElement;
-      if (after == null) {
-        root.appendChild(wrap);
-      } else {
-        root.insertBefore(wrap, after.parentElement);
-      }
+      if (after == null) root.appendChild(wrap);
+      else root.insertBefore(wrap, after.parentElement);
     });
   }
 
@@ -188,7 +208,6 @@ window.NSK2App = (() => {
 
     if (!truppenBound) {
       truppenBound = true;
-
       byId("addPlayerBtn")?.addEventListener("click", addPlayer);
       byId("addCoachBtn")?.addEventListener("click", addCoach);
 
@@ -226,6 +245,31 @@ window.NSK2App = (() => {
         if (type === "players") await renderPlayers();
         if (type === "coaches") await renderCoaches();
       });
+    }
+  }
+
+  async function initGoalieStatsPage() {
+    const list = byId("goalieStatsList");
+    if (!list) return;
+
+    try {
+      const stats = await DB.listGoalieStats();
+      const grouped = {};
+      stats.forEach(row => {
+        const name = (row.goalie_name || "").trim() || "Okänd målvakt";
+        if (!grouped[name]) grouped[name] = new Set();
+        if (row.match_id) grouped[name].add(row.match_id);
+      });
+
+      const rows = Object.entries(grouped)
+        .map(([name, matches]) => ({ name, matches: matches.size }))
+        .sort((a, b) => b.matches - a.matches || a.name.localeCompare(b.name, "sv"));
+
+      list.innerHTML = rows.length
+        ? rows.map(r => `<div class="listrow"><strong>${esc(r.name)}</strong> — ${r.matches} ${r.matches === 1 ? "match" : "matcher"}</div>`).join("")
+        : '<div class="listrow">Ingen målvaktsstatistik ännu.</div>';
+    } catch (err) {
+      setText("appError", err.message || String(err));
     }
   }
 
