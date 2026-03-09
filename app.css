@@ -95,3 +95,65 @@
     flex:1 1 140px;
   }
 }
+/* TRUPPEN NSK LAYOUT */
+
+.hero-card{
+display:flex;
+align-items:center;
+gap:16px;
+margin-bottom:25px;
+}
+
+.hero-logo{
+width:70px;
+}
+
+.hero-title{
+font-size:32px;
+font-weight:800;
+}
+
+.hero-sub{
+opacity:.7;
+}
+
+.truppen-card{
+background:rgba(255,255,255,0.06);
+border-radius:20px;
+padding:20px;
+margin-bottom:20px;
+backdrop-filter:blur(16px);
+border:1px solid rgba(255,255,255,0.12);
+}
+
+.truppen-add-row{
+display:grid;
+grid-template-columns:1fr auto;
+gap:12px;
+margin-bottom:20px;
+}
+
+.person-row{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:12px 0;
+border-top:1px solid rgba(255,255,255,0.15);
+}
+
+.person-name{
+font-size:18px;
+}
+
+.row-actions{
+display:flex;
+gap:10px;
+}
+
+.row-btn{
+padding:8px 12px;
+border-radius:10px;
+border:none;
+background:#222;
+color:white;
+}
