@@ -302,3 +302,66 @@ button{
   .row-actions{ grid-column:2; justify-content:flex-start; }
   .desktop-delete{ display:none; }
 }
+/* ===== STARTSIDA FIX ===== */
+
+.card h2{
+  margin-bottom: 18px;
+}
+
+.listrow{
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+}
+
+.listrow:first-child{
+  border-top: 0;
+}
+
+.listrow a{
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 700;
+  display: block;
+}
+
+.listrow a:visited{
+  color: var(--text);
+}
+
+.listrow a:hover{
+  opacity: .9;
+}
+
+.pool-item{
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+}
+
+.pool-item:first-child{
+  border-top: 0;
+}
+
+.pool-top{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+}
+
+.pool-title{
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.pool-meta{
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.status-badge{
+  flex-shrink: 0;
+  min-width: 100px;
+  text-align: center;
+}
