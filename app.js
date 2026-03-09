@@ -48,47 +48,46 @@ window.NSK2App = (() => {
   }
 
   async function loadPlayers(){
-    const errorBox = byId("appError");
-    try{
-      players = await safe(() => DB.listPlayers());
-      if(errorBox) errorBox.textContent = `Spelare laddade: ${players.length}`;
-    }catch(err){
-      if(errorBox) errorBox.textContent = err.message || String(err);
-      return;
-    }
+  const errorBox = byId("appError");
+  try{
+    const teamId = await DB.getTeamId();
+    players = await safe(() => DB.listPlayers());
+    if(errorBox) errorBox.textContent = `teamId=${teamId} spelare=${players.length}`;
+  }catch(err){
+    console.error(err);
+    if(errorBox) errorBox.textContent = "Spelare-fel: " + (err.message || String(err));
+    return;
+  }
 
-    const el = byId("playersList");
-    if(!el) return;
+  const el = byId("playersList");
+  if(!el) return;
 
-    el.innerHTML = players.length ? players.map(p => `
-      <div class="person-row">
-        <div class="person-name">${esc(p.full_name)}</div>
-        <button class="row-btn" data-delete-player="${p.id}">Ta bort</button>
-      </div>
-    `).join("") : '<div class="muted-note">Inga spelare ännu.</div>';
-
-    txt("playersTotal", players.length);
-    txt("teamCount", players.length);
+  el.innerHTML = players.length ? players.map(p => `
+    <div class="person-row">
+      <div class="person-name">${esc(p.full_name)}</div>
+    </div>
+  `).join("") : '<div class="muted-note">Inga spelare ännu.</div>';
   }
 
   async function loadCoaches(){
-    try{
-      coaches = await safe(() => DB.listCoaches());
-    }catch(err){
-      txt("appError", err.message || String(err));
-      return;
-    }
+  const errorBox = byId("appError");
+  try{
+    coaches = await safe(() => DB.listCoaches());
+    if(errorBox) errorBox.textContent += ` | tränare=${coaches.length}`;
+  }catch(err){
+    console.error(err);
+    if(errorBox) errorBox.textContent = "Tränare-fel: " + (err.message || String(err));
+    return;
+  }
 
-    const el = byId("coachesList");
-    if(!el) return;
+  const el = byId("coachesList");
+  if(!el) return;
 
-    el.innerHTML = coaches.length ? coaches.map(c => `
-      <div class="person-row">
-        <div class="person-name">${esc(c.full_name)}</div>
-      </div>
-    `).join("") : '<div class="muted-note">Inga tränare ännu.</div>';
-
-    txt("coachesTotal", coaches.length);
+  el.innerHTML = coaches.length ? coaches.map(c => `
+    <div class="person-row">
+      <div class="person-name">${esc(c.full_name)}</div>
+    </div>
+  `).join("") : '<div class="muted-note">Inga tränare ännu.</div>';
   }
 
   async function addPlayer(){
