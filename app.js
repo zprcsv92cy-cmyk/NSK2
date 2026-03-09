@@ -1,4 +1,3 @@
-// app.js — NSK Team 18 full file
 window.NSK2App = (() => {
   function byId(id) { return document.getElementById(id); }
   function esc(s) {
@@ -16,25 +15,15 @@ window.NSK2App = (() => {
 
   let players = [];
   let coaches = [];
-  let truppenBound = false;
   let truppenRealtime = null;
-  let poolConfigBound = false;
-  let poolConfigRealtime = null;
-  let poolConfigLoading = false;
-  let poolConfigTimer = null;
+  let truppenBound = false;
 
   async function init() {
     if (window.Auth?.init) await Auth.init();
-
     await initTruppenPage();
-    await initSkapaPoolspelPage();
-    await initGoalieStatsPage();
   }
 
-  // -----------------------
-  // TRUPPEN
-  // -----------------------
-  function truppenRowHtml(item, type) {
+  function rowHtml(item, type) {
     return `
       <div class="swipe-wrap">
         <button class="swipe-delete-btn" data-delete-${type}="${item.id}">Ta bort</button>
@@ -53,23 +42,21 @@ window.NSK2App = (() => {
   }
 
   async function renderPlayers() {
-    if (!byId("playersList")) return;
+    const list = byId("playersList");
+    if (!list) return;
     players = await DB.listPlayers();
-    byId("playersList").innerHTML = players.length
-      ? players.map(p => truppenRowHtml(p, "player")).join("")
-      : '<div class="muted-note">Inga spelare ännu.</div>';
-    bindSwipe(byId("playersList"));
-    bindDrag(byId("playersList"), "player");
+    list.innerHTML = players.length ? players.map(p => rowHtml(p, "player")).join("") : '<div class="muted-note">Inga spelare ännu.</div>';
+    bindSwipe(list);
+    bindDrag(list, "player");
   }
 
   async function renderCoaches() {
-    if (!byId("coachesList")) return;
+    const list = byId("coachesList");
+    if (!list) return;
     coaches = await DB.listCoaches();
-    byId("coachesList").innerHTML = coaches.length
-      ? coaches.map(c => truppenRowHtml(c, "coach")).join("")
-      : '<div class="muted-note">Inga tränare ännu.</div>';
-    bindSwipe(byId("coachesList"));
-    bindDrag(byId("coachesList"), "coach");
+    list.innerHTML = coaches.length ? coaches.map(c => rowHtml(c, "coach")).join("") : '<div class="muted-note">Inga tränare ännu.</div>';
+    bindSwipe(list);
+    bindDrag(list, "coach");
   }
 
   async function addPlayer() {
@@ -80,7 +67,6 @@ window.NSK2App = (() => {
     input.value = "";
     setText("playersMsg", "Spelare sparad.");
     await renderPlayers();
-    await fillPlayerDropdowns();
   }
 
   async function addCoach() {
@@ -104,7 +90,6 @@ window.NSK2App = (() => {
     await DB.updatePlayer(id, next);
     setText("playersMsg", "Spelare uppdaterad.");
     await renderPlayers();
-    await fillPlayerDropdowns();
   }
 
   async function saveInlineCoach(id) {
@@ -119,7 +104,6 @@ window.NSK2App = (() => {
     await DB.deletePlayer(id);
     setText("playersMsg", "Spelare borttagen.");
     await renderPlayers();
-    await fillPlayerDropdowns();
   }
 
   async function deleteCoach(id) {
@@ -129,7 +113,6 @@ window.NSK2App = (() => {
   }
 
   function bindSwipe(root) {
-    if (!root) return;
     root.querySelectorAll(".person-row").forEach(row => {
       let startX = 0;
       let currentX = 0;
@@ -157,7 +140,6 @@ window.NSK2App = (() => {
   }
 
   function bindDrag(root, type) {
-    if (!root) return;
     const rows = Array.from(root.querySelectorAll(".draggable-row"));
 
     rows.forEach(row => {
@@ -196,15 +178,14 @@ window.NSK2App = (() => {
     return els.reduce((closest, child) => {
       const box = child.getBoundingClientRect();
       const offset = y - box.top - box.height / 2;
-      if (offset < 0 && offset > closest.offset) {
-        return { offset, element: child };
-      }
+      if (offset < 0 && offset > closest.offset) return { offset, element: child };
       return closest;
     }, { offset: Number.NEGATIVE_INFINITY }).element;
   }
 
   async function initTruppenPage() {
     if (!byId("playersList") && !byId("coachesList")) return;
+
     if (!truppenBound) {
       truppenBound = true;
 
@@ -242,216 +223,9 @@ window.NSK2App = (() => {
 
     if (!truppenRealtime) {
       truppenRealtime = await DB.subscribeTruppen(async type => {
-        if (type === "players") {
-          await renderPlayers();
-          await fillPlayerDropdowns();
-        }
+        if (type === "players") await renderPlayers();
         if (type === "coaches") await renderCoaches();
       });
-    }
-  }
-
-  // -----------------------
-  // SKAPA POOLSPEL
-  // -----------------------
-  async function savePool() {
-    const title = byId("poolName")?.value?.trim();
-    const place = byId("poolPlace")?.value?.trim();
-    const pool_date = byId("poolDate")?.value || null;
-
-    if (!title) return setText("poolMsg", "Skriv namn på poolspelet.");
-
-    const row = await DB.addPool({ title, place, pool_date, status: "Aktiv" });
-    sessionStorage.setItem("nsk2_current_pool_id", row.id);
-    setText("poolMsg", "Poolspel sparat.");
-    await loadPoolsList();
-  }
-
-  async function loadPoolsList() {
-    const el = byId("poolPageList");
-    if (!el) return;
-    const pools = await DB.listPools();
-    el.innerHTML = pools.length
-      ? pools.map(p => `
-        <div class="listrow">
-          <strong>${esc(p.title)}</strong> – ${esc(p.place || "")} – ${esc(p.pool_date || "")}
-          <button class="row-btn" data-open-pool="${p.id}">Öppna</button>
-        </div>
-      `).join("")
-      : '<div class="listrow">Inga poolspel ännu.</div>';
-  }
-
-  async function fillPlayerDropdowns() {
-    const ids = ["matchPlayer1","matchPlayer2","matchPlayer3","matchPlayer4","matchPlayer5","matchGoalie"];
-    if (!ids.some(id => byId(id))) return;
-
-    const list = await DB.listPlayers();
-    ids.forEach(id => {
-      const el = byId(id);
-      if (!el) return;
-      const current = el.value || "";
-      el.innerHTML = '<option value="">Välj...</option>' + list.map(p => {
-        const name = String(p.full_name || "");
-        const safe = name.replace(/"/g, "&quot;");
-        return `<option value="${safe}">${name}</option>`;
-      }).join("");
-      if (current) el.value = current;
-    });
-  }
-
-  function getSelectedConfig() {
-    return {
-      team_no: byId("cfgTeamNo")?.value || "1",
-      matches_total: byId("cfgMatchesTotal")?.value || "1",
-      match_no: byId("cfgMatchNo")?.value || "1",
-      start_time: byId("cfgStartTime")?.value || null,
-      opponent: byId("cfgOpponent")?.value || null,
-      field: byId("cfgField")?.value || null,
-      players_total: byId("cfgPlayersTotal")?.value || null,
-      players_on_field: byId("cfgPlayersOnField")?.value || null,
-      periods: byId("cfgPeriods")?.value || null,
-      period_minutes: byId("cfgPeriodMinutes")?.value || null,
-      shift_seconds: byId("cfgShiftSeconds")?.value || null,
-      player_1: byId("matchPlayer1")?.value || null,
-      player_2: byId("matchPlayer2")?.value || null,
-      player_3: byId("matchPlayer3")?.value || null,
-      player_4: byId("matchPlayer4")?.value || null,
-      player_5: byId("matchPlayer5")?.value || null,
-      goalie_name: byId("matchGoalie")?.value || null
-    };
-  }
-
-  function setValue(id, value) {
-    const el = byId(id);
-    if (el) el.value = value ?? "";
-  }
-
-  async function loadSelectedConfig() {
-    const teamNo = byId("cfgTeamNo")?.value || "1";
-    const matchNo = byId("cfgMatchNo")?.value || "1";
-    poolConfigLoading = true;
-    try {
-      const row = await DB.getMatchConfig(teamNo, matchNo);
-      if (row) {
-        setValue("cfgMatchesTotal", row.matches_total);
-        setValue("cfgStartTime", row.start_time);
-        setValue("cfgOpponent", row.opponent);
-        setValue("cfgField", row.field);
-        setValue("cfgPlayersTotal", row.players_total);
-        setValue("cfgPlayersOnField", row.players_on_field);
-        setValue("cfgPeriods", row.periods);
-        setValue("cfgPeriodMinutes", row.period_minutes);
-        setValue("cfgShiftSeconds", row.shift_seconds);
-        setValue("matchPlayer1", row.player_1);
-        setValue("matchPlayer2", row.player_2);
-        setValue("matchPlayer3", row.player_3);
-        setValue("matchPlayer4", row.player_4);
-        setValue("matchPlayer5", row.player_5);
-        setValue("matchGoalie", row.goalie_name);
-        setText("poolConfigMsg", "Laddad från Supabase.");
-      } else {
-        setText("poolConfigMsg", "Ny konfiguration.");
-      }
-    } catch (err) {
-      setText("appError", err.message || String(err));
-    } finally {
-      poolConfigLoading = false;
-    }
-  }
-
-  async function saveSelectedConfig() {
-    if (poolConfigLoading) return;
-    try {
-      await DB.upsertMatchConfig(getSelectedConfig());
-      setText("poolConfigMsg", "Autosparat i Supabase.");
-    } catch (err) {
-      setText("appError", err.message || String(err));
-    }
-  }
-
-  function queueConfigSave() {
-    if (poolConfigLoading) return;
-    clearTimeout(poolConfigTimer);
-    poolConfigTimer = setTimeout(saveSelectedConfig, 400);
-  }
-
-  async function initSkapaPoolspelPage() {
-    if (!byId("cfgTeamNo") && !byId("savePoolBtn")) return;
-
-    byId("savePoolBtn")?.addEventListener("click", savePool);
-    await loadPoolsList();
-    await fillPlayerDropdowns();
-
-    if (!byId("cfgTeamNo")) return;
-    if (!poolConfigBound) {
-      poolConfigBound = true;
-      const ids = [
-        "cfgTeamNo","cfgMatchesTotal","cfgMatchNo","cfgStartTime","cfgOpponent","cfgField",
-        "cfgPlayersTotal","cfgPlayersOnField","cfgPeriods","cfgPeriodMinutes","cfgShiftSeconds",
-        "matchPlayer1","matchPlayer2","matchPlayer3","matchPlayer4","matchPlayer5","matchGoalie"
-      ];
-
-      ids.forEach(id => {
-        const el = byId(id);
-        if (!el) return;
-        const eventName = (el.tagName === "INPUT" && el.type === "text") ? "input" : "change";
-        el.addEventListener(eventName, async () => {
-          if (id === "cfgTeamNo" || id === "cfgMatchNo") {
-            await loadSelectedConfig();
-          } else {
-            queueConfigSave();
-          }
-        });
-      });
-
-      byId("saveMatchConfigBtn")?.addEventListener("click", saveSelectedConfig);
-
-      document.addEventListener("click", async e => {
-        const t = e.target;
-        if (!(t instanceof HTMLElement)) return;
-        if (t.dataset.openPool) {
-          sessionStorage.setItem("nsk2_current_pool_id", t.dataset.openPool);
-          await loadSelectedConfig();
-          setText("poolMsg", "Poolspel öppnat.");
-        }
-      });
-    }
-
-    await loadSelectedConfig();
-
-    if (!poolConfigRealtime) {
-      poolConfigRealtime = await DB.subscribeMatchConfigs(async () => {
-        await fillPlayerDropdowns();
-        await loadSelectedConfig();
-      });
-    }
-  }
-
-  // -----------------------
-  // MÅLVAKTSSTATISTIK
-  // -----------------------
-  async function initGoalieStatsPage() {
-    const list = byId("goalieStatsList");
-    if (!list) return;
-
-    try {
-      const stats = await DB.listGoalieStats();
-      const grouped = {};
-      stats.forEach(row => {
-        const name = (row.goalie_name || "").trim() || "Okänd målvakt";
-        if (!grouped[name]) grouped[name] = new Set();
-        if (row.match_id) grouped[name].add(row.match_id);
-      });
-
-      const rows = Object.entries(grouped)
-        .map(([name, set]) => ({ name, matches: set.size }))
-        .sort((a, b) => b.matches - a.matches || a.name.localeCompare(b.name, "sv"));
-
-      list.innerHTML = rows.length
-        ? rows.map(r => `<div class="listrow"><strong>${esc(r.name)}</strong> — ${r.matches} ${r.matches === 1 ? "match" : "matcher"}</div>`).join("")
-        : '<div class="listrow">Ingen målvaktsstatistik ännu.</div>';
-    } catch (err) {
-      setText("appError", err.message || String(err));
     }
   }
 
