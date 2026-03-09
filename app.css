@@ -414,3 +414,66 @@ button{
   }
 
 }
+/* ===== OVERRIDE FIX STARTSIDA + TRUPPEN ===== */
+
+.card .listrow a,
+.card .listrow a:visited,
+.card .listrow a:active,
+.card .listrow a:hover{
+  color:#fff !important;
+  text-decoration:none !important;
+  font-weight:700 !important;
+}
+
+#playersList .person-row,
+#coachesList .person-row{
+  display:grid !important;
+  grid-template-columns:32px minmax(0,1fr) auto !important;
+  gap:12px !important;
+  align-items:center !important;
+}
+
+#playersList .row-actions,
+#coachesList .row-actions{
+  display:flex !important;
+  gap:10px !important;
+  flex-wrap:wrap !important;
+  justify-content:flex-end !important;
+  align-items:center !important;
+  margin-top:8px !important;
+}
+
+#playersList .row-btn,
+#coachesList .row-btn{
+  min-width:110px !important;
+  min-height:48px !important;
+}
+
+#playersList .inline-name-input,
+#coachesList .inline-name-input{
+  width:100% !important;
+}
+
+@media (max-width:700px){
+  #playersList .person-row,
+  #coachesList .person-row{
+    grid-template-columns:28px minmax(0,1fr) !important;
+  }
+
+  #playersList .row-actions,
+  #coachesList .row-actions{
+    grid-column:2 !important;
+    justify-content:flex-start !important;
+    flex-wrap:wrap !important;
+  }
+
+  #playersList .desktop-delete,
+  #coachesList .desktop-delete{
+    display:none !important;
+  }
+
+  #playersList .swipe-delete-btn,
+  #coachesList .swipe-delete-btn{
+    right:8px !important;
+  }
+}
