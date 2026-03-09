@@ -1,48 +1,76 @@
-window.Auth = (() => {
+// auth.js — NSK Team 18 (safe init)
+
+window.Auth = (function(){
+
   let client = null;
 
-  function getClient() {
-    if (client) return client;
+  function create(){
+    if(client) return client;
 
-    if (!window.supabase || !window.supabase.createClient) {
-      throw new Error("Supabase-biblioteket kunde inte laddas.");
+    if(!window.supabase || !window.supabase.createClient){
+      throw new Error("Supabase-biblioteket saknas.");
     }
 
-    if (!window.APP_CONFIG?.SUPABASE_URL || !window.APP_CONFIG?.SUPABASE_KEY) {
+    if(!window.APP_CONFIG){
+      throw new Error("APP_CONFIG saknas.");
+    }
+
+    if(!APP_CONFIG.SUPABASE_URL || !APP_CONFIG.SUPABASE_KEY){
       throw new Error("APP_CONFIG saknar SUPABASE_URL eller SUPABASE_KEY.");
     }
 
     client = window.supabase.createClient(
-      window.APP_CONFIG.SUPABASE_URL,
-      window.APP_CONFIG.SUPABASE_KEY
+      APP_CONFIG.SUPABASE_URL,
+      APP_CONFIG.SUPABASE_KEY
     );
 
     return client;
   }
 
-  async function init() {
-    const c = getClient();
+  async function init(){
+    const c = create();
     await c.auth.getSession();
     return c;
   }
 
-  async function login(email) {
-    const c = getClient();
-    const clean = String(email || "").trim();
-    if (!clean) throw new Error("Skriv en e-postadress.");
+  function getClient(){
+    return create();
+  }
 
-    const redirectTo =
-      window.location.origin + (window.APP_CONFIG?.REDIRECT_PATH || "/NSK2/");
+  async function login(email){
+
+    const c = create();
+
+    const redirect =
+      window.location.origin +
+      (APP_CONFIG.REDIRECT_PATH || "/NSK2/");
 
     const { error } = await c.auth.signInWithOtp({
-      email: clean,
-      options: { emailRedirectTo: redirectTo }
+      email: email,
+      options: { emailRedirectTo: redirect }
     });
 
-    if (error) throw error;
+    if(error) throw error;
+
     return true;
   }
 
-  async function logout() {
-    const c = getClient();
-    const { error } = await c
+  async function logout(){
+    const c = create();
+    await c.auth.signOut();
+  }
+
+  async function refreshSession(){
+    const c = create();
+    await c.auth.refreshSession();
+  }
+
+  return {
+    init,
+    getClient,
+    login,
+    logout,
+    refreshSession
+  };
+
+})();
