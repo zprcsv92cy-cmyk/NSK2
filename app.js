@@ -1,118 +1,69 @@
-window.NSK2App = (() => {
+// app.js patch — Målvaktsstatistik V2 (räknar bara antal matcher)
+(function(){
+  if (!window.NSK2App) return;
 
   function byId(id){ return document.getElementById(id); }
-
   function esc(s){
     return String(s ?? "").replace(/[&<>"]/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[m]));
   }
 
-  function setText(id, text){
-    const el = byId(id);
-    if(el) el.textContent = text ?? "";
+  async function getClient(){
+    if(window.Auth?.init) await Auth.init();
+    if(!window.Auth?.getClient) throw new Error("Auth.getClient saknas i auth.js");
+    return Auth.getClient();
   }
 
-  async function loadPlayers(){
-    const players = await DB.listPlayers();
-    const el = byId("playersList");
-    if(!el) return;
-
-    el.innerHTML = players.length
-      ? players.map(p => `
-        <div class="person-row">
-          <div class="person-name">${esc(p.full_name)}</div>
-        </div>
-      `).join("")
-      : '<div class="muted-note">Inga spelare ännu.</div>';
-  }
-
-  async function loadCoaches(){
-    const coaches = await DB.listCoaches();
-    const el = byId("coachesList");
-    if(!el) return;
-
-    el.innerHTML = coaches.length
-      ? coaches.map(c => `
-        <div class="person-row">
-          <div class="person-name">${esc(c.full_name)}</div>
-        </div>
-      `).join("")
-      : '<div class="muted-note">Inga tränare ännu.</div>';
-  }
-
-  async function addPlayer(){
-    const input = byId("playerInput");
-    if(!input?.value?.trim()) return;
-    await DB.addPlayer(input.value.trim());
-    input.value = "";
-    await loadPlayers();
-    await renderDebug();
-  }
-
-  async function addCoach(){
-    const input = byId("coachInput");
-    if(!input?.value?.trim()) return;
-    await DB.addCoach(input.value.trim());
-    input.value = "";
-    await loadCoaches();
-    await renderDebug();
-  }
-
-  async function renderDebug(){
-    const box = byId("appError");
-    const debug = byId("debugBox");
-    if(!box && !debug) return;
-
-    const parts = [];
+  async function loadGoalieMatchCounts(){
+    const list = byId("goalieStatsList");
+    if(!list) return;
 
     try{
-      const authInfo = await Auth.getDebugInfo();
-      parts.push("AUTH");
-      parts.push("supabase-lib: " + (authInfo.hasSupabaseLib ? "ok" : "saknas"));
-      parts.push("config: " + (authInfo.hasConfig ? "ok" : "saknas"));
-      parts.push("url: " + (authInfo.hasUrl ? "ok" : "saknas"));
-      parts.push("key: " + (authInfo.hasKey ? "ok" : "saknas"));
-      parts.push("user: " + (authInfo.sessionUser || "ingen session"));
-      if(authInfo.authError) parts.push("auth-fel: " + authInfo.authError);
-    }catch(err){
-      parts.push("AUTH FEL: " + (err.message || String(err)));
-    }
+      const client = await getClient();
+      const { data, error } = await client
+        .from("nsk_goalie_stats")
+        .select("goalie_name, match_id");
 
-    try{
-      const dbInfo = await DB.getDebugInfo();
-      parts.push("");
-      parts.push("DB");
-      parts.push("teamsCount: " + String(dbInfo.teamsCount));
-      parts.push("teamLookup: " + String(dbInfo.teamLookup));
-      parts.push("playersCountForTeam: " + String(dbInfo.playersCountForTeam));
-      parts.push("coachesCountForTeam: " + String(dbInfo.coachesCountForTeam));
-      if(dbInfo.firstTeam){
-        parts.push("firstTeam: " + dbInfo.firstTeam.name + " / " + (dbInfo.firstTeam.season || ""));
+      if(error) throw error;
+
+      const grouped = {};
+
+      (data || []).forEach(row => {
+        const name = (row.goalie_name || "").trim() || "Okänd målvakt";
+        if(!grouped[name]) grouped[name] = new Set();
+        if(row.match_id) grouped[name].add(row.match_id);
+      });
+
+      const rows = Object.entries(grouped)
+        .map(([name, matches]) => ({
+          name,
+          matches: matches.size
+        }))
+        .sort((a,b) => {
+          if (b.matches !== a.matches) return b.matches - a.matches;
+          return a.name.localeCompare(b.name, "sv");
+        });
+
+      if(!rows.length){
+        list.innerHTML = '<div class="listrow">Ingen målvaktsstatistik ännu.</div>';
+        return;
       }
-      if(dbInfo.dbError) parts.push("db-fel: " + dbInfo.dbError);
+
+      list.innerHTML = rows.map(r => `
+        <div class="listrow">
+          <strong>${esc(r.name)}</strong> — ${r.matches} ${r.matches === 1 ? "match" : "matcher"}
+        </div>
+      `).join("");
+
     }catch(err){
-      parts.push("DB FEL: " + (err.message || String(err)));
+      const errorBox = byId("appError");
+      if(errorBox) errorBox.textContent = err.message || String(err);
     }
-
-    const msg = parts.join("\n");
-    if(box) box.textContent = msg;
-    if(debug) debug.textContent = msg;
   }
 
-  async function init(){
-    try{
-      if(window.Auth?.init) await Auth.init();
-      byId("addPlayerBtn")?.addEventListener("click", addPlayer);
-      byId("addCoachBtn")?.addEventListener("click", addCoach);
-      await loadPlayers();
-      await loadCoaches();
-    } catch(err){
-      const el = byId("appError");
-      if(el) el.textContent = err.message || String(err);
-    }
-    await renderDebug();
-  }
+  const oldInit = window.NSK2App.init;
 
-  return { init, renderDebug };
+  window.NSK2App.init = async function(){
+    if (oldInit) await oldInit();
+    await loadGoalieMatchCounts();
+  };
 })();
-
-window.addEventListener("DOMContentLoaded", () => NSK2App.init());
