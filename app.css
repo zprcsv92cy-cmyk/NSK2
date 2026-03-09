@@ -368,3 +368,18 @@ button{
     min-width:0;
   }
 }
+/* FIX SNABBVAL LÄNKAR */
+
+.listrow a{
+  color:#ffffff !important;
+  text-decoration:none;
+  font-weight:700;
+}
+
+.listrow a:visited{
+  color:#ffffff !important;
+}
+
+.listrow a:hover{
+  opacity:.9;
+}
