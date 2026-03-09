@@ -275,3 +275,21 @@ button{
     display:none;
   }
 }
+.person-row{
+display:grid;
+grid-template-columns:32px 1fr auto;
+align-items:center;
+gap:12px;
+}
+
+.row-actions{
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+justify-content:flex-end;
+}
+
+.row-btn{
+min-width:90px;
+min-height:44px;
+}
