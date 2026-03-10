@@ -1,109 +1,113 @@
 <!doctype html>
 <html lang="sv">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Skapa poolspel</title>
-<link rel="stylesheet" href="../app.css?v=500">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Skapa poolspel</title>
+  <link rel="stylesheet" href="../app.css?v=500">
 </head>
-
 <body>
-<div class="wrap">
+  <div class="wrap">
 
-<nav class="mainmenu">
-<a href="../startsida/">Startsida</a>
-<a href="../truppen/">Truppen</a>
-<a href="../skapapoolspel/" class="active">Skapa poolspel</a>
-<a href="../malvaktsstatistik/">Målvaktsstatistik</a>
-<a href="../bytesschema/">Bytesschema</a>
-<a href="../matchvy/">Matchvy</a>
-<a href="../lag/">Lag</a>
-</nav>
+    <nav class="mainmenu">
+      <a href="../startsida/">Startsida</a>
+      <a href="../truppen/">Truppen</a>
+      <a href="../skapapoolspel/" class="active">Skapa poolspel</a>
+      <a href="../malvaktsstatistik/">Målvaktsstatistik</a>
+      <a href="../bytesschema/">Bytesschema</a>
+      <a href="../matchvy/">Matchvy</a>
+      <a href="../lag/">Lag</a>
+    </nav>
 
-<section class="card">
-<h2>Poolspel</h2>
+    <section class="hero-card">
+      <img src="../icon-192.png" alt="NSK" class="hero-logo">
+      <div>
+        <h1 class="hero-title">Skapa poolspel</h1>
+        <div class="hero-sub">Ort • Datum • Förutsättningar • Lag</div>
+      </div>
+    </section>
 
-<label>Datum</label>
-<input type="date" id="poolDate">
+    <section class="card">
+      <h2>Poolspel</h2>
 
-<label>Ort</label>
-<input type="text" id="poolPlace" placeholder="Ort">
+      <label for="poolPlace">Ort</label>
+      <input id="poolPlace" type="text" placeholder="Ort">
 
-</section>
+      <label for="poolDate">Datum</label>
+      <input id="poolDate" type="date">
+    </section>
 
-<section class="card">
+    <section class="card">
+      <h2>Förutsättningar</h2>
 
-<h2>Förutsättningar</h2>
+      <label for="teams">Antal egna lag</label>
+      <select id="teams">
+        <option value="1">1</option>
+        <option value="2" selected>2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
 
-<label>Antal lag</label>
-<select id="teams">
-<option>1</option>
-<option>2</option>
-<option>3</option>
-<option>4</option>
-</select>
+      <label for="matches">Antal matcher</label>
+      <select id="matches">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4" selected>4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+        <option value="7">7</option>
+        <option value="8">8</option>
+      </select>
 
-<label>Antal matcher</label>
-<select id="matches">
-<option>1</option>
-<option>2</option>
-<option>3</option>
-<option>4</option>
-<option>5</option>
-<option>6</option>
-<option>7</option>
-<option>8</option>
-</select>
+      <label for="players">Spelare på plan</label>
+      <select id="players">
+        <option value="3" selected>3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+      </select>
 
-<label>Antal på plan</label>
-<select id="players">
-<option>3</option>
-<option>4</option>
-<option>5</option>
-</select>
+      <label for="periods">Perioder</label>
+      <select id="periods">
+        <option value="1" selected>1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+      </select>
 
-<label>Perioder per match</label>
-<select id="periods">
-<option>1</option>
-<option>2</option>
-<option>3</option>
-</select>
+      <label for="periodTime">Periodtid</label>
+      <select id="periodTime">
+        <option value="10">10</option>
+        <option value="12">12</option>
+        <option value="15" selected>15</option>
+        <option value="20">20</option>
+      </select>
 
-<label>Periodtid</label>
-<select id="periodTime">
-<option>10</option>
-<option>12</option>
-<option>15</option>
-<option>20</option>
-</select>
+      <label for="subTime">Bytestid</label>
+      <select id="subTime">
+        <option value="30">30</option>
+        <option value="45">45</option>
+        <option value="60">60</option>
+        <option value="75">75</option>
+        <option value="90" selected>90</option>
+      </select>
 
-<label>Bytestid (sek)</label>
-<select id="subTime">
-<option>30</option>
-<option>45</option>
-<option>60</option>
-<option>75</option>
-<option>90</option>
-</select>
+      <button id="savePool">Spara poolspel</button>
+      <div id="poolMsg" class="small"></div>
+    </section>
 
-<button id="savePool">Spara poolspel</button>
+    <section class="card">
+      <h2>Lag</h2>
+      <div id="teamButtons" class="team-buttons"></div>
+    </section>
 
-</section>
+    <div id="appError" class="small"></div>
 
-<section class="card">
-
-<h2>Lag</h2>
-
-<div id="teamButtons"></div>
-
-</section>
-
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<script src="../config.js"></script>
-<script src="../auth.js"></script>
-<script src="../db.js"></script>
-<script src="../app.js"></script>
-
-</div>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="../config.js?v=500"></script>
+    <script src="../auth.js?v=500"></script>
+    <script src="../login-patch.js?v=500"></script>
+    <script src="../db.js?v=500"></script>
+    <script src="../app.js?v=500"></script>
+  </div>
 </body>
 </html>
