@@ -284,3 +284,26 @@ window.addEventListener("DOMContentLoaded", () => {
     console.error(err);
   });
 });
+async function savePoolConfig(){
+
+const payload = {
+
+pool_date: document.getElementById("poolDate").value,
+place: document.getElementById("poolPlace").value,
+
+teams: parseInt(document.getElementById("teams").value),
+matches: parseInt(document.getElementById("matches").value),
+
+players_on_field: parseInt(document.getElementById("players").value),
+periods: parseInt(document.getElementById("periods").value),
+
+period_time: parseInt(document.getElementById("periodTime").value),
+sub_time: parseInt(document.getElementById("subTime").value)
+
+}
+
+await DB.addPool(payload)
+
+alert("Poolspel sparat")
+
+}
