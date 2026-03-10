@@ -1,150 +1,251 @@
 window.DB = (() => {
-  const TEAM_NAME = "NSK Team 18";
-  const TEAM_SEASON = "2026";
 
-  async function getClient() {
-    if (window.Auth?.init) await Auth.init();
-    if (!window.Auth?.getClient) throw new Error("Auth.getClient saknas i auth.js");
-    return Auth.getClient();
-  }
+const TEAM_NAME="NSK Team 18";
+const TEAM_SEASON="2026";
 
-  async function getTeamId() {
-    const client = await getClient();
+async function getClient(){
+  if(window.Auth?.init) await Auth.init();
+  return Auth.getClient();
+}
 
-    let exact = await client.from("nsk_teams").select("id,name,season").eq("name", TEAM_NAME).eq("season", TEAM_SEASON).limit(1).maybeSingle();
-    if (exact.error) throw exact.error;
-    if (exact.data?.id) return exact.data.id;
+async function getTeamId(){
 
-    let byName = await client.from("nsk_teams").select("id,name,season").eq("name", TEAM_NAME).limit(1).maybeSingle();
-    if (byName.error) throw byName.error;
-    if (byName.data?.id) return byName.data.id;
+  const client=await getClient();
 
-    let anyTeam = await client.from("nsk_teams").select("id,name,season").limit(1).maybeSingle();
-    if (anyTeam.error) throw anyTeam.error;
-    if (anyTeam.data?.id) return anyTeam.data.id;
+  let {data}=await client
+  .from("nsk_teams")
+  .select("id")
+  .eq("name",TEAM_NAME)
+  .eq("season",TEAM_SEASON)
+  .maybeSingle();
 
-    const inserted = await client.from("nsk_teams").insert({ name: TEAM_NAME, season: TEAM_SEASON }).select("id").single();
-    if (inserted.error) throw inserted.error;
-    return inserted.data.id;
-  }
+  if(data?.id) return data.id;
 
-  async function listPlayers() {
-    const client = await getClient();
-    const teamId = await getTeamId();
-    const { data, error } = await client.from("nsk_players").select("id, full_name, sort_order").eq("team_id", teamId).order("sort_order", { ascending: true, nullsFirst: false }).order("full_name", { ascending: true });
-    if (error) throw error;
-    return data || [];
-  }
+  const inserted=await client
+  .from("nsk_teams")
+  .insert({name:TEAM_NAME,season:TEAM_SEASON})
+  .select("id")
+  .single();
 
-  async function addPlayer(name) {
-    const client = await getClient();
-    const teamId = await getTeamId();
-    const { data: maxData } = await client.from("nsk_players").select("sort_order").eq("team_id", teamId).order("sort_order", { ascending: false }).limit(1);
-    const nextSort = ((maxData && maxData[0] && maxData[0].sort_order) || 0) + 1;
-    const { data, error } = await client.from("nsk_players").insert({ team_id: teamId, full_name: String(name || "").trim(), sort_order: nextSort }).select("*").single();
-    if (error) throw error;
-    return data;
-  }
+  return inserted.data.id;
 
-  async function updatePlayer(id, fullName) {
-    const client = await getClient();
-    const { data, error } = await client.from("nsk_players").update({ full_name: String(fullName || "").trim() }).eq("id", id).select("*").single();
-    if (error) throw error;
-    return data;
-  }
+}
 
-  async function deletePlayer(id) {
-    const client = await getClient();
-    const { error } = await client.from("nsk_players").delete().eq("id", id);
-    if (error) throw error;
-    return true;
-  }
+/* PLAYERS */
 
-  async function savePlayerOrder(ids) {
-    const client = await getClient();
-    for (let i = 0; i < ids.length; i++) {
-      const { error } = await client.from("nsk_players").update({ sort_order: i + 1 }).eq("id", ids[i]);
-      if (error) throw error;
-    }
-    return true;
-  }
+async function listPlayers(){
 
-  async function listCoaches() {
-    const client = await getClient();
-    const teamId = await getTeamId();
-    const { data, error } = await client.from("nsk_coaches").select("id, full_name, sort_order, role").eq("team_id", teamId).order("sort_order", { ascending: true, nullsFirst: false }).order("full_name", { ascending: true });
-    if (error) throw error;
-    return data || [];
-  }
+  const client=await getClient();
+  const teamId=await getTeamId();
 
-  async function addCoach(name) {
-    const client = await getClient();
-    const teamId = await getTeamId();
-    const { data: maxData } = await client.from("nsk_coaches").select("sort_order").eq("team_id", teamId).order("sort_order", { ascending: false }).limit(1);
-    const nextSort = ((maxData && maxData[0] && maxData[0].sort_order) || 0) + 1;
-    const { data, error } = await client.from("nsk_coaches").insert({ team_id: teamId, full_name: String(name || "").trim(), role: "Tränare", sort_order: nextSort }).select("*").single();
-    if (error) throw error;
-    return data;
-  }
+  const {data,error}=await client
+  .from("nsk_players")
+  .select("*")
+  .eq("team_id",teamId)
+  .order("full_name");
 
-  async function updateCoach(id, fullName) {
-    const client = await getClient();
-    const { data, error } = await client.from("nsk_coaches").update({ full_name: String(fullName || "").trim() }).eq("id", id).select("*").single();
-    if (error) throw error;
-    return data;
-  }
+  if(error) throw error;
+  return data||[];
 
-  async function deleteCoach(id) {
-    const client = await getClient();
-    const { error } = await client.from("nsk_coaches").delete().eq("id", id);
-    if (error) throw error;
-    return true;
-  }
+}
 
-  async function saveCoachOrder(ids) {
-    const client = await getClient();
-    for (let i = 0; i < ids.length; i++) {
-      const { error } = await client.from("nsk_coaches").update({ sort_order: i + 1 }).eq("id", ids[i]);
-      if (error) throw error;
-    }
-    return true;
-  }
+async function addPlayer(name){
 
-  async function listPools() {
-    const client = await getClient();
-    const teamId = await getTeamId();
-    const { data, error } = await client.from("nsk_pools").select("*").eq("team_id", teamId).order("pool_date", { ascending: false }).order("created_at", { ascending: false });
-    if (error) throw error;
-    return data || [];
-  }
+  const client=await getClient();
+  const teamId=await getTeamId();
 
-  async function addPool(payload) {
-    const client = await getClient();
-    const teamId = await getTeamId();
-    const row = { team_id: teamId, title: payload.title || payload.pool_name || "Poolspel", place: payload.place || null, pool_date: payload.pool_date || null, status: payload.status || "Aktiv" };
-    const { data, error } = await client.from("nsk_pools").insert(row).select("*").single();
-    if (error) throw error;
-    return data;
-  }
+  const {data,error}=await client
+  .from("nsk_players")
+  .insert({team_id:teamId,full_name:name})
+  .select("*")
+  .single();
 
-  async function listGoalieStats() {
-    const client = await getClient();
-    const { data, error } = await client.from("nsk_goalie_stats").select("goalie_name, match_id");
-    if (error) throw error;
-    return data || [];
-  }
+  if(error) throw error;
+  return data;
 
-  async function subscribeTruppen(callback) {
-    const client = await getClient();
-    return client.channel("realtime-truppen-final")
-      .on("postgres_changes", { event: "*", schema: "public", table: "nsk_players" }, payload => callback("players", payload))
-      .on("postgres_changes", { event: "*", schema: "public", table: "nsk_coaches" }, payload => callback("coaches", payload))
-      .subscribe();
-  }
+}
 
-  return {
-    getTeamId, listPlayers, addPlayer, updatePlayer, deletePlayer, savePlayerOrder,
-    listCoaches, addCoach, updateCoach, deleteCoach, saveCoachOrder,
-    listPools, addPool, listGoalieStats, subscribeTruppen
+async function updatePlayer(id,name){
+
+  const client=await getClient();
+
+  const {error}=await client
+  .from("nsk_players")
+  .update({full_name:name})
+  .eq("id",id);
+
+  if(error) throw error;
+
+}
+
+async function deletePlayer(id){
+
+  const client=await getClient();
+
+  const {error}=await client
+  .from("nsk_players")
+  .delete()
+  .eq("id",id);
+
+  if(error) throw error;
+
+}
+
+/* COACHES */
+
+async function listCoaches(){
+
+  const client=await getClient();
+  const teamId=await getTeamId();
+
+  const {data,error}=await client
+  .from("nsk_coaches")
+  .select("*")
+  .eq("team_id",teamId)
+  .order("full_name");
+
+  if(error) throw error;
+  return data||[];
+
+}
+
+async function addCoach(name){
+
+  const client=await getClient();
+  const teamId=await getTeamId();
+
+  const {data,error}=await client
+  .from("nsk_coaches")
+  .insert({
+    team_id:teamId,
+    full_name:name,
+    role:"Tränare"
+  })
+  .select("*")
+  .single();
+
+  if(error) throw error;
+  return data;
+
+}
+
+async function updateCoach(id,name){
+
+  const client=await getClient();
+
+  const {error}=await client
+  .from("nsk_coaches")
+  .update({full_name:name})
+  .eq("id",id);
+
+  if(error) throw error;
+
+}
+
+async function deleteCoach(id){
+
+  const client=await getClient();
+
+  const {error}=await client
+  .from("nsk_coaches")
+  .delete()
+  .eq("id",id);
+
+  if(error) throw error;
+
+}
+
+/* POOLS */
+
+async function listPools(){
+
+  const client=await getClient();
+  const teamId=await getTeamId();
+
+  const {data,error}=await client
+  .from("nsk_pools")
+  .select("*")
+  .eq("team_id",teamId)
+  .order("created_at",{ascending:false});
+
+  if(error) throw error;
+  return data||[];
+
+}
+
+async function addPool(payload){
+
+  const client=await getClient();
+  const teamId=await getTeamId();
+
+  const row={
+    team_id:teamId,
+    title:payload.title||"Poolspel",
+    place:payload.place||"",
+    pool_date:payload.pool_date||null,
+    status:payload.status||"Aktiv"
   };
+
+  const {data,error}=await client
+  .from("nsk_pools")
+  .insert(row)
+  .select("*")
+  .single();
+
+  if(error) throw error;
+  return data;
+
+}
+
+/* GOALIE STATS */
+
+async function listGoalieStats(){
+
+  const client=await getClient();
+
+  const {data,error}=await client
+  .from("nsk_goalie_stats")
+  .select("goalie_name,match_id");
+
+  if(error) throw error;
+  return data||[];
+
+}
+
+/* REALTIME */
+
+async function subscribeTruppen(callback){
+
+  const client=await getClient();
+
+  return client.channel("truppen")
+
+  .on("postgres_changes",
+  {event:"*",schema:"public",table:"nsk_players"},
+  ()=>callback("players"))
+
+  .on("postgres_changes",
+  {event:"*",schema:"public",table:"nsk_coaches"},
+  ()=>callback("coaches"))
+
+  .subscribe();
+
+}
+
+return{
+getTeamId,
+listPlayers,
+addPlayer,
+updatePlayer,
+deletePlayer,
+listCoaches,
+addCoach,
+updateCoach,
+deleteCoach,
+listPools,
+addPool,
+listGoalieStats,
+subscribeTruppen
+};
+
 })();
