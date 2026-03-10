@@ -307,3 +307,26 @@ await DB.addPool(payload)
 alert("Poolspel sparat")
 
 }
+function generateTeamButtons(){
+
+const teams = parseInt(document.getElementById("teams").value)
+
+const container = document.getElementById("teamButtons")
+
+container.innerHTML = ""
+
+for(let i=1;i<=teams;i++){
+
+const btn = document.createElement("button")
+
+btn.textContent = "Lag " + i
+
+btn.className = "team-btn"
+
+container.appendChild(btn)
+
+}
+
+}
+
+document.getElementById("teams")?.addEventListener("change",generateTeamButtons)
