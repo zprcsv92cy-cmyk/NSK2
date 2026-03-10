@@ -99,8 +99,13 @@ async function initSkapaPoolspelPage(){
   }
 
   renderTeamButtons();
+  renderLaguppstallningButtons();
 
-  teamsSel.addEventListener("change", renderTeamButtons);
+  teamsSel.addEventListener("change", () => {
+    renderTeamButtons();
+    renderLaguppstallningButtons();
+  });
+
   saveBtn.addEventListener("click", savePool);
 }
 
@@ -117,6 +122,27 @@ function renderTeamButtons(){
     btn.className = "team-btn";
     btn.type = "button";
     btn.textContent = `Lag ${i}`;
+    box.appendChild(btn);
+  }
+}
+
+function renderLaguppstallningButtons(){
+
+  const teams = parseInt(byId("teams")?.value || "2", 10);
+  const box = byId("lagButtons");
+  if(!box) return;
+
+  box.innerHTML = "";
+
+  for(let i=1;i<=teams;i++){
+    const btn = document.createElement("button");
+    btn.className = "team-btn";
+    btn.type = "button";
+    btn.textContent = `Lag ${i}`;
+    btn.addEventListener("click", () => {
+      sessionStorage.setItem("nsk2_lag_nr", String(i));
+      window.location.href = "../laguppstallning/";
+    });
     box.appendChild(btn);
   }
 }
@@ -268,6 +294,8 @@ async function initTruppenPage(){
       }
 
       if(t.dataset.deletePool){
+        const ok = window.confirm("Ta bort poolspelet?");
+        if(!ok) return;
         await DB.deletePool(t.dataset.deletePool);
         window.location.reload();
       }
