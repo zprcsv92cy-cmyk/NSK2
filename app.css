@@ -376,7 +376,13 @@ button{
   color:var(--text);
 }
 
-#poolMsg{
+.lag-team-btn.active-team-btn{
+  background:linear-gradient(180deg,var(--red1),var(--red2));
+  border:none;
+}
+
+#poolMsg,
+#lineupMsg{
   margin-top:10px;
 }
 
