@@ -1,46 +1,78 @@
 <!doctype html>
 <html lang="sv">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Laguppställning</title>
-
-<link rel="stylesheet" href="../app.css?v=602">
-
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Laguppställning</title>
+  <link rel="stylesheet" href="../app.css?v=604">
 </head>
 <body>
+  <div class="wrap">
 
-<div class="wrap">
+    <nav class="mainmenu">
+      <a href="../startsida/">Startsida</a>
+      <a href="../truppen/">Truppen</a>
+      <a href="../skapapoolspel/">Skapa poolspel</a>
+      <a href="../malvaktsstatistik/">Målvaktsstatistik</a>
+      <a href="../bytesschema/">Bytesschema</a>
+      <a href="../matchvy/">Matchvy</a>
+      <a href="../lag/">Lag</a>
+    </nav>
 
-<nav class="mainmenu">
-<a href="../startsida/">Startsida</a>
-<a href="../truppen/">Truppen</a>
-<a href="../skapapoolspel/">Skapa poolspel</a>
-<a href="../malvaktsstatistik/">Målvaktsstatistik</a>
-<a href="../bytesschema/">Bytesschema</a>
-<a href="../matchvy/">Matchvy</a>
-<a href="../lag/">Lag</a>
-</nav>
+    <section class="hero-card">
+      <img src="../icon-192.png" alt="NSK" class="hero-logo">
+      <div>
+        <h1 class="hero-title">Laguppställning</h1>
+        <div id="laguppstallningTitle" class="hero-sub">Lag 1 • Match 1</div>
+      </div>
+    </section>
 
-<section class="card">
+    <section class="card">
+      <h2>Lag</h2>
+      <div id="laguppstallningTeamButtons" class="team-buttons"></div>
+    </section>
 
-<h1>Laguppställning</h1>
+    <section class="card">
+      <h2>Match</h2>
 
-<div id="teamTitle"></div>
-<div id="lineupPlayers"></div>
+      <label for="lineupMatch">Välj match</label>
+      <select id="lineupMatch"></select>
 
-</section>
+      <label for="lineupStartTime">Starttid</label>
+      <input id="lineupStartTime" type="time">
 
-<div id="appError" class="small"></div>
+      <label for="lineupOpponent">Motståndare</label>
+      <input id="lineupOpponent" type="text" placeholder="Motståndare">
 
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<script src="../config.js?v=602"></script>
-<script src="../auth.js?v=602"></script>
-<script src="../login-patch.js?v=602"></script>
-<script src="../db.js?v=602"></script>
-<script src="../app.js?v=602"></script>
+      <label for="lineupPlan">Plan</label>
+      <select id="lineupPlan">
+        <option value="Plan 1">Plan 1</option>
+        <option value="Plan 2">Plan 2</option>
+        <option value="Plan 3">Plan 3</option>
+        <option value="Plan 4">Plan 4</option>
+      </select>
 
-</div>
+      <label for="lineupPlayerCount">Antal spelare</label>
+      <select id="lineupPlayerCount">
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+        <option value="7">7</option>
+        <option value="8">8</option>
+        <option value="9">9</option>
+        <option value="10">10</option>
+      </select>
+    </section>
 
+    <div id="appError" class="small"></div>
+
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="../config.js?v=604"></script>
+    <script src="../auth.js?v=604"></script>
+    <script src="../login-patch.js?v=604"></script>
+    <script src="../db.js?v=604"></script>
+    <script src="../app.js?v=604"></script>
+  </div>
 </body>
 </html>
