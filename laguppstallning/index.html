@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Laguppställning</title>
-  <link rel="stylesheet" href="../app.css?v=604">
+  <link rel="stylesheet" href="../app.css?v=605">
 </head>
 <body>
   <div class="wrap">
@@ -28,7 +28,7 @@
     </section>
 
     <section class="card">
-      <h2>Lag</h2>
+      <h2>Laguppställning</h2>
       <div id="laguppstallningTeamButtons" class="team-buttons"></div>
     </section>
 
@@ -53,26 +53,20 @@
       </select>
 
       <label for="lineupPlayerCount">Antal spelare</label>
-      <select id="lineupPlayerCount">
-        <option value="3">3</option>
-        <option value="4">4</option>
-        <option value="5">5</option>
-        <option value="6">6</option>
-        <option value="7">7</option>
-        <option value="8">8</option>
-        <option value="9">9</option>
-        <option value="10">10</option>
-      </select>
+      <select id="lineupPlayerCount"></select>
+
+      <button id="saveLagMatchBtn" type="button">Spara</button>
+      <div id="lineupMsg" class="small"></div>
     </section>
 
     <div id="appError" class="small"></div>
 
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="../config.js?v=604"></script>
-    <script src="../auth.js?v=604"></script>
-    <script src="../login-patch.js?v=604"></script>
-    <script src="../db.js?v=604"></script>
-    <script src="../app.js?v=604"></script>
+    <script src="../config.js?v=605"></script>
+    <script src="../auth.js?v=605"></script>
+    <script src="../login-patch.js?v=605"></script>
+    <script src="../db.js?v=605"></script>
+    <script src="../app.js?v=605"></script>
   </div>
 </body>
 </html>
