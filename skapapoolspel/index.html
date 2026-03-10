@@ -4,140 +4,99 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Skapa poolspel</title>
-
-<link rel="stylesheet" href="../app.css?v=13">
-
+<link rel="stylesheet" href="../app.css?v=500">
 </head>
 
 <body>
-
 <div class="wrap">
 
-<div class="hero">
-<img src="../icon-192.png">
+<nav class="mainmenu">
+<a href="../startsida/">Startsida</a>
+<a href="../truppen/">Truppen</a>
+<a href="../skapapoolspel/" class="active">Skapa poolspel</a>
+<a href="../malvaktsstatistik/">Målvaktsstatistik</a>
+<a href="../bytesschema/">Bytesschema</a>
+<a href="../matchvy/">Matchvy</a>
+<a href="../lag/">Lag</a>
+</nav>
 
-<div>
-<div class="hero-title">NSK Lag</div>
-<div class="hero-sub">
-Matchinfo • Laguppställning • Byten • PDF
-</div>
-</div>
-</div>
+<section class="card">
+<h2>Poolspel</h2>
 
+<label>Datum</label>
+<input type="date" id="poolDate">
 
-<div class="glass">
+<label>Ort</label>
+<input type="text" id="poolPlace" placeholder="Ort">
 
-<div class="grid2">
+</section>
 
-<div class="field">
-<label>Lag</label>
-<select id="cfgTeamNo">
-<option>Lag 1</option>
-<option>Lag 2</option>
-<option>Lag 3</option>
-</select>
-</div>
+<section class="card">
 
-<div class="field">
-<label>Antal matcher</label>
-<select id="cfgMatchesTotal">
+<h2>Förutsättningar</h2>
+
+<label>Antal lag</label>
+<select id="teams">
 <option>1</option>
 <option>2</option>
-<option selected>4</option>
+<option>3</option>
+<option>4</option>
+</select>
+
+<label>Antal matcher</label>
+<select id="matches">
+<option>1</option>
+<option>2</option>
+<option>3</option>
+<option>4</option>
+<option>5</option>
 <option>6</option>
+<option>7</option>
+<option>8</option>
 </select>
-</div>
 
-<div class="field">
-<label>Match</label>
-<select id="cfgMatchNo">
-<option>Match 1</option>
-<option>Match 2</option>
-<option>Match 3</option>
-<option>Match 4</option>
-</select>
-</div>
-
-<div class="field full">
-<label>Starttid</label>
-<input type="time">
-</div>
-
-<div class="field">
-<label>Motståndare</label>
-<input placeholder="Skriv motståndare">
-</div>
-
-<div class="field">
-<label>Plan</label>
-<select>
-<option>Plan 1</option>
-<option>Plan 2</option>
-<option>Plan 3</option>
-</select>
-</div>
-
-<div class="field">
-<label>Antal i laget</label>
-<select>
-<option>10</option>
-<option>11</option>
-<option>12</option>
-</select>
-</div>
-
-<div class="field">
 <label>Antal på plan</label>
-<select>
+<select id="players">
 <option>3</option>
 <option>4</option>
 <option>5</option>
 </select>
-</div>
 
-<div class="field">
 <label>Perioder per match</label>
-<select>
+<select id="periods">
 <option>1</option>
 <option>2</option>
+<option>3</option>
 </select>
-</div>
 
-<div class="field">
-<label>Periodtid (min)</label>
-<select>
+<label>Periodtid</label>
+<select id="periodTime">
 <option>10</option>
-<option selected>15</option>
+<option>12</option>
+<option>15</option>
 <option>20</option>
 </select>
-</div>
 
-<div class="field full">
 <label>Bytestid (sek)</label>
-<select>
+<select id="subTime">
+<option>30</option>
+<option>45</option>
 <option>60</option>
-<option selected>90</option>
-<option>120</option>
+<option>75</option>
+<option>90</option>
 </select>
-</div>
 
-</div>
+<button id="savePool">Spara poolspel</button>
 
-<div style="display:flex;justify-content:space-between;margin-top:18px">
+</section>
 
-<div class="helper">
-Allt sparas automatiskt per lag + match.
-</div>
+<section class="card">
 
-<button class="primary-btn">
-Redo
-</button>
+<h2>Lag</h2>
 
-</div>
+<div id="teamButtons"></div>
 
-</div>
-
-</div>
+</section>
 
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="../config.js"></script>
@@ -145,5 +104,6 @@ Redo
 <script src="../db.js"></script>
 <script src="../app.js"></script>
 
+</div>
 </body>
 </html>
