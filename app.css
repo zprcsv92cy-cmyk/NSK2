@@ -95,11 +95,11 @@ label{
   color:var(--muted);
 }
 
-input, select, button{
+input, select, button, textarea{
   font:inherit;
 }
 
-input, select{
+input, select, textarea{
   width:100%;
   min-height:56px;
   padding:14px 16px;
@@ -110,7 +110,8 @@ input, select{
   outline:none;
 }
 
-input::placeholder{
+input::placeholder,
+textarea::placeholder{
   color:rgba(255,255,255,.5);
 }
 
@@ -125,12 +126,14 @@ button{
   cursor:pointer;
 }
 
-.small, .muted-note{
+.small,
+.muted-note{
   color:var(--muted);
   font-size:14px;
 }
 
 /* STARTSIDA */
+
 .card h2{
   margin-bottom:18px;
 }
@@ -144,19 +147,14 @@ button{
   border-top:0;
 }
 
-.listrow a{
-  color:var(--text);
+.listrow a,
+.listrow a:visited,
+.listrow a:active,
+.listrow a:hover{
+  color:#fff;
   text-decoration:none;
   font-weight:700;
   display:block;
-}
-
-.listrow a:visited{
-  color:var(--text);
-}
-
-.listrow a:hover{
-  opacity:.9;
 }
 
 .pool-item{
@@ -199,6 +197,7 @@ button{
 }
 
 /* TRUPPEN */
+
 .truppen-card{
   padding:22px;
 }
@@ -298,13 +297,14 @@ button{
 .row-actions{
   display:flex;
   gap:10px;
-  flex-wrap:nowrap;
+  flex-wrap:wrap;
   justify-content:flex-end;
   align-items:center;
+  margin-top:8px;
 }
 
 .row-btn{
-  min-width:96px;
+  min-width:110px;
   min-height:48px;
   border-radius:14px;
   font-weight:800;
@@ -351,129 +351,17 @@ button{
     margin-top:10px;
   }
 
-  .row-btn{
-    min-width:110px;
-  }
-
   .desktop-delete{
     display:none;
   }
 
   .pool-top{
-    align-items:flex-start;
     flex-direction:column;
+    align-items:flex-start;
+    gap:6px;
   }
 
   .status-badge{
     min-width:0;
-  }
-}
-/* FIX SNABBVAL LÄNKAR */
-
-.listrow a{
-  color:#ffffff !important;
-  text-decoration:none;
-  font-weight:700;
-}
-
-.listrow a:visited{
-  color:#ffffff !important;
-}
-
-.listrow a:hover{
-  opacity:.9;
-}
-/* FIX TRUPPEN KNAPPAR */
-
-.row-actions{
-  display:flex;
-  gap:10px;
-  flex-wrap:wrap;
-  margin-top:8px;
-}
-
-.row-btn{
-  min-width:110px;
-}
-
-/* mobil layout */
-
-@media (max-width:700px){
-
-  .person-row{
-    grid-template-columns:28px 1fr;
-  }
-
-  .row-actions{
-    grid-column:2;
-    justify-content:flex-start;
-  }
-
-  .desktop-delete{
-    display:none;
-  }
-
-}
-/* ===== OVERRIDE FIX STARTSIDA + TRUPPEN ===== */
-
-.card .listrow a,
-.card .listrow a:visited,
-.card .listrow a:active,
-.card .listrow a:hover{
-  color:#fff !important;
-  text-decoration:none !important;
-  font-weight:700 !important;
-}
-
-#playersList .person-row,
-#coachesList .person-row{
-  display:grid !important;
-  grid-template-columns:32px minmax(0,1fr) auto !important;
-  gap:12px !important;
-  align-items:center !important;
-}
-
-#playersList .row-actions,
-#coachesList .row-actions{
-  display:flex !important;
-  gap:10px !important;
-  flex-wrap:wrap !important;
-  justify-content:flex-end !important;
-  align-items:center !important;
-  margin-top:8px !important;
-}
-
-#playersList .row-btn,
-#coachesList .row-btn{
-  min-width:110px !important;
-  min-height:48px !important;
-}
-
-#playersList .inline-name-input,
-#coachesList .inline-name-input{
-  width:100% !important;
-}
-
-@media (max-width:700px){
-  #playersList .person-row,
-  #coachesList .person-row{
-    grid-template-columns:28px minmax(0,1fr) !important;
-  }
-
-  #playersList .row-actions,
-  #coachesList .row-actions{
-    grid-column:2 !important;
-    justify-content:flex-start !important;
-    flex-wrap:wrap !important;
-  }
-
-  #playersList .desktop-delete,
-  #coachesList .desktop-delete{
-    display:none !important;
-  }
-
-  #playersList .swipe-delete-btn,
-  #coachesList .swipe-delete-btn{
-    right:8px !important;
   }
 }
