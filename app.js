@@ -13,9 +13,11 @@ function setText(id,text){
   if(el) el.textContent=text||"";
 }
 
-let players=[];
-let coaches=[];
 let truppenRealtime=null;
+
+/* =========================
+INIT
+========================= */
 
 async function init(){
 
@@ -29,7 +31,7 @@ async function init(){
 }
 
 /* =========================
-   STARTSIDA
+STARTSIDA
 ========================= */
 
 async function initStartsidaPage(){
@@ -61,15 +63,13 @@ async function initStartsidaPage(){
     `).join("");
 
   }catch(err){
-
     setText("appError",err.message||String(err));
-
   }
 
 }
 
 /* =========================
-   SKAPA POOLSPEL
+SKAPA POOLSPEL
 ========================= */
 
 function initSkapaPoolspelPage(){
@@ -100,7 +100,6 @@ function renderTeamButtons(){
     const btn=document.createElement("button");
     btn.className="team-btn";
     btn.textContent=`Lag ${i}`;
-
     box.appendChild(btn);
 
   }
@@ -113,7 +112,7 @@ async function savePool(){
 
     const payload={
       title:"Poolspel",
-      place:byId("poolPlace")?.value||"",
+      place:byId("poolPlace")?.value?.trim()||"",
       pool_date:byId("poolDate")?.value||null,
       status:"Aktiv",
 
@@ -123,12 +122,13 @@ async function savePool(){
       periods:parseInt(byId("periods")?.value||"1",10),
       period_time:parseInt(byId("periodTime")?.value||"15",10),
       sub_time:parseInt(byId("subTime")?.value||"90",10)
-
     };
 
     await DB.addPool(payload);
 
     setText("poolMsg","Poolspel sparat");
+
+    window.location.href="../startsida/";
 
   }catch(err){
 
@@ -139,26 +139,18 @@ async function savePool(){
 }
 
 /* =========================
-   TRUPPEN
+TRUPPEN
 ========================= */
 
 function rowHtml(item,type){
 
 return`
 
-<div class="swipe-wrap">
-
-<button class="swipe-delete-btn" data-delete-${type}="${item.id}">Ta bort</button>
-
 <div class="person-row">
-
-<div class="person-main">
 
 <input class="inline-name-input"
 value="${esc(item.full_name)}"
 data-inline-${type}="${item.id}">
-
-</div>
 
 <div class="row-actions">
 
@@ -176,8 +168,6 @@ Ta bort
 
 </div>
 
-</div>
-
 `;
 
 }
@@ -187,11 +177,11 @@ async function renderPlayers(){
   const list=byId("playersList");
   if(!list) return;
 
-  players=await DB.listPlayers();
+  const players=await DB.listPlayers();
 
   list.innerHTML=players.length
-    ?players.map(p=>rowHtml(p,"player")).join("")
-    :'<div class="muted-note">Inga spelare ännu.</div>';
+  ?players.map(p=>rowHtml(p,"player")).join("")
+  :'<div class="muted-note">Inga spelare ännu.</div>';
 
 }
 
@@ -200,11 +190,11 @@ async function renderCoaches(){
   const list=byId("coachesList");
   if(!list) return;
 
-  coaches=await DB.listCoaches();
+  const coaches=await DB.listCoaches();
 
   list.innerHTML=coaches.length
-    ?coaches.map(c=>rowHtml(c,"coach")).join("")
-    :'<div class="muted-note">Inga tränare ännu.</div>';
+  ?coaches.map(c=>rowHtml(c,"coach")).join("")
+  :'<div class="muted-note">Inga tränare ännu.</div>';
 
 }
 
@@ -212,11 +202,9 @@ async function addPlayer(){
 
   const input=byId("playerInput");
   const name=input?.value?.trim();
-
   if(!name) return;
 
   await DB.addPlayer(name);
-
   input.value="";
 
   await renderPlayers();
@@ -227,11 +215,9 @@ async function addCoach(){
 
   const input=byId("coachInput");
   const name=input?.value?.trim();
-
   if(!name) return;
 
   await DB.addCoach(name);
-
   input.value="";
 
   await renderCoaches();
@@ -244,7 +230,6 @@ async function saveInlinePlayer(id){
   if(!el) return;
 
   await DB.updatePlayer(id,el.value.trim());
-
   await renderPlayers();
 
 }
@@ -255,7 +240,6 @@ async function saveInlineCoach(id){
   if(!el) return;
 
   await DB.updateCoach(id,el.value.trim());
-
   await renderCoaches();
 
 }
@@ -263,7 +247,6 @@ async function saveInlineCoach(id){
 async function deletePlayer(id){
 
   await DB.deletePlayer(id);
-
   await renderPlayers();
 
 }
@@ -271,7 +254,6 @@ async function deletePlayer(id){
 async function deleteCoach(id){
 
   await DB.deleteCoach(id);
-
   await renderCoaches();
 
 }
@@ -286,7 +268,6 @@ async function initTruppenPage(){
   document.addEventListener("click",async e=>{
 
     const t=e.target;
-
     if(!(t instanceof HTMLElement)) return;
 
     if(t.dataset.savePlayer) await saveInlinePlayer(t.dataset.savePlayer);
@@ -314,7 +295,7 @@ async function initTruppenPage(){
 }
 
 /* =========================
-   GOALIE STATISTIK
+GOALIE STATS
 ========================= */
 
 async function initGoalieStatsPage(){
@@ -327,13 +308,9 @@ async function initGoalieStatsPage(){
   const grouped={};
 
   stats.forEach(row=>{
-
     const name=row.goalie_name||"Okänd";
-
     if(!grouped[name]) grouped[name]=new Set();
-
     grouped[name].add(row.match_id);
-
   });
 
   const rows=Object.entries(grouped)
@@ -341,6 +318,17 @@ async function initGoalieStatsPage(){
   .sort((a,b)=>b.count-a.count);
 
   list.innerHTML=rows.map(r=>`
-
   <div class="listrow">
-  <strong>${esc(r.name)}</
+  <strong>${esc(r.name)}</strong> — ${r.count} matcher
+  </div>
+  `).join("");
+
+}
+
+return{init};
+
+})();
+
+window.addEventListener("DOMContentLoaded",()=>{
+  window.NSK2App.init();
+});
