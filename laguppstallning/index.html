@@ -7,71 +7,73 @@
   <link rel="stylesheet" href="../app.css?v=606">
 </head>
 <body>
-  <div class="wrap">
+<div class="wrap">
 
-    <nav class="mainmenu">
-      <a href="../startsida/">Startsida</a>
-      <a href="../truppen/">Truppen</a>
-      <a href="../skapapoolspel/">Skapa poolspel</a>
-      <a href="../malvaktsstatistik/">Målvaktsstatistik</a>
-      <a href="../bytesschema/">Bytesschema</a>
-      <a href="../matchvy/">Matchvy</a>
-      <a href="../lag/">Lag</a>
-    </nav>
+<nav class="mainmenu">
+<a href="../startsida/">Startsida</a>
+<a href="../truppen/">Truppen</a>
+<a href="../skapapoolspel/">Skapa poolspel</a>
+<a href="../malvaktsstatistik/">Målvaktsstatistik</a>
+<a href="../bytesschema/">Bytesschema</a>
+<a href="../matchvy/">Matchvy</a>
+<a href="../lag/">Lag</a>
+</nav>
 
-    <section class="hero-card">
-      <img src="../icon-192.png" alt="NSK" class="hero-logo">
-      <div>
-        <h1 class="hero-title">Laguppställning</h1>
-        <div id="laguppstallningTitle" class="hero-sub">Lag 1 • Match 1</div>
-      </div>
-    </section>
+<section class="hero-card">
+<img src="../icon-192.png" class="hero-logo">
+<div>
+<h1 class="hero-title">Laguppställning</h1>
+<div id="laguppstallningTitle" class="hero-sub">Lag 1 • Match 1</div>
+</div>
+</section>
 
-    <section class="card">
-      <h2>Laguppställning</h2>
-      <div id="laguppstallningTeamButtons" class="team-buttons"></div>
-    </section>
+<section class="card">
+<h2>Lag</h2>
+<div id="laguppstallningTeamButtons" class="team-buttons"></div>
+</section>
 
-    <section class="card">
-      <h2>Match</h2>
+<section class="card">
+<h2>Match</h2>
 
-      <label for="lineupMatch">Välj match</label>
-      <select id="lineupMatch"></select>
+<label>Match</label>
+<select id="lineupMatch"></select>
 
-      <label for="lineupStartTime">Starttid</label>
-      <input id="lineupStartTime" type="time">
+<label>Starttid</label>
+<input id="lineupStartTime" type="time">
 
-      <label for="lineupOpponent">Motståndare</label>
-      <input id="lineupOpponent" type="text" placeholder="Motståndare">
+<label>Motståndare</label>
+<input id="lineupOpponent">
 
-      <label for="lineupPlan">Plan</label>
-      <select id="lineupPlan">
-        <option value="Plan 1">Plan 1</option>
-        <option value="Plan 2">Plan 2</option>
-        <option value="Plan 3">Plan 3</option>
-        <option value="Plan 4">Plan 4</option>
-      </select>
+<label>Plan</label>
+<select id="lineupPlan">
+<option>Plan 1</option>
+<option>Plan 2</option>
+<option>Plan 3</option>
+<option>Plan 4</option>
+</select>
 
-      <label for="lineupPlayerCount">Antal spelare</label>
-      <select id="lineupPlayerCount"></select>
-    </section>
+<label>Antal spelare</label>
+<select id="lineupPlayerCount"></select>
+</section>
 
-    <section class="card">
-      <h2>Laguppställning</h2>
-      <div id="lineupSelectors"></div>
+<section class="card">
+<h2>Laguppställning</h2>
 
-      <button id="saveLagMatchBtn" type="button">Spara</button>
-      <div id="lineupMsg" class="small"></div>
-    </section>
+<div id="lineupSelectors"></div>
 
-    <div id="appError" class="small"></div>
+<button id="saveLagMatchBtn">Spara</button>
+<div id="lineupMsg" class="small"></div>
 
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="../config.js?v=606"></script>
-    <script src="../auth.js?v=606"></script>
-    <script src="../login-patch.js?v=606"></script>
-    <script src="../db.js?v=606"></script>
-    <script src="../app.js?v=606"></script>
-  </div>
+</section>
+
+<div id="appError"></div>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="../config.js?v=606"></script>
+<script src="../auth.js?v=606"></script>
+<script src="../db.js?v=606"></script>
+<script src="../app.js?v=606"></script>
+
+</div>
 </body>
 </html>
