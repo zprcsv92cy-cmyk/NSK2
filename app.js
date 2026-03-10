@@ -330,3 +330,65 @@ container.appendChild(btn)
 }
 
 document.getElementById("teams")?.addEventListener("change",generateTeamButtons)
+async function savePoolspelPage() {
+  const place = document.getElementById("poolPlace")?.value?.trim() || "";
+  const pool_date = document.getElementById("poolDate")?.value || null;
+  const teams = parseInt(document.getElementById("teams")?.value || "2", 10);
+  const matches = parseInt(document.getElementById("matches")?.value || "4", 10);
+  const players = parseInt(document.getElementById("players")?.value || "3", 10);
+  const periods = parseInt(document.getElementById("periods")?.value || "1", 10);
+  const periodTime = parseInt(document.getElementById("periodTime")?.value || "15", 10);
+  const subTime = parseInt(document.getElementById("subTime")?.value || "90", 10);
+
+  try {
+    const row = await DB.addPool({
+      title: "Poolspel",
+      place,
+      pool_date,
+      status: "Aktiv",
+      teams,
+      matches,
+      players_on_field: players,
+      periods,
+      period_time: periodTime,
+      sub_time: subTime
+    });
+
+    const msg = document.getElementById("poolMsg");
+    if (msg) msg.textContent = "Poolspel sparat.";
+
+    if (row?.id) {
+      sessionStorage.setItem("nsk2_current_pool_id", row.id);
+    }
+  } catch (err) {
+    const errBox = document.getElementById("appError");
+    if (errBox) errBox.textContent = err.message || String(err);
+  }
+}
+
+function renderTeamButtons() {
+  const teams = parseInt(document.getElementById("teams")?.value || "2", 10);
+  const box = document.getElementById("teamButtons");
+  if (!box) return;
+
+  box.innerHTML = "";
+
+  for (let i = 1; i <= teams; i++) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "team-btn";
+    btn.textContent = `Lag ${i}`;
+    btn.dataset.teamNo = String(i);
+    box.appendChild(btn);
+  }
+}
+
+function initSkapaPoolspelPage() {
+  const saveBtn = document.getElementById("savePool");
+  const teamsSel = document.getElementById("teams");
+  if (!saveBtn || !teamsSel) return;
+
+  renderTeamButtons();
+  teamsSel.addEventListener("change", renderTeamButtons);
+  saveBtn.addEventListener("click", savePoolspelPage);
+}
