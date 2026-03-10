@@ -256,6 +256,48 @@ window.DB = (() => {
     return true;
   }
 
+  async function getPoolTeamMatchConfig(poolId, lagNo, matchNo){
+    const client = await getClient();
+    const teamId = await getTeamId();
+
+    const { data, error } = await client
+      .from("nsk_pool_team_matches")
+      .select("*")
+      .eq("team_id", teamId)
+      .eq("pool_id", poolId)
+      .eq("lag_no", parseInt(lagNo, 10))
+      .eq("match_no", parseInt(matchNo, 10))
+      .maybeSingle();
+
+    if(error) throw error;
+    return data || null;
+  }
+
+  async function savePoolTeamMatchConfig(payload){
+    const client = await getClient();
+    const teamId = await getTeamId();
+
+    const row = {
+      team_id: teamId,
+      pool_id: payload.pool_id,
+      lag_no: payload.lag_no,
+      match_no: payload.match_no,
+      start_time: payload.start_time || null,
+      opponent: payload.opponent || "",
+      plan: payload.plan || "Plan 1",
+      player_count: payload.player_count ?? null
+    };
+
+    const { data, error } = await client
+      .from("nsk_pool_team_matches")
+      .upsert(row, { onConflict: "team_id,pool_id,lag_no,match_no" })
+      .select("*")
+      .single();
+
+    if(error) throw error;
+    return data;
+  }
+
   async function listGoalieStats(){
     const client = await getClient();
 
@@ -298,6 +340,8 @@ window.DB = (() => {
     updatePool,
     getPool,
     deletePool,
+    getPoolTeamMatchConfig,
+    savePoolTeamMatchConfig,
     listGoalieStats,
     subscribeTruppen
   };
