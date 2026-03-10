@@ -367,3 +367,111 @@ button{
     min-width:0;
   }
 }
+/* ===== STARTSIDA LAYOUT LÅST ===== */
+
+.home-hero{
+  display:flex;
+  align-items:center;
+  gap:18px;
+  padding:22px 24px;
+  margin-bottom:20px;
+  background:linear-gradient(180deg,var(--red1),var(--red2));
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:26px;
+  box-shadow:0 14px 50px rgba(0,0,0,.35);
+}
+
+.home-hero-logo-box{
+  width:116px;
+  height:116px;
+  border-radius:24px;
+  background:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 116px;
+}
+
+.home-hero-logo{
+  width:78px;
+  height:78px;
+  object-fit:contain;
+}
+
+.home-hero-text h1{
+  margin:0 0 8px;
+  font-size:32px;
+  line-height:1.05;
+  font-weight:900;
+}
+
+.home-hero-sub{
+  font-size:18px;
+  color:rgba(255,255,255,.9);
+}
+
+.home-shortcuts{
+  padding:26px;
+}
+
+.home-shortcut{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:108px;
+  border-radius:26px;
+  margin-bottom:18px;
+  text-decoration:none;
+  font-size:28px;
+  font-weight:900;
+  color:var(--text);
+  background:rgba(255,255,255,.04);
+  border:1px solid var(--line);
+}
+
+.home-shortcut:last-child{
+  margin-bottom:0;
+}
+
+.home-shortcut.primary{
+  background:linear-gradient(180deg,var(--red1),var(--red2));
+  border:none;
+}
+
+@media (max-width:700px){
+  .home-hero{
+    padding:18px;
+    gap:14px;
+    border-radius:22px;
+  }
+
+  .home-hero-logo-box{
+    width:92px;
+    height:92px;
+    flex-basis:92px;
+    border-radius:20px;
+  }
+
+  .home-hero-logo{
+    width:62px;
+    height:62px;
+  }
+
+  .home-hero-text h1{
+    font-size:28px;
+  }
+
+  .home-hero-sub{
+    font-size:16px;
+  }
+
+  .home-shortcuts{
+    padding:18px;
+  }
+
+  .home-shortcut{
+    min-height:96px;
+    font-size:24px;
+    border-radius:22px;
+  }
+}
