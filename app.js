@@ -14,6 +14,7 @@ window.NSK2App = (() => {
 
   let truppenRealtime = null;
   let globalClicksBound = false;
+  let laguppstallningBound = false;
 
   async function init(){
     if(window.Auth?.init) await Auth.init();
@@ -22,6 +23,7 @@ window.NSK2App = (() => {
 
     await initStartsidaPage();
     await initSkapaPoolspelPage();
+    await initLaguppstallningPage();
     await initTruppenPage();
     await initGoalieStatsPage();
   }
@@ -44,15 +46,14 @@ window.NSK2App = (() => {
         if(t.dataset.deletePool){
           const ok = window.confirm("Ta bort poolspelet?");
           if(!ok) return;
-
           await DB.deletePool(t.dataset.deletePool);
           window.location.reload();
           return;
         }
 
-        if(t.dataset.lagNo){
+        if(t.dataset.poolId && t.dataset.lagNo){
           sessionStorage.setItem("nsk2_pool_id", t.dataset.poolId || "");
-          sessionStorage.setItem("nsk2_lag_nr", t.dataset.lagNo || "");
+          sessionStorage.setItem("nsk2_lag_nr", t.dataset.lagNo || "1");
           window.location.href = "../laguppstallning/";
           return;
         }
@@ -95,7 +96,7 @@ window.NSK2App = (() => {
       }
 
       box.innerHTML = pools.map(p => {
-        const teams = parseInt(p.teams || 0, 10) || 0;
+        const teams = parseInt(p.teams || "2", 10) || 2;
 
         const lagButtons = Array.from({ length: teams }, (_, i) => {
           const lagNo = i + 1;
@@ -128,7 +129,7 @@ window.NSK2App = (() => {
             <div class="pool-lineup-block">
               <div class="pool-lineup-title">Laguppställning</div>
               <div class="team-buttons">
-                ${lagButtons || '<div class="muted-note">Inga lag valda.</div>'}
+                ${lagButtons}
               </div>
             </div>
           </article>
@@ -238,6 +239,162 @@ window.NSK2App = (() => {
 
       setText("poolMsg", "Poolspel sparat");
       window.location.href = "../startsida/";
+    }catch(err){
+      setText("appError", err.message || String(err));
+    }
+  }
+
+  async function initLaguppstallningPage(){
+    const teamButtonsBox = byId("laguppstallningTeamButtons");
+    const matchSelect = byId("lineupMatch");
+    const saveBtn = byId("saveLagMatchBtn");
+    if(!teamButtonsBox || !matchSelect || !saveBtn) return;
+
+    try{
+      const poolId = sessionStorage.getItem("nsk2_pool_id");
+      let teams = 2;
+      let matches = 4;
+      let playersOnField = 3;
+
+      if(poolId){
+        const pool = await DB.getPool(poolId);
+        teams = parseInt(pool?.teams || "2", 10) || 2;
+        matches = parseInt(pool?.matches || "4", 10) || 4;
+        playersOnField = parseInt(pool?.players_on_field || "3", 10) || 3;
+      }
+
+      renderLaguppstallningTeamButtons(teams);
+      renderLaguppstallningMatchOptions(matches);
+      renderPlayerCountOptions(playersOnField);
+
+      const savedLag = sessionStorage.getItem("nsk2_lag_nr") || "1";
+      setActiveLagButton(savedLag);
+
+      if(!laguppstallningBound){
+        laguppstallningBound = true;
+
+        matchSelect.addEventListener("change", () => {
+          fillLaguppstallningFormFromSelection();
+        });
+
+        saveBtn.addEventListener("click", saveLaguppstallningMatchConfig);
+      }
+
+      await fillLaguppstallningFormFromSelection();
+
+    }catch(err){
+      setText("appError", err.message || String(err));
+    }
+  }
+
+  function renderLaguppstallningTeamButtons(teams){
+    const box = byId("laguppstallningTeamButtons");
+    if(!box) return;
+
+    box.innerHTML = "";
+
+    for(let i = 1; i <= teams; i++){
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "team-btn lag-team-btn";
+      btn.textContent = `Lag ${i}`;
+      btn.dataset.lagTeam = String(i);
+
+      btn.addEventListener("click", async () => {
+        sessionStorage.setItem("nsk2_lag_nr", String(i));
+        setActiveLagButton(String(i));
+        await fillLaguppstallningFormFromSelection();
+      });
+
+      box.appendChild(btn);
+    }
+  }
+
+  function setActiveLagButton(lagNo){
+    document.querySelectorAll(".lag-team-btn").forEach(btn => {
+      if(btn.dataset.lagTeam === String(lagNo)){
+        btn.classList.add("active-team-btn");
+      }else{
+        btn.classList.remove("active-team-btn");
+      }
+    });
+  }
+
+  function renderLaguppstallningMatchOptions(matches){
+    const sel = byId("lineupMatch");
+    if(!sel) return;
+
+    sel.innerHTML = "";
+
+    for(let i = 1; i <= matches; i++){
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      opt.textContent = `Match ${i}`;
+      sel.appendChild(opt);
+    }
+  }
+
+  function renderPlayerCountOptions(defaultCount){
+    const sel = byId("lineupPlayerCount");
+    if(!sel) return;
+
+    sel.innerHTML = "";
+
+    for(let i = 1; i <= 10; i++){
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      opt.textContent = String(i);
+      if(i === defaultCount) opt.selected = true;
+      sel.appendChild(opt);
+    }
+  }
+
+  async function fillLaguppstallningFormFromSelection(){
+    const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
+    const matchNo = byId("lineupMatch")?.value || "1";
+    const poolId = sessionStorage.getItem("nsk2_pool_id") || "";
+
+    const title = byId("laguppstallningTitle");
+    if(title){
+      title.textContent = `Lag ${lagNo} • Match ${matchNo}`;
+    }
+
+    if(!poolId) return;
+
+    try{
+      const row = await DB.getPoolTeamMatchConfig(poolId, lagNo, matchNo);
+
+      if(byId("lineupStartTime")) byId("lineupStartTime").value = row?.start_time || "";
+      if(byId("lineupOpponent")) byId("lineupOpponent").value = row?.opponent || "";
+      if(byId("lineupPlan")) byId("lineupPlan").value = row?.plan || "Plan 1";
+      if(byId("lineupPlayerCount")) byId("lineupPlayerCount").value = String(row?.player_count || byId("lineupPlayerCount")?.value || "3");
+    }catch(err){
+      setText("appError", err.message || String(err));
+    }
+  }
+
+  async function saveLaguppstallningMatchConfig(){
+    const poolId = sessionStorage.getItem("nsk2_pool_id") || "";
+    const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
+    const matchNo = byId("lineupMatch")?.value || "1";
+
+    if(!poolId){
+      setText("appError", "Saknar valt poolspel.");
+      return;
+    }
+
+    try{
+      await DB.savePoolTeamMatchConfig({
+        pool_id: poolId,
+        lag_no: parseInt(lagNo, 10),
+        match_no: parseInt(matchNo, 10),
+        start_time: byId("lineupStartTime")?.value || null,
+        opponent: byId("lineupOpponent")?.value?.trim() || "",
+        plan: byId("lineupPlan")?.value || "Plan 1",
+        player_count: parseInt(byId("lineupPlayerCount")?.value || "3", 10)
+      });
+
+      setText("lineupMsg", "Laguppställning sparad.");
     }catch(err){
       setText("appError", err.message || String(err));
     }
