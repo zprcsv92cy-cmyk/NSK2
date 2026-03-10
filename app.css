@@ -365,3 +365,101 @@ button{
     min-width:0;
   }
 }
+/* ===== FIX STARTSIDA ===== */
+
+.card .listrow a,
+.card .listrow a:visited,
+.card .listrow a:active,
+.card .listrow a:hover{
+  color:#fff !important;
+  text-decoration:none !important;
+  font-weight:700 !important;
+}
+
+.card .listrow{
+  padding:16px 0 !important;
+  border-top:1px solid var(--line) !important;
+}
+
+.card .listrow:first-child{
+  border-top:0 !important;
+}
+
+.pool-top{
+  display:flex !important;
+  justify-content:space-between !important;
+  align-items:center !important;
+  gap:14px !important;
+}
+
+.status-badge{
+  flex-shrink:0 !important;
+  min-width:100px !important;
+  text-align:center !important;
+}
+
+
+/* ===== FIX TRUPPEN ===== */
+
+#playersList .person-row,
+#coachesList .person-row{
+  display:grid !important;
+  grid-template-columns:32px minmax(0,1fr) auto !important;
+  gap:12px !important;
+  align-items:center !important;
+  padding:14px 0 !important;
+}
+
+#playersList .row-actions,
+#coachesList .row-actions{
+  display:flex !important;
+  gap:10px !important;
+  flex-wrap:wrap !important;
+  justify-content:flex-end !important;
+  align-items:center !important;
+  margin-top:8px !important;
+}
+
+#playersList .row-btn,
+#coachesList .row-btn{
+  min-width:110px !important;
+  min-height:48px !important;
+}
+
+/* Mobil: dölj swipe-delete bakom raden och visa vanlig Ta bort-knapp */
+@media (max-width:700px){
+
+  #playersList .person-row,
+  #coachesList .person-row{
+    grid-template-columns:28px minmax(0,1fr) !important;
+    gap:10px !important;
+  }
+
+  #playersList .row-actions,
+  #coachesList .row-actions{
+    grid-column:2 !important;
+    justify-content:flex-start !important;
+    flex-wrap:wrap !important;
+    margin-top:10px !important;
+  }
+
+  #playersList .swipe-delete-btn,
+  #coachesList .swipe-delete-btn{
+    display:none !important;
+  }
+
+  #playersList .desktop-delete,
+  #coachesList .desktop-delete{
+    display:inline-flex !important;
+  }
+
+  .pool-top{
+    flex-direction:column !important;
+    align-items:flex-start !important;
+    gap:6px !important;
+  }
+
+  .status-badge{
+    min-width:0 !important;
+  }
+}
