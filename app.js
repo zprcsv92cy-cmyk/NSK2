@@ -50,6 +50,13 @@ window.NSK2App = (() => {
           return;
         }
 
+        if(t.dataset.lagNo){
+          sessionStorage.setItem("nsk2_pool_id", t.dataset.poolId || "");
+          sessionStorage.setItem("nsk2_lag_nr", t.dataset.lagNo || "");
+          window.location.href = "../laguppstallning/";
+          return;
+        }
+
         if(t.dataset.savePlayer){
           await saveInlinePlayer(t.dataset.savePlayer);
           return;
@@ -87,22 +94,47 @@ window.NSK2App = (() => {
         return;
       }
 
-      box.innerHTML = pools.map(p => `
-        <article class="pool-item">
-          <div class="pool-top">
-            <div>
-              <div class="pool-title">${esc(p.place || "Ort")} • ${esc(p.pool_date || "Datum")}</div>
-              <div class="pool-meta">${esc(p.title || "Poolspel")}</div>
-            </div>
-            <div class="status-badge">${esc(p.status || "Aktiv")}</div>
-          </div>
+      box.innerHTML = pools.map(p => {
+        const teams = parseInt(p.teams || 0, 10) || 0;
 
-          <div class="row-actions pool-actions">
-            <button class="row-btn" data-edit-pool="${p.id}">Redigera</button>
-            <button class="row-btn danger" data-delete-pool="${p.id}">Ta bort</button>
-          </div>
-        </article>
-      `).join("");
+        const lagButtons = Array.from({ length: teams }, (_, i) => {
+          const lagNo = i + 1;
+          return `
+            <button
+              class="team-btn"
+              type="button"
+              data-pool-id="${p.id}"
+              data-lag-no="${lagNo}">
+              Lag ${lagNo}
+            </button>
+          `;
+        }).join("");
+
+        return `
+          <article class="pool-item">
+            <div class="pool-top">
+              <div>
+                <div class="pool-title">${esc(p.place || "Ort")} • ${esc(p.pool_date || "Datum")}</div>
+                <div class="pool-meta">${esc(p.title || "Poolspel")}</div>
+              </div>
+              <div class="status-badge">${esc(p.status || "Aktiv")}</div>
+            </div>
+
+            <div class="row-actions pool-actions">
+              <button class="row-btn" data-edit-pool="${p.id}">Redigera</button>
+              <button class="row-btn danger" data-delete-pool="${p.id}">Ta bort</button>
+            </div>
+
+            <div class="pool-lineup-block">
+              <div class="pool-lineup-title">Laguppställning</div>
+              <div class="team-buttons">
+                ${lagButtons || '<div class="muted-note">Inga lag valda.</div>'}
+              </div>
+            </div>
+          </article>
+        `;
+      }).join("");
+
     }catch(err){
       setText("appError", err.message || String(err));
     }
@@ -151,7 +183,7 @@ window.NSK2App = (() => {
 
     box.innerHTML = "";
 
-    for(let i=1; i<=teams; i++){
+    for(let i = 1; i <= teams; i++){
       const btn = document.createElement("button");
       btn.className = "team-btn";
       btn.type = "button";
@@ -167,7 +199,7 @@ window.NSK2App = (() => {
 
     box.innerHTML = "";
 
-    for(let i=1; i<=teams; i++){
+    for(let i = 1; i <= teams; i++){
       const btn = document.createElement("button");
       btn.className = "team-btn";
       btn.type = "button";
@@ -325,8 +357,8 @@ window.NSK2App = (() => {
     });
 
     const rows = Object.entries(grouped)
-      .map(([name, set]) => ({ name, count:set.size }))
-      .sort((a,b) => b.count - a.count);
+      .map(([name, set]) => ({ name, count: set.size }))
+      .sort((a, b) => b.count - a.count);
 
     list.innerHTML = rows.map(r => `
       <div class="listrow">
