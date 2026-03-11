@@ -433,3 +433,35 @@ button:disabled{
 .lag-team-btn.active-team-btn{
   background:linear-gradient(180deg,var(--red1),var(--red2));
 }
+/* =========================
+   LAGUPPSTÄLLNING LAYOUT
+   ========================= */
+
+.coach-block{
+  margin-top:18px;
+}
+
+.match-buttons-wrap{
+  margin-top:18px;
+}
+
+.match-buttons-wrap .small{
+  margin-bottom:10px;
+  font-weight:700;
+  color:var(--muted);
+}
+
+.match-btn.active-team-btn,
+.lag-team-btn.active-team-btn{
+  background:linear-gradient(180deg,var(--red1),var(--red2));
+  color:#fff;
+  border:1px solid rgba(255,255,255,.18);
+}
+
+.match-btn{
+  min-width:120px;
+}
+
+.lag-team-btn{
+  min-width:120px;
+}
