@@ -421,3 +421,15 @@ button:disabled{
     font-size:16px;
   }
 }
+.coach-block{
+  margin-top:18px;
+}
+
+.match-buttons-wrap{
+  margin-top:18px;
+}
+
+.match-btn.active-team-btn,
+.lag-team-btn.active-team-btn{
+  background:linear-gradient(180deg,var(--red1),var(--red2));
+}
