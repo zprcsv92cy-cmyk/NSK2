@@ -14,12 +14,13 @@ window.NSK2App = (() => {
 
   const AUTO_COACH_MAP = {
     "August Hasselberg": "Peter Hasselberg",
-    "Olle Åstrand": "Pelle Åstrand",
+    "Pelle Åstrand": "Olle Åstrand",
     "Måns Åkvist": "Wiliam Åkvist",
     "Henry Gaufin": "Niklas Gauffin",
     "Gunnar Englund": "Tommy Englund",
     "Nicky Selander": "Fredrik Selander",
     "Theo Ydrenius": "Joakim Lund"
+    "Albin Andersson": "Linus Öhman"
   };
 
   let truppenRealtime = null;
