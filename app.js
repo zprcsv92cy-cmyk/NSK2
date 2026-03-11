@@ -281,6 +281,7 @@ window.NSK2App = (() => {
         byId("lineupPlayerCount")?.addEventListener("change", () => {
           updateVisiblePlayers();
           attachAutoCoachHandlers();
+          updateCoachEnabledState();
           applyAutoCoachFromCurrentSelection();
         });
 
@@ -289,6 +290,7 @@ window.NSK2App = (() => {
 
       updateVisiblePlayers();
       attachAutoCoachHandlers();
+      updateCoachEnabledState();
       await fillLaguppstallningFormFromSelection();
     } catch (err) {
       setText("appError", err.message || String(err));
@@ -367,7 +369,7 @@ window.NSK2App = (() => {
   }
 
   function setActiveMatchButton(matchNo) {
-    document.querySelectorAll(".match-btn").forEach(btn => {
+    document.querySelectorAll(".match-btn").forEach((btn) => {
       if (btn.dataset.matchNo === String(matchNo)) {
         btn.classList.add("active-team-btn");
       } else {
@@ -396,9 +398,7 @@ window.NSK2App = (() => {
     if (!coachSelect) return;
 
     const coaches = await DB.listCoaches();
-
-    coachSelect.innerHTML =
-      coaches.map(c => `<option value="${c.id}">${esc(c.full_name)}</option>`).join("");
+    coachSelect.innerHTML = coaches.map(c => `<option value="${c.id}">${esc(c.full_name)}</option>`).join("");
   }
 
   async function getUsedPlayersInOtherTeams(poolId, currentLagNo) {
@@ -415,9 +415,7 @@ window.NSK2App = (() => {
       const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
 
       const players = await DB.listPlayers();
-      const usedSet = poolId
-        ? await getUsedPlayersInOtherTeams(poolId, lagNo)
-        : new Set();
+      const usedSet = poolId ? await getUsedPlayersInOtherTeams(poolId, lagNo) : new Set();
 
       const currentMatchNo = byId("lineupMatch")?.value || "1";
       let matchRow = poolId ? await DB.getPoolTeamMatchConfig(poolId, lagNo, currentMatchNo) : null;
@@ -480,6 +478,31 @@ window.NSK2App = (() => {
         field.value = "";
       }
     }
+
+    updateCoachEnabledState();
+  }
+
+  function updateCoachEnabledState() {
+    const coachSelect = byId("lineupCoach");
+    if (!coachSelect) return;
+
+    const goalie = byId("lineupGoalie")?.value || "";
+    const count = parseInt(byId("lineupPlayerCount")?.value || "1", 10);
+
+    let selectedPlayers = 0;
+    for (let i = 1; i <= count; i++) {
+      const v = byId(`lineupPlayer${i}`)?.value || "";
+      if (v) selectedPlayers++;
+    }
+
+    const enabled = !!goalie && selectedPlayers === count;
+    coachSelect.disabled = !enabled;
+
+    if (!enabled) {
+      Array.from(coachSelect.options).forEach(opt => {
+        opt.selected = false;
+      });
+    }
   }
 
   function attachAutoCoachHandlers() {
@@ -487,6 +510,7 @@ window.NSK2App = (() => {
     if (goalie && !goalie.dataset.autoCoachBound) {
       goalie.dataset.autoCoachBound = "1";
       goalie.addEventListener("change", () => {
+        updateCoachEnabledState();
         applyAutoCoachFromCurrentSelection();
       });
     }
@@ -496,6 +520,7 @@ window.NSK2App = (() => {
       if (el && !el.dataset.autoCoachBound) {
         el.dataset.autoCoachBound = "1";
         el.addEventListener("change", () => {
+          updateCoachEnabledState();
           applyAutoCoachFromCurrentSelection();
         });
       }
@@ -527,7 +552,7 @@ window.NSK2App = (() => {
     });
 
     const coachSelect = byId("lineupCoach");
-    if (!coachSelect) return;
+    if (!coachSelect || coachSelect.disabled) return;
 
     Array.from(coachSelect.options).forEach(opt => {
       if (autoCoachIds.has(String(opt.value))) {
@@ -537,6 +562,11 @@ window.NSK2App = (() => {
   }
 
   async function applyAutoCoachFromCurrentSelection() {
+    updateCoachEnabledState();
+
+    const coachSelect = byId("lineupCoach");
+    if (!coachSelect || coachSelect.disabled) return;
+
     const count = parseInt(byId("lineupPlayerCount")?.value || "1", 10);
     const ids = [];
 
@@ -622,23 +652,51 @@ window.NSK2App = (() => {
         }
       }
 
+      updateCoachEnabledState();
       await applyAutoCoachFromCurrentSelection();
     } catch (err) {
       setText("appError", err.message || String(err));
     }
   }
 
-  async function validateUniquePlayersAcrossPool(poolId, lagNo, goalieId, playerIds) {
-    const usedIds = await DB.listUsedPlayersInPool(poolId, lagNo);
-    const usedSet = new Set((usedIds || []).map(String));
+  async function validateUniquePlayersAcrossPool(poolId, lagNo, matchNo, startTime, goalieId, playerIds) {
+    const rows = await DB.listPoolTeamMatchConfigs(poolId);
 
-    if (goalieId && usedSet.has(String(goalieId))) {
-      return "Målvakten finns redan i ett annat lag i poolspelet.";
-    }
+    const currentMatchNo = String(matchNo);
+    const currentLagNo = String(lagNo);
+    const currentStart = String(startTime || "");
 
-    for (const pid of playerIds) {
-      if (usedSet.has(String(pid))) {
-        return "En spelare finns redan i ett annat lag i poolspelet.";
+    for (const row of rows) {
+      const sameLag = String(row.lag_no) === currentLagNo;
+      const sameMatch = String(row.match_no) === currentMatchNo;
+
+      if (sameLag && sameMatch) continue;
+
+      const lineup = row.id ? await DB.getLineup(row.id) : [];
+      const otherPlayers = lineup
+        .filter(x => x.person_type === "player")
+        .map(x => String(x.person_id));
+
+      if (!sameLag) {
+        for (const pid of playerIds) {
+          if (otherPlayers.includes(String(pid))) {
+            return "En spelare finns redan i ett annat lag i poolspelet.";
+          }
+        }
+      }
+
+      if (!sameLag && goalieId && String(row.goalie_player_id || "") === String(goalieId)) {
+        const otherStart = String(row.start_time || "");
+
+        if (!currentStart || !otherStart) {
+          if (sameMatch) {
+            return "Målvakten kan inte stå i samma matchnummer i två lag när starttid saknas.";
+          }
+        } else {
+          if (currentStart === otherStart) {
+            return "Målvakten har redan en match med samma starttid i ett annat lag.";
+          }
+        }
       }
     }
 
@@ -680,6 +738,8 @@ window.NSK2App = (() => {
     const poolConflict = await validateUniquePlayersAcrossPool(
       poolId,
       lagNo,
+      matchNo,
+      byId("lineupStartTime")?.value || "",
       goalie,
       selectedPlayers
     );
