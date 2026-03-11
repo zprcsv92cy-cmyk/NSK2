@@ -357,16 +357,64 @@ window.NSK2App = (() => {
     }
   }
 
+  async function getUsedPlayersInPool(poolId, currentLag) {
+    const rows = await DB.listPoolTeamMatchConfigs(poolId);
+    const used = new Set();
+
+    for (const row of rows) {
+      if (String(row.lag_no) === String(currentLag)) continue;
+
+      if (row.goalie_player_id) {
+        used.add(String(row.goalie_player_id));
+      }
+
+      for (let i = 1; i <= 25; i++) {
+        const pid = row[`player${i}_id`];
+        if (pid) used.add(String(pid));
+      }
+    }
+
+    return used;
+  }
+
   async function renderLineupSelectors() {
     const box = byId("lineupSelectors");
     if (!box) return;
 
     try {
+      const poolId = sessionStorage.getItem("nsk2_pool_id");
+      const lagNo = sessionStorage.getItem("nsk2_lag_nr");
+
       const players = await DB.listPlayers();
       const coaches = await DB.listCoaches();
 
+      const usedPlayers = poolId
+        ? await getUsedPlayersInPool(poolId, lagNo)
+        : new Set();
+
+      const currentMatchNo = byId("lineupMatch")?.value || "1";
+      let currentRow = null;
+
+      if (poolId) {
+        currentRow = await DB.getPoolTeamMatchConfig(poolId, lagNo || "1", currentMatchNo);
+        if (!currentRow && String(currentMatchNo) !== "1") {
+          currentRow = await DB.getPoolTeamMatchConfig(poolId, lagNo || "1", 1);
+        }
+      }
+
+      const ownSelected = new Set();
+      if (currentRow?.goalie_player_id) ownSelected.add(String(currentRow.goalie_player_id));
+      for (let i = 1; i <= 25; i++) {
+        const pid = currentRow?.[`player${i}_id`];
+        if (pid) ownSelected.add(String(pid));
+      }
+
       const playerOptions = ['<option value="">Välj spelare</option>']
-        .concat(players.map((p) => `<option value="${p.id}">${esc(p.full_name)}</option>`))
+        .concat(
+          players
+            .filter((p) => !usedPlayers.has(String(p.id)) || ownSelected.has(String(p.id)))
+            .map((p) => `<option value="${p.id}">${esc(p.full_name)}</option>`)
+        )
         .join("");
 
       const coachOptions = ['<option value="">Välj tränare</option>']
@@ -437,7 +485,13 @@ window.NSK2App = (() => {
     if (!poolId) return;
 
     try {
-      const row = await DB.getPoolTeamMatchConfig(poolId, lagNo, matchNo);
+      let row = await DB.getPoolTeamMatchConfig(poolId, lagNo, matchNo);
+
+      if (!row && String(matchNo) !== "1") {
+        row = await DB.getPoolTeamMatchConfig(poolId, lagNo, 1);
+      }
+
+      await renderLineupSelectors();
 
       if (byId("lineupStartTime")) byId("lineupStartTime").value = row?.start_time || "";
       if (byId("lineupOpponent")) byId("lineupOpponent").value = row?.opponent || "";
@@ -467,6 +521,36 @@ window.NSK2App = (() => {
     } catch (err) {
       setText("appError", err.message || String(err));
     }
+  }
+
+  async function validateUniquePlayersAcrossPool(poolId, lagNo, goalieId, playerIds) {
+    const allRows = await DB.listPoolTeamMatchConfigs(poolId);
+    const usedElsewhere = new Map();
+
+    for (const row of allRows) {
+      if (String(row.lag_no) === String(lagNo)) continue;
+
+      if (row.goalie_player_id) {
+        usedElsewhere.set(String(row.goalie_player_id), `Lag ${row.lag_no}`);
+      }
+
+      for (let i = 1; i <= 25; i++) {
+        const pid = row[`player${i}_id`];
+        if (pid) usedElsewhere.set(String(pid), `Lag ${row.lag_no}`);
+      }
+    }
+
+    if (goalieId && usedElsewhere.has(String(goalieId))) {
+      return `Målvakten finns redan i ${usedElsewhere.get(String(goalieId))}.`;
+    }
+
+    for (const pid of playerIds) {
+      if (usedElsewhere.has(String(pid))) {
+        return `En spelare finns redan i ${usedElsewhere.get(String(pid))}.`;
+      }
+    }
+
+    return "";
   }
 
   async function saveLaguppstallningMatchConfig() {
@@ -501,6 +585,18 @@ window.NSK2App = (() => {
       selectedPlayers.push(val);
     }
 
+    const poolConflict = await validateUniquePlayersAcrossPool(
+      poolId,
+      lagNo,
+      goalie,
+      selectedPlayers
+    );
+
+    if (poolConflict) {
+      setText("lineupMsg", poolConflict);
+      return;
+    }
+
     try {
       const coachSelect = byId("lineupCoach");
       const coachIds = coachSelect
@@ -524,6 +620,11 @@ window.NSK2App = (() => {
       }
 
       await DB.savePoolTeamMatchConfig(payload);
+
+      await renderLineupSelectors();
+      updateVisiblePlayers();
+      await fillLaguppstallningFormFromSelection();
+
       setText("lineupMsg", "Laguppställning sparad.");
     } catch (err) {
       setText("appError", err.message || String(err));
