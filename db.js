@@ -54,13 +54,11 @@ window.DB = (() => {
   async function listPlayers() {
     const client = await getClient();
     const teamId = await getTeamId();
-
     const { data, error } = await client
       .from("nsk_players")
       .select("*")
       .eq("team_id", teamId)
       .order("full_name", { ascending: true });
-
     if (error) throw error;
     return data || [];
   }
@@ -68,40 +66,28 @@ window.DB = (() => {
   async function addPlayer(name) {
     const client = await getClient();
     const teamId = await getTeamId();
-
     const { data, error } = await client
       .from("nsk_players")
-      .insert({
-        team_id: teamId,
-        full_name: String(name || "").trim()
-      })
+      .insert({ team_id: teamId, full_name: String(name || "").trim() })
       .select("*")
       .single();
-
     if (error) throw error;
     return data;
   }
 
   async function updatePlayer(id, name) {
     const client = await getClient();
-
     const { error } = await client
       .from("nsk_players")
       .update({ full_name: String(name || "").trim() })
       .eq("id", id);
-
     if (error) throw error;
     return true;
   }
 
   async function deletePlayer(id) {
     const client = await getClient();
-
-    const { error } = await client
-      .from("nsk_players")
-      .delete()
-      .eq("id", id);
-
+    const { error } = await client.from("nsk_players").delete().eq("id", id);
     if (error) throw error;
     return true;
   }
@@ -109,13 +95,11 @@ window.DB = (() => {
   async function listCoaches() {
     const client = await getClient();
     const teamId = await getTeamId();
-
     const { data, error } = await client
       .from("nsk_coaches")
       .select("*")
       .eq("team_id", teamId)
       .order("full_name", { ascending: true });
-
     if (error) throw error;
     return data || [];
   }
@@ -123,41 +107,28 @@ window.DB = (() => {
   async function addCoach(name) {
     const client = await getClient();
     const teamId = await getTeamId();
-
     const { data, error } = await client
       .from("nsk_coaches")
-      .insert({
-        team_id: teamId,
-        full_name: String(name || "").trim(),
-        role: "Tränare"
-      })
+      .insert({ team_id: teamId, full_name: String(name || "").trim(), role: "Tränare" })
       .select("*")
       .single();
-
     if (error) throw error;
     return data;
   }
 
   async function updateCoach(id, name) {
     const client = await getClient();
-
     const { error } = await client
       .from("nsk_coaches")
       .update({ full_name: String(name || "").trim() })
       .eq("id", id);
-
     if (error) throw error;
     return true;
   }
 
   async function deleteCoach(id) {
     const client = await getClient();
-
-    const { error } = await client
-      .from("nsk_coaches")
-      .delete()
-      .eq("id", id);
-
+    const { error } = await client.from("nsk_coaches").delete().eq("id", id);
     if (error) throw error;
     return true;
   }
@@ -165,13 +136,11 @@ window.DB = (() => {
   async function listPools() {
     const client = await getClient();
     const teamId = await getTeamId();
-
     const { data, error } = await client
       .from("nsk_pools")
       .select("*")
       .eq("team_id", teamId)
       .order("created_at", { ascending: false });
-
     if (error) throw error;
     return data || [];
   }
@@ -179,7 +148,6 @@ window.DB = (() => {
   async function addPool(payload) {
     const client = await getClient();
     const teamId = await getTeamId();
-
     const { data, error } = await client
       .from("nsk_pools")
       .insert({
@@ -197,46 +165,32 @@ window.DB = (() => {
       })
       .select("*")
       .single();
-
     if (error) throw error;
     return data;
   }
 
   async function updatePool(id, payload) {
     const client = await getClient();
-
     const { data, error } = await client
       .from("nsk_pools")
       .update(payload)
       .eq("id", id)
       .select("*")
       .single();
-
     if (error) throw error;
     return data;
   }
 
   async function getPool(id) {
     const client = await getClient();
-
-    const { data, error } = await client
-      .from("nsk_pools")
-      .select("*")
-      .eq("id", id)
-      .single();
-
+    const { data, error } = await client.from("nsk_pools").select("*").eq("id", id).single();
     if (error) throw error;
     return data;
   }
 
   async function deletePool(id) {
     const client = await getClient();
-
-    const { error } = await client
-      .from("nsk_pools")
-      .delete()
-      .eq("id", id);
-
+    const { error } = await client.from("nsk_pools").delete().eq("id", id);
     if (error) throw error;
     return true;
   }
@@ -244,7 +198,6 @@ window.DB = (() => {
   async function listPoolTeamMatchConfigs(poolId) {
     const client = await getClient();
     const teamId = await getTeamId();
-
     const { data, error } = await client
       .from("nsk_pool_team_matches")
       .select("*")
@@ -252,7 +205,6 @@ window.DB = (() => {
       .eq("pool_id", poolId)
       .order("lag_no", { ascending: true })
       .order("match_no", { ascending: true });
-
     if (error) throw error;
     return data || [];
   }
@@ -260,7 +212,6 @@ window.DB = (() => {
   async function getPoolTeamMatchConfig(poolId, lagNo, matchNo) {
     const client = await getClient();
     const teamId = await getTeamId();
-
     const { data, error } = await client
       .from("nsk_pool_team_matches")
       .select("*")
@@ -269,7 +220,6 @@ window.DB = (() => {
       .eq("lag_no", parseInt(lagNo, 10))
       .eq("match_no", parseInt(matchNo, 10))
       .maybeSingle();
-
     if (error) throw error;
     return data || null;
   }
@@ -302,14 +252,12 @@ window.DB = (() => {
 
   async function getLineup(matchId) {
     const client = await getClient();
-
     const { data, error } = await client
       .from("nsk_pool_team_match_people")
       .select("*")
       .eq("match_id", matchId)
       .order("person_type", { ascending: true })
       .order("sort_order", { ascending: true });
-
     if (error) throw error;
     return data || [];
   }
@@ -321,11 +269,9 @@ window.DB = (() => {
       .from("nsk_pool_team_match_people")
       .delete()
       .eq("match_id", matchId);
-
     if (del.error) throw del.error;
 
     const rows = [];
-
     (players || []).forEach((playerId, i) => {
       if (!playerId) return;
       rows.push({
@@ -347,11 +293,7 @@ window.DB = (() => {
     });
 
     if (!rows.length) return true;
-
-    const ins = await client
-      .from("nsk_pool_team_match_people")
-      .insert(rows);
-
+    const ins = await client.from("nsk_pool_team_match_people").insert(rows);
     if (ins.error) throw ins.error;
     return true;
   }
@@ -412,7 +354,6 @@ window.DB = (() => {
     const teamId = await getTeamId();
 
     await deleteShiftSchema(poolId, lagNo, matchNo);
-
     if (!shifts.length) return true;
 
     const rows = shifts.map((s, i) => ({
@@ -423,13 +364,11 @@ window.DB = (() => {
       shift_no: i + 1,
       period_no: s.period_no,
       time_left: s.time_left,
-      players_json: s.players
+      players_json: s.players,
+      done: !!s.done
     }));
 
-    const { error } = await client
-      .from("nsk_pool_team_shifts")
-      .insert(rows);
-
+    const { error } = await client.from("nsk_pool_team_shifts").insert(rows);
     if (error) throw error;
     return true;
   }
@@ -451,64 +390,59 @@ window.DB = (() => {
     return data || [];
   }
 
+  async function toggleShiftDone(shiftId, done) {
+    const client = await getClient();
+    const { error } = await client
+      .from("nsk_pool_team_shifts")
+      .update({ done: !!done })
+      .eq("id", shiftId);
+    if (error) throw error;
+    return true;
+  }
+
   async function listGoalieStats() {
     const client = await getClient();
-
     const { data, error } = await client
       .from("nsk_goalie_stats")
       .select("goalie_name,match_id");
-
     if (error) throw error;
     return data || [];
   }
 
   async function subscribeTruppen(callback) {
     const client = await getClient();
-
     return client
       .channel("truppen")
-      .on("postgres_changes",
-        { event: "*", schema: "public", table: "nsk_players" },
-        () => callback("players")
-      )
-      .on("postgres_changes",
-        { event: "*", schema: "public", table: "nsk_coaches" },
-        () => callback("coaches")
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "nsk_players" }, () => callback("players"))
+      .on("postgres_changes", { event: "*", schema: "public", table: "nsk_coaches" }, () => callback("coaches"))
       .subscribe();
   }
 
   return {
     getTeamId,
-
     listPlayers,
     addPlayer,
     updatePlayer,
     deletePlayer,
-
     listCoaches,
     addCoach,
     updateCoach,
     deleteCoach,
-
     listPools,
     addPool,
     updatePool,
     getPool,
     deletePool,
-
     listPoolTeamMatchConfigs,
     getPoolTeamMatchConfig,
     savePoolTeamMatchConfig,
-
     getLineup,
     saveLineup,
     listUsedPlayersInPool,
-
     deleteShiftSchema,
     saveShiftSchema,
     listShiftSchema,
-
+    toggleShiftDone,
     listGoalieStats,
     subscribeTruppen
   };
