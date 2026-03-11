@@ -15,8 +15,8 @@ window.NSK2App = (() => {
   const AUTO_COACH_MAP = {
     "August Hasselberg": "Peter Hasselberg",
     "Pelle Åstrand": "Olle Åstrand",
-    "Måns Åkvist": "Wiliam Åkvist",
-    "Henry Gaufin": "Niklas Gauffin",
+    "Måns Åkvist": "William Åkvist",
+    "Henry Gauffin": "Niklas Gauffin",
     "Gunnar Englund": "Tommy Englund",
     "Nicky Selander": "Fredrik Selander",
     "Theo Ydrenius": "Joakim Lund",
