@@ -401,6 +401,11 @@ window.NSK2App = (() => {
       coaches.map(c => `<option value="${c.id}">${esc(c.full_name)}</option>`).join("");
   }
 
+  async function getUsedPlayersInOtherTeams(poolId, currentLagNo) {
+    const usedIds = await DB.listUsedPlayersInPool(poolId, currentLagNo);
+    return new Set((usedIds || []).map(String));
+  }
+
   async function renderLineupSelectors() {
     const box = byId("lineupSelectors");
     if (!box) return;
@@ -410,8 +415,9 @@ window.NSK2App = (() => {
       const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
 
       const players = await DB.listPlayers();
-      const usedIds = poolId ? await DB.listUsedPlayersInPool(poolId, lagNo) : [];
-      const usedSet = new Set((usedIds || []).map(String));
+      const usedSet = poolId
+        ? await getUsedPlayersInOtherTeams(poolId, lagNo)
+        : new Set();
 
       const currentMatchNo = byId("lineupMatch")?.value || "1";
       let matchRow = poolId ? await DB.getPoolTeamMatchConfig(poolId, lagNo, currentMatchNo) : null;
