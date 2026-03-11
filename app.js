@@ -4,7 +4,7 @@ window.NSK2App = (() => {
   }
 
   function esc(s) {
-    return String(s ?? "").replace(/[&<>"]/g, m => (
+    return String(s ?? "").replace(/[&<>"]/g, (m) => (
       { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]
     ));
   }
@@ -281,9 +281,14 @@ window.NSK2App = (() => {
           await fillLaguppstallningFormFromSelection();
         });
 
+        byId("lineupPlayerCount")?.addEventListener("change", () => {
+          updateVisiblePlayers();
+        });
+
         saveBtn.addEventListener("click", saveLaguppstallningMatchConfig);
       }
 
+      updateVisiblePlayers();
       await fillLaguppstallningFormFromSelection();
     } catch (err) {
       setText("appError", err.message || String(err));
@@ -343,7 +348,7 @@ window.NSK2App = (() => {
 
     sel.innerHTML = "";
 
-    for (let i = 1; i <= 10; i++) {
+    for (let i = 1; i <= 25; i++) {
       const opt = document.createElement("option");
       opt.value = String(i);
       opt.textContent = String(i);
@@ -373,13 +378,13 @@ window.NSK2App = (() => {
         <select id="lineupGoalie">${playerOptions}</select>
 
         <label for="lineupCoach">Tränare</label>
-        <select id="lineupCoach">${coachOptions}</select>
+        <select id="lineupCoach" multiple>${coachOptions}</select>
       `;
 
-      for (let i = 1; i <= 10; i++) {
+      for (let i = 1; i <= 25; i++) {
         html += `
-          <label for="lineupPlayer${i}">Spelare ${i}</label>
-          <select id="lineupPlayer${i}">${playerOptions}</select>
+          <label for="lineupPlayer${i}" data-player-label="${i}">Spelare ${i}</label>
+          <select id="lineupPlayer${i}" data-player-select="${i}">${playerOptions}</select>
         `;
       }
 
@@ -396,6 +401,26 @@ window.NSK2App = (() => {
       }
     } catch (err) {
       setText("appError", err.message || String(err));
+    }
+  }
+
+  function updateVisiblePlayers() {
+    const count = parseInt(byId("lineupPlayerCount")?.value || "1", 10);
+
+    for (let i = 1; i <= 25; i++) {
+      const label = document.querySelector(`[data-player-label="${i}"]`);
+      const field = byId(`lineupPlayer${i}`);
+
+      if (!field) continue;
+
+      if (i <= count) {
+        field.style.display = "";
+        if (label) label.style.display = "";
+      } else {
+        field.style.display = "none";
+        if (label) label.style.display = "none";
+        field.value = "";
+      }
     }
   }
 
@@ -423,10 +448,19 @@ window.NSK2App = (() => {
         );
       }
 
-      if (byId("lineupGoalie")) byId("lineupGoalie").value = row?.goalie_player_id || "";
-      if (byId("lineupCoach")) byId("lineupCoach").value = row?.coach_id || "";
+      updateVisiblePlayers();
 
-      for (let i = 1; i <= 10; i++) {
+      if (byId("lineupGoalie")) byId("lineupGoalie").value = row?.goalie_player_id || "";
+
+      const coachSelect = byId("lineupCoach");
+      if (coachSelect) {
+        const coachIds = Array.isArray(row?.coach_ids) ? row.coach_ids : [];
+        Array.from(coachSelect.options).forEach((opt) => {
+          opt.selected = coachIds.includes(opt.value);
+        });
+      }
+
+      for (let i = 1; i <= 25; i++) {
         const el = byId(`lineupPlayer${i}`);
         if (el) el.value = row?.[`player${i}_id`] || "";
       }
@@ -445,7 +479,34 @@ window.NSK2App = (() => {
       return;
     }
 
+    const goalie = byId("lineupGoalie")?.value || "";
+    const playerCount = parseInt(byId("lineupPlayerCount")?.value || "1", 10);
+    const selectedPlayers = [];
+
+    for (let i = 1; i <= playerCount; i++) {
+      const val = byId(`lineupPlayer${i}`)?.value || "";
+
+      if (!val) continue;
+
+      if (goalie && val === goalie) {
+        setText("lineupMsg", "Målvakt kan inte vara samma som spelare.");
+        return;
+      }
+
+      if (selectedPlayers.includes(val)) {
+        setText("lineupMsg", "En spelare kan bara väljas en gång.");
+        return;
+      }
+
+      selectedPlayers.push(val);
+    }
+
     try {
+      const coachSelect = byId("lineupCoach");
+      const coachIds = coachSelect
+        ? Array.from(coachSelect.selectedOptions).map((o) => o.value).filter(Boolean)
+        : [];
+
       const payload = {
         pool_id: poolId,
         lag_no: parseInt(lagNo, 10),
@@ -453,12 +514,12 @@ window.NSK2App = (() => {
         start_time: byId("lineupStartTime")?.value || null,
         opponent: byId("lineupOpponent")?.value?.trim() || "",
         plan: byId("lineupPlan")?.value || "Plan 1",
-        player_count: parseInt(byId("lineupPlayerCount")?.value || "3", 10),
-        goalie_player_id: byId("lineupGoalie")?.value || null,
-        coach_id: byId("lineupCoach")?.value || null
+        player_count: playerCount,
+        goalie_player_id: goalie || null,
+        coach_ids: coachIds
       };
 
-      for (let i = 1; i <= 10; i++) {
+      for (let i = 1; i <= 25; i++) {
         payload[`player${i}_id`] = byId(`lineupPlayer${i}`)?.value || null;
       }
 
