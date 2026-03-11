@@ -362,7 +362,7 @@ window.DB = (() => {
 
     const { data: matches, error: matchesError } = await client
       .from("nsk_pool_team_matches")
-      .select("id,lag_no,goalie_player_id")
+      .select("id,lag_no")
       .eq("team_id", teamId)
       .eq("pool_id", poolId);
 
@@ -372,14 +372,8 @@ window.DB = (() => {
       m => String(m.lag_no) !== String(excludeLagNo)
     );
 
-    const used = new Set();
-
-    filteredMatches.forEach(m => {
-      if (m.goalie_player_id) used.add(String(m.goalie_player_id));
-    });
-
     const matchIds = filteredMatches.map(m => m.id);
-    if (!matchIds.length) return Array.from(used);
+    if (!matchIds.length) return [];
 
     const { data: people, error: peopleError } = await client
       .from("nsk_pool_team_match_people")
@@ -389,6 +383,7 @@ window.DB = (() => {
 
     if (peopleError) throw peopleError;
 
+    const used = new Set();
     (people || []).forEach(p => {
       if (p.person_id) used.add(String(p.person_id));
     });
