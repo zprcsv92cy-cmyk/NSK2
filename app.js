@@ -1,38 +1,21 @@
 window.NSK2App = (() => {
   function byId(id) { return document.getElementById(id); }
-
   function esc(s) {
-    return String(s ?? "").replace(/[&<>"]/g, (m) => (
-      { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]
-    ));
+    return String(s ?? "").replace(/[&<>\"]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]));
   }
-
   function setText(id, text) {
     const el = byId(id);
     if (el) el.textContent = text || "";
   }
 
-  const AUTO_COACH_MAP = {
-    "August Hasselberg": "Peter Hasselberg",
-    "Pelle Åstrand": "Olle Åstrand",
-    "Måns Åkvist": "William Åkvist",
-    "Henry Gauffin": "Niklas Gauffin",
-    "Gunnar Englund": "Tommy Englund",
-    "Nicky Selander": "Fredrik Selander",
-    "Theo Ydrenius": "Joakim Lund",
-    "Albin Andersson": "Linus Öhman"
-  };
-
+  const saveTimers = {};
   let truppenRealtime = null;
   let globalClicksBound = false;
   let laguppstallningBound = false;
-  const saveTimers = new Map();
 
   async function init() {
     if (window.Auth?.init) await Auth.init();
-
     bindGlobalClicks();
-
     await initStartsidaPage();
     await initSkapaPoolspelPage();
     await initLaguppstallningPage();
@@ -48,14 +31,12 @@ window.NSK2App = (() => {
     document.addEventListener("click", async (e) => {
       const t = e.target;
       if (!(t instanceof HTMLElement)) return;
-
       try {
         if (t.dataset.editPool) {
           sessionStorage.setItem("nsk2_edit_pool_id", t.dataset.editPool);
           window.location.href = "../skapapoolspel/";
           return;
         }
-
         if (t.dataset.deletePool) {
           const ok = window.confirm("Ta bort poolspelet?");
           if (!ok) return;
@@ -63,33 +44,17 @@ window.NSK2App = (() => {
           window.location.reload();
           return;
         }
-
         if (t.dataset.poolId && t.dataset.lagNo) {
           sessionStorage.setItem("nsk2_pool_id", t.dataset.poolId || "");
           sessionStorage.setItem("nsk2_lag_nr", t.dataset.lagNo || "1");
           window.location.href = "../laguppstallning/";
           return;
         }
-
-        if (t.dataset.deletePlayer) {
-          await deletePlayer(t.dataset.deletePlayer);
-          return;
-        }
-
-        if (t.dataset.deleteCoach) {
-          await deleteCoach(t.dataset.deleteCoach);
-          return;
-        }
-
-        if (t.dataset.randomGoalie === "1") {
-          await randomizeGoalieForCurrentAndLaterMatches();
-          return;
-        }
-
-        if (t.dataset.toggleShiftId) {
-          const nextDone = t.dataset.done !== "1";
-          await DB.toggleShiftDone(t.dataset.toggleShiftId, nextDone);
-          await renderShiftSchema();
+        if (t.dataset.deletePlayer) { await deletePlayer(t.dataset.deletePlayer); return; }
+        if (t.dataset.deleteCoach) { await deleteCoach(t.dataset.deleteCoach); return; }
+        if (t.dataset.randomGoalie) { await randomizeGoalie(); return; }
+        if (t.dataset.shiftTogglePool) {
+          await toggleShiftDone(t.dataset.shiftTogglePool, t.dataset.shiftToggleLag, t.dataset.shiftToggleMatch, t.dataset.shiftToggleShift);
           return;
         }
       } catch (err) {
@@ -99,37 +64,17 @@ window.NSK2App = (() => {
 
     document.addEventListener("input", (e) => {
       const t = e.target;
-      if (!(t instanceof HTMLInputElement)) return;
-      if (!t.classList.contains("inline-name-input")) return;
-
-      const type = t.dataset.autoType;
-      const id = t.dataset.autoId;
-      if (!type || !id) return;
-
-      const key = `${type}:${id}`;
-      if (saveTimers.has(key)) clearTimeout(saveTimers.get(key));
-      saveTimers.set(key, setTimeout(async () => {
-        try {
-          if (type === "player") await DB.updatePlayer(id, t.value.trim());
-          if (type === "coach") await DB.updateCoach(id, t.value.trim());
-        } catch (err) {
-          setText("appError", err.message || String(err));
-        }
-      }, 500));
+      if (!(t instanceof HTMLElement)) return;
+      if (t.dataset.inlinePlayer) queueInlinePlayerSave(t.dataset.inlinePlayer, t.value);
+      if (t.dataset.inlineCoach) queueInlineCoachSave(t.dataset.inlineCoach, t.value);
     });
 
     document.addEventListener("blur", async (e) => {
       const t = e.target;
-      if (!(t instanceof HTMLInputElement)) return;
-      if (!t.classList.contains("inline-name-input")) return;
-
-      const type = t.dataset.autoType;
-      const id = t.dataset.autoId;
-      if (!type || !id) return;
-
+      if (!(t instanceof HTMLElement)) return;
       try {
-        if (type === "player") await DB.updatePlayer(id, t.value.trim());
-        if (type === "coach") await DB.updateCoach(id, t.value.trim());
+        if (t.dataset.inlinePlayer) await flushInlinePlayerSave(t.dataset.inlinePlayer, t.value);
+        if (t.dataset.inlineCoach) await flushInlineCoachSave(t.dataset.inlineCoach, t.value);
       } catch (err) {
         setText("appError", err.message || String(err));
       }
@@ -139,31 +84,18 @@ window.NSK2App = (() => {
   async function initStartsidaPage() {
     const box = byId("savedPoolsList");
     if (!box) return;
-
     try {
       const pools = await DB.listPools();
-
       if (!pools.length) {
         box.innerHTML = '<div class="listrow">Inga sparade poolspel ännu.</div>';
         return;
       }
-
       box.innerHTML = pools.map((p) => {
         const teams = parseInt(p.teams || "2", 10) || 2;
-
         const lagButtons = Array.from({ length: teams }, (_, i) => {
           const lagNo = i + 1;
-          return `
-            <button
-              class="team-btn"
-              type="button"
-              data-pool-id="${p.id}"
-              data-lag-no="${lagNo}">
-              Lag ${lagNo}
-            </button>
-          `;
+          return `<button class="team-btn" type="button" data-pool-id="${p.id}" data-lag-no="${lagNo}">Lag ${lagNo}</button>`;
         }).join("");
-
         return `
           <article class="pool-item">
             <div class="pool-top">
@@ -173,18 +105,15 @@ window.NSK2App = (() => {
               </div>
               <div class="status-badge">${esc(p.status || "Aktiv")}</div>
             </div>
-
             <div class="row-actions pool-actions">
               <button class="row-btn" data-edit-pool="${p.id}">Redigera</button>
               <button class="row-btn danger" data-delete-pool="${p.id}">Ta bort</button>
             </div>
-
             <div class="pool-lineup-block">
               <div class="pool-lineup-title">Laguppställning</div>
               <div class="team-buttons">${lagButtons}</div>
             </div>
-          </article>
-        `;
+          </article>`;
       }).join("");
     } catch (err) {
       setText("appError", err.message || String(err));
@@ -197,7 +126,6 @@ window.NSK2App = (() => {
     if (!saveBtn || !teamsSel) return;
 
     const editId = sessionStorage.getItem("nsk2_edit_pool_id");
-
     if (editId) {
       try {
         const pool = await DB.getPool(editId);
@@ -215,7 +143,7 @@ window.NSK2App = (() => {
     }
 
     renderLaguppstallningButtons();
-    teamsSel.addEventListener("change", renderLaguppstallningButtons);
+    teamsSel.addEventListener("change", () => renderLaguppstallningButtons());
     saveBtn.addEventListener("click", savePool);
   }
 
@@ -223,7 +151,6 @@ window.NSK2App = (() => {
     const teams = parseInt(byId("teams")?.value || "2", 10);
     const box = byId("lagButtons");
     if (!box) return;
-
     box.innerHTML = "";
     for (let i = 1; i <= teams; i++) {
       const btn = document.createElement("button");
@@ -252,18 +179,13 @@ window.NSK2App = (() => {
         period_time: parseInt(byId("periodTime")?.value || "15", 10),
         sub_time: parseInt(byId("subTime")?.value || "90", 10)
       };
-
       const editId = sessionStorage.getItem("nsk2_edit_pool_id");
-      let saved;
       if (editId) {
-        saved = await DB.updatePool(editId, payload);
+        await DB.updatePool(editId, payload);
         sessionStorage.removeItem("nsk2_edit_pool_id");
       } else {
-        saved = await DB.addPool(payload);
+        await DB.addPool(payload);
       }
-
-      if (saved?.id) await regenerateAllShiftSchemasForPool(saved.id);
-
       setText("poolMsg", "Poolspel sparat");
       window.location.href = "../startsida/";
     } catch (err) {
@@ -277,22 +199,17 @@ window.NSK2App = (() => {
     const saveBtn = byId("saveLagMatchBtn");
     const lineupBox = byId("lineupSelectors");
     const coachSelect = byId("lineupCoach");
-
     if (!teamButtonsBox || !matchSelect || !saveBtn || !lineupBox || !coachSelect) return;
 
     try {
       const poolId = sessionStorage.getItem("nsk2_pool_id");
-      let teams = 2;
-      let matches = 4;
-      let playersOnField = 3;
-
+      let teams = 2, matches = 4, playersOnField = 3;
       if (poolId) {
         const pool = await DB.getPool(poolId);
         teams = parseInt(pool?.teams || "2", 10) || 2;
         matches = parseInt(pool?.matches || "4", 10) || 4;
         playersOnField = parseInt(pool?.players_on_field || "3", 10) || 3;
       }
-
       renderLaguppstallningTeamButtons(teams);
       renderLaguppstallningMatchOptions(matches);
       renderMatchButtons(matches);
@@ -302,27 +219,27 @@ window.NSK2App = (() => {
 
       const savedLag = sessionStorage.getItem("nsk2_lag_nr") || "1";
       setActiveLagButton(savedLag);
-      setActiveMatchButton(byId("lineupMatch")?.value || "1");
+      const currentMatch = byId("lineupMatch")?.value || "1";
+      setActiveMatchButton(currentMatch);
 
       if (!laguppstallningBound) {
         laguppstallningBound = true;
-
         matchSelect.addEventListener("change", async () => {
           setActiveMatchButton(matchSelect.value);
           await fillLaguppstallningFormFromSelection();
         });
-
         byId("lineupPlayerCount")?.addEventListener("change", () => {
           updateVisiblePlayers();
-          updateCoachEnabledState();
+          attachLineupHandlers();
+          updateCoachUiState();
           applyAutoCoachFromCurrentSelection();
         });
-
         saveBtn.addEventListener("click", saveLaguppstallningMatchConfig);
       }
 
       updateVisiblePlayers();
-      updateCoachEnabledState();
+      attachLineupHandlers();
+      updateCoachUiState();
       await fillLaguppstallningFormFromSelection();
     } catch (err) {
       setText("appError", err.message || String(err));
@@ -333,20 +250,17 @@ window.NSK2App = (() => {
     const box = byId("laguppstallningTeamButtons");
     if (!box) return;
     box.innerHTML = "";
-
     for (let i = 1; i <= teams; i++) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "team-btn lag-team-btn";
       btn.textContent = `Lag ${i}`;
       btn.dataset.lagTeam = String(i);
-
       btn.addEventListener("click", async () => {
         sessionStorage.setItem("nsk2_lag_nr", String(i));
         setActiveLagButton(String(i));
         await fillLaguppstallningFormFromSelection();
       });
-
       box.appendChild(btn);
     }
   }
@@ -374,7 +288,6 @@ window.NSK2App = (() => {
     const box = byId("matchButtons");
     const hiddenSelect = byId("lineupMatch");
     if (!box || !hiddenSelect) return;
-
     box.innerHTML = "";
     for (let i = 1; i <= matches; i++) {
       const btn = document.createElement("button");
@@ -382,13 +295,11 @@ window.NSK2App = (() => {
       btn.className = "team-btn match-btn";
       btn.textContent = `Match ${i}`;
       btn.dataset.matchNo = String(i);
-
       btn.addEventListener("click", async () => {
         hiddenSelect.value = String(i);
         setActiveMatchButton(String(i));
         await fillLaguppstallningFormFromSelection();
       });
-
       box.appendChild(btn);
     }
   }
@@ -416,7 +327,6 @@ window.NSK2App = (() => {
   async function renderCoachOptions() {
     const coachSelect = byId("lineupCoach");
     if (!coachSelect) return;
-
     const coaches = await DB.listCoaches();
     coachSelect.innerHTML = coaches.map(c => `<option value="${c.id}">${esc(c.full_name)}</option>`).join("");
   }
@@ -426,42 +336,16 @@ window.NSK2App = (() => {
     return new Set((usedIds || []).map(String));
   }
 
-  function getCurrentSelectedPlayerValues() {
-    const count = parseInt(byId("lineupPlayerCount")?.value || "1", 10);
-    const vals = [];
-    for (let i = 1; i <= count; i++) {
-      const v = byId(`lineupPlayer${i}`)?.value || "";
-      vals.push(v);
-    }
-    return vals;
-  }
-
-  function renderGoalieRow(playerOptionsHtml) {
-    return `
-      <div class="goalie-row" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end;">
-        <div>
-          <label for="lineupGoalie">Målvakt</label>
-          <select id="lineupGoalie">${playerOptionsHtml}</select>
-        </div>
-        <div>
-          <button type="button" class="row-btn" data-random-goalie="1">Slumpa</button>
-        </div>
-      </div>
-    `;
-  }
-
-  async function renderLineupSelectors(preserved = {}) {
+  async function renderLineupSelectors() {
     const box = byId("lineupSelectors");
     if (!box) return;
-
     try {
       const poolId = sessionStorage.getItem("nsk2_pool_id");
       const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
-
+      const currentMatchNo = byId("lineupMatch")?.value || "1";
       const players = await DB.listPlayers();
       const usedSet = poolId ? await getUsedPlayersInOtherTeams(poolId, lagNo) : new Set();
 
-      const currentMatchNo = byId("lineupMatch")?.value || "1";
       let matchRow = poolId ? await DB.getPoolTeamMatchConfig(poolId, lagNo, currentMatchNo) : null;
       if (!matchRow && poolId && String(currentMatchNo) !== "1") {
         matchRow = await DB.getPoolTeamMatchConfig(poolId, lagNo, 1);
@@ -470,72 +354,37 @@ window.NSK2App = (() => {
       let lineup = [];
       if (matchRow?.id) lineup = await DB.getLineup(matchRow.id);
 
-      const goalieId = preserved.goalieId ?? matchRow?.goalie_player_id ?? "";
-      const playerIdsExisting = preserved.playerIds || lineup
-        .filter(x => x.person_type === "player")
-        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-        .map(x => String(x.person_id));
-
       const ownSet = new Set();
-      if (goalieId) ownSet.add(String(goalieId));
-      playerIdsExisting.forEach(id => ownSet.add(String(id)));
-
-      const goalieOptions = ['<option value="">Välj spelare</option>']
-        .concat(players.map(p => `<option value="${p.id}">${esc(p.full_name)}</option>`))
-        .join("");
+      if (matchRow?.goalie_player_id) ownSet.add(String(matchRow.goalie_player_id));
+      lineup.filter(x => x.person_type === "player").forEach(x => ownSet.add(String(x.person_id)));
 
       const playerOptions = ['<option value="">Välj spelare</option>']
-        .concat(
-          players
-            .filter(p => (!usedSet.has(String(p.id)) || ownSet.has(String(p.id))) && String(p.id) !== String(goalieId))
-            .map(p => `<option value="${p.id}">${esc(p.full_name)}</option>`)
-        )
+        .concat(players.filter(p => !usedSet.has(String(p.id)) || ownSet.has(String(p.id))).map(p => `<option value="${p.id}">${esc(p.full_name)}</option>`))
         .join("");
 
-      let html = renderGoalieRow(goalieOptions);
+      let html = `
+        <div class="goalie-row">
+          <div class="goalie-col">
+            <label for="lineupGoalie">Målvakt</label>
+            <select id="lineupGoalie">${playerOptions}</select>
+          </div>
+          <div class="goalie-col goalie-random-col">
+            <label>&nbsp;</label>
+            <button type="button" class="row-btn" data-random-goalie="1">Slumpa</button>
+          </div>
+        </div>`;
+
       for (let i = 1; i <= 25; i++) {
         html += `
           <label for="lineupPlayer${i}" data-player-label="${i}">Spelare ${i}</label>
-          <select id="lineupPlayer${i}" data-player-select="${i}">${playerOptions}</select>
-        `;
+          <select id="lineupPlayer${i}" data-player-select="${i}">${playerOptions}</select>`;
       }
 
       box.innerHTML = html;
-
-      if (byId("lineupGoalie")) byId("lineupGoalie").value = goalieId || "";
-      for (let i = 1; i <= 25; i++) {
-        const el = byId(`lineupPlayer${i}`);
-        if (el) el.value = playerIdsExisting[i - 1] || "";
-      }
-
-      attachLineupFieldHandlers();
+      attachLineupHandlers();
+      syncGoalieAgainstPlayers();
     } catch (err) {
       setText("appError", err.message || String(err));
-    }
-  }
-
-  function attachLineupFieldHandlers() {
-    const goalie = byId("lineupGoalie");
-    if (goalie && !goalie.dataset.boundGoalie) {
-      goalie.dataset.boundGoalie = "1";
-      goalie.addEventListener("change", async () => {
-        const playerIds = getCurrentSelectedPlayerValues().filter(Boolean).filter(v => v !== goalie.value);
-        await renderLineupSelectors({ goalieId: goalie.value, playerIds });
-        updateVisiblePlayers();
-        updateCoachEnabledState();
-        await applyAutoCoachFromCurrentSelection();
-      });
-    }
-
-    for (let i = 1; i <= 25; i++) {
-      const el = byId(`lineupPlayer${i}`);
-      if (el && !el.dataset.boundPlayer) {
-        el.dataset.boundPlayer = "1";
-        el.addEventListener("change", () => {
-          updateCoachEnabledState();
-          applyAutoCoachFromCurrentSelection();
-        });
-      }
     }
   }
 
@@ -545,7 +394,6 @@ window.NSK2App = (() => {
       const label = document.querySelector(`[data-player-label="${i}"]`);
       const field = byId(`lineupPlayer${i}`);
       if (!field) continue;
-
       if (i <= count) {
         field.style.display = "";
         if (label) label.style.display = "";
@@ -555,106 +403,188 @@ window.NSK2App = (() => {
         field.value = "";
       }
     }
-    updateCoachEnabledState();
+    syncGoalieAgainstPlayers();
+    updateCoachUiState();
   }
 
-  function updateCoachEnabledState() {
-    const coachSelect = byId("lineupCoach");
-    if (!coachSelect) return;
-
+  function allRequiredPlayersSelected() {
     const goalie = byId("lineupGoalie")?.value || "";
     const count = parseInt(byId("lineupPlayerCount")?.value || "1", 10);
-
     let selectedPlayers = 0;
     for (let i = 1; i <= count; i++) {
       const v = byId(`lineupPlayer${i}`)?.value || "";
       if (v) selectedPlayers++;
     }
+    return !!goalie && selectedPlayers === count;
+  }
 
-    const enabled = !!goalie && selectedPlayers === count;
-    coachSelect.disabled = !enabled;
+  function updateCoachUiState() {
+    const coachSelect = byId("lineupCoach");
+    if (!coachSelect) return;
+    const allSelected = allRequiredPlayersSelected();
+    const hasAnyAuto = Array.from(coachSelect.options).some(o => o.selected);
 
-    if (!enabled) {
-      Array.from(coachSelect.options).forEach(opt => {
-        opt.selected = false;
+    if (allSelected) {
+      coachSelect.disabled = false;
+    } else {
+      coachSelect.disabled = !hasAnyAuto;
+    }
+  }
+
+  function attachLineupHandlers() {
+    const goalie = byId("lineupGoalie");
+    if (goalie && !goalie.dataset.bound) {
+      goalie.dataset.bound = "1";
+      goalie.addEventListener("change", () => {
+        syncGoalieAgainstPlayers();
+        applyAutoCoachFromCurrentSelection();
       });
+    }
+
+    for (let i = 1; i <= 25; i++) {
+      const el = byId(`lineupPlayer${i}`);
+      if (el && !el.dataset.bound) {
+        el.dataset.bound = "1";
+        el.addEventListener("change", () => {
+          syncGoalieAgainstPlayers();
+          applyAutoCoachFromCurrentSelection();
+        });
+      }
+    }
+  }
+
+  function syncGoalieAgainstPlayers() {
+    const goalieId = byId("lineupGoalie")?.value || "";
+    const count = parseInt(byId("lineupPlayerCount")?.value || "1", 10);
+    for (let i = 1; i <= count; i++) {
+      const sel = byId(`lineupPlayer${i}`);
+      if (!sel) continue;
+      Array.from(sel.options).forEach(opt => {
+        opt.disabled = !!goalieId && opt.value === goalieId && opt.value !== "";
+      });
+      if (goalieId && sel.value === goalieId) sel.value = "";
     }
   }
 
   async function applyAutoCoach(playerIds) {
     const players = await DB.listPlayers();
     const coaches = await DB.listCoaches();
+    const mappings = await DB.listPlayerCoachMap();
 
     const playerMap = {};
-    players.forEach(p => {
-      playerMap[String(p.id)] = p.full_name;
-    });
-
+    players.forEach(p => { playerMap[String(p.id)] = p.full_name; });
     const coachMap = {};
-    coaches.forEach(c => {
-      coachMap[c.full_name] = String(c.id);
-    });
-
-    const autoCoachIds = new Set();
-    (playerIds || []).forEach(pid => {
-      const playerName = playerMap[String(pid)];
-      const coachName = AUTO_COACH_MAP[playerName];
-      if (coachName && coachMap[coachName]) {
-        autoCoachIds.add(coachMap[coachName]);
-      }
-    });
+    coaches.forEach(c => { coachMap[c.full_name] = String(c.id); });
+    const playerCoachMap = {};
+    mappings.forEach(m => { playerCoachMap[m.player_name] = m.coach_name; });
 
     const coachSelect = byId("lineupCoach");
-    if (!coachSelect || coachSelect.disabled) return;
+    if (!coachSelect) return;
+
+    const previousManual = Array.from(coachSelect.options).filter(o => o.selected).map(o => String(o.value));
+    const autoCoachIds = new Set(previousManual);
+
+    (playerIds || []).forEach(pid => {
+      const playerName = playerMap[String(pid)];
+      const coachName = playerCoachMap[playerName];
+      if (coachName && coachMap[coachName]) autoCoachIds.add(coachMap[coachName]);
+    });
 
     Array.from(coachSelect.options).forEach(opt => {
-      if (autoCoachIds.has(String(opt.value))) opt.selected = true;
+      opt.selected = autoCoachIds.has(String(opt.value));
     });
+
+    updateCoachUiState();
   }
 
   async function applyAutoCoachFromCurrentSelection() {
-    updateCoachEnabledState();
-
-    const coachSelect = byId("lineupCoach");
-    if (!coachSelect || coachSelect.disabled) return;
-
     const count = parseInt(byId("lineupPlayerCount")?.value || "1", 10);
     const ids = [];
-
     const goalie = byId("lineupGoalie")?.value || "";
     if (goalie) ids.push(goalie);
-
     for (let i = 1; i <= count; i++) {
       const v = byId(`lineupPlayer${i}`)?.value || "";
       if (v) ids.push(v);
     }
-
     await applyAutoCoach(ids);
+  }
+
+  async function randomizeGoalie() {
+    const count = parseInt(byId("lineupPlayerCount")?.value || "1", 10);
+    const selectedPlayerIds = [];
+    for (let i = 1; i <= count; i++) {
+      const v = byId(`lineupPlayer${i}`)?.value || "";
+      if (v) selectedPlayerIds.push(String(v));
+    }
+
+    const players = await DB.listPlayers();
+    const goalieStats = await DB.listGoalieStats();
+    const statCount = {};
+    players.forEach(p => { statCount[p.full_name] = 0; });
+    goalieStats.forEach(g => {
+      const n = String(g.goalie_name || "");
+      statCount[n] = (statCount[n] || 0) + 1;
+    });
+
+    const candidates = players.filter(p => !selectedPlayerIds.includes(String(p.id)));
+    if (!candidates.length) {
+      setText("lineupMsg", "Ingen spelare finns kvar att slumpa som målvakt.");
+      return;
+    }
+
+    let min = Infinity;
+    candidates.forEach(p => {
+      const c = statCount[p.full_name] ?? 0;
+      if (c < min) min = c;
+    });
+
+    const lowest = candidates.filter(p => (statCount[p.full_name] ?? 0) === min);
+    const chosen = lowest.length === 1 ? lowest[0] : lowest[Math.floor(Math.random() * lowest.length)];
+
+    const goalieSel = byId("lineupGoalie");
+    if (goalieSel) goalieSel.value = String(chosen.id);
+    syncGoalieAgainstPlayers();
+    await applyAutoCoachFromCurrentSelection();
+    await propagateGoalieForward(String(chosen.id));
+    setText("lineupMsg", `Målvakt slumpad: ${chosen.full_name}`);
+  }
+
+  async function propagateGoalieForward(goalieId) {
+    const poolId = sessionStorage.getItem("nsk2_pool_id") || "";
+    const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
+    const matchNo = parseInt(byId("lineupMatch")?.value || "1", 10);
+    if (!poolId) return;
+
+    const pool = await DB.getPool(poolId);
+    const matches = parseInt(pool.matches || 4, 10);
+
+    for (let m = matchNo; m <= matches; m++) {
+      let row = await DB.getPoolTeamMatchConfig(poolId, lagNo, m);
+      await DB.savePoolTeamMatchConfig({
+        pool_id: poolId,
+        lag_no: parseInt(lagNo, 10),
+        match_no: m,
+        start_time: row?.start_time || null,
+        opponent: row?.opponent || "",
+        plan: row?.plan || "Plan 1",
+        player_count: row?.player_count ?? parseInt(pool.players_on_field || 3, 10),
+        goalie_player_id: goalieId || null
+      });
+      await regenerateShiftSchemaFor(poolId, lagNo, m);
+    }
   }
 
   async function fillLaguppstallningFormFromSelection() {
     const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
     const matchNo = byId("lineupMatch")?.value || "1";
     const poolId = sessionStorage.getItem("nsk2_pool_id") || "";
-
     const title = byId("laguppstallningTitle");
     if (title) title.textContent = `Lag ${lagNo} • Match ${matchNo}`;
     if (!poolId) return;
 
     try {
-      const pool = await DB.getPool(poolId);
       let row = await DB.getPoolTeamMatchConfig(poolId, lagNo, matchNo);
-
-      const currentMatchInt = parseInt(matchNo, 10);
-      if (!row) {
-        for (let m = currentMatchInt - 1; m >= 1; m--) {
-          const prev = await DB.getPoolTeamMatchConfig(poolId, lagNo, String(m));
-          if (prev) {
-            row = prev;
-            break;
-          }
-        }
-      }
+      if (!row && String(matchNo) !== "1") row = await DB.getPoolTeamMatchConfig(poolId, lagNo, 1);
 
       await renderCoachOptions();
       await renderLineupSelectors();
@@ -662,57 +592,33 @@ window.NSK2App = (() => {
       if (byId("lineupStartTime")) byId("lineupStartTime").value = row?.start_time || "";
       if (byId("lineupOpponent")) byId("lineupOpponent").value = row?.opponent || "";
       if (byId("lineupPlan")) byId("lineupPlan").value = row?.plan || "Plan 1";
-      if (byId("lineupPlayerCount")) {
-        byId("lineupPlayerCount").value = String(row?.player_count || pool?.players_on_field || "3");
-      }
+      if (byId("lineupPlayerCount")) byId("lineupPlayerCount").value = String(row?.player_count || byId("lineupPlayerCount")?.value || "3");
 
       updateVisiblePlayers();
       setActiveMatchButton(matchNo);
 
-      let goalieId = row?.goalie_player_id || "";
-      if (!goalieId) {
-        const firstRow = await DB.getPoolTeamMatchConfig(poolId, lagNo, "1");
-        if (firstRow?.goalie_player_id) goalieId = firstRow.goalie_player_id;
-      }
+      if (byId("lineupGoalie")) byId("lineupGoalie").value = row?.goalie_player_id || "";
 
-      let playerIds = [];
-      let coachIds = [];
       if (row?.id) {
         const lineup = await DB.getLineup(row.id);
-        playerIds = lineup
-          .filter(x => x.person_type === "player")
-          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-          .map(x => String(x.person_id));
-        coachIds = lineup
-          .filter(x => x.person_type === "coach")
-          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-          .map(x => String(x.person_id));
+        const playerIds = lineup.filter(x => x.person_type === "player").sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)).map(x => String(x.person_id));
+        const coachIds = lineup.filter(x => x.person_type === "coach").sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)).map(x => String(x.person_id));
+        const coachSelect = byId("lineupCoach");
+        if (coachSelect) Array.from(coachSelect.options).forEach((opt) => { opt.selected = coachIds.includes(String(opt.value)); });
+        for (let i = 1; i <= 25; i++) {
+          const el = byId(`lineupPlayer${i}`);
+          if (el) el.value = playerIds[i - 1] || "";
+        }
       } else {
-        const firstRow = await DB.getPoolTeamMatchConfig(poolId, lagNo, "1");
-        if (firstRow?.id && String(matchNo) !== "1") {
-          const lineup = await DB.getLineup(firstRow.id);
-          playerIds = lineup
-            .filter(x => x.person_type === "player")
-            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-            .map(x => String(x.person_id));
-          coachIds = lineup
-            .filter(x => x.person_type === "coach")
-            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-            .map(x => String(x.person_id));
+        const coachSelect = byId("lineupCoach");
+        if (coachSelect) Array.from(coachSelect.options).forEach((opt) => { opt.selected = false; });
+        for (let i = 1; i <= 25; i++) {
+          const el = byId(`lineupPlayer${i}`);
+          if (el) el.value = "";
         }
       }
 
-      await renderLineupSelectors({ goalieId, playerIds });
-      updateVisiblePlayers();
-
-      const coachSelect = byId("lineupCoach");
-      if (coachSelect) {
-        Array.from(coachSelect.options).forEach((opt) => {
-          opt.selected = coachIds.includes(String(opt.value));
-        });
-      }
-
-      updateCoachEnabledState();
+      syncGoalieAgainstPlayers();
       await applyAutoCoachFromCurrentSelection();
     } catch (err) {
       setText("appError", err.message || String(err));
@@ -721,7 +627,6 @@ window.NSK2App = (() => {
 
   async function validateUniquePlayersAcrossPool(poolId, lagNo, matchNo, startTime, goalieId, playerIds) {
     const rows = await DB.listPoolTeamMatchConfigs(poolId);
-
     const currentMatchNo = String(matchNo);
     const currentLagNo = String(lagNo);
     const currentStart = String(startTime || "");
@@ -736,9 +641,7 @@ window.NSK2App = (() => {
 
       if (!sameLag) {
         for (const pid of playerIds) {
-          if (otherPlayers.includes(String(pid))) {
-            return "En spelare finns redan i ett annat lag i poolspelet.";
-          }
+          if (otherPlayers.includes(String(pid))) return "En spelare finns redan i ett annat lag i poolspelet.";
         }
       }
 
@@ -751,7 +654,6 @@ window.NSK2App = (() => {
         }
       }
     }
-
     return "";
   }
 
@@ -759,7 +661,6 @@ window.NSK2App = (() => {
     const poolId = sessionStorage.getItem("nsk2_pool_id") || "";
     const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
     const matchNo = byId("lineupMatch")?.value || "1";
-
     if (!poolId) {
       setText("appError", "Saknar valt poolspel.");
       return;
@@ -768,7 +669,6 @@ window.NSK2App = (() => {
     const goalie = byId("lineupGoalie")?.value || "";
     const playerCount = parseInt(byId("lineupPlayerCount")?.value || "1", 10);
     const selectedPlayers = [];
-
     for (let i = 1; i <= playerCount; i++) {
       const val = byId(`lineupPlayer${i}`)?.value || "";
       if (!val) continue;
@@ -783,27 +683,16 @@ window.NSK2App = (() => {
       selectedPlayers.push(val);
     }
 
-    const poolConflict = await validateUniquePlayersAcrossPool(
-      poolId,
-      lagNo,
-      matchNo,
-      byId("lineupStartTime")?.value || "",
-      goalie,
-      selectedPlayers
-    );
-
+    const poolConflict = await validateUniquePlayersAcrossPool(poolId, lagNo, matchNo, byId("lineupStartTime")?.value || "", goalie, selectedPlayers);
     if (poolConflict) {
       setText("lineupMsg", poolConflict);
       return;
     }
 
     try {
-      await applyAutoCoach([goalie, ...selectedPlayers].filter(Boolean));
-
+      await applyAutoCoachFromCurrentSelection();
       const coachSelect = byId("lineupCoach");
-      const coachIds = coachSelect
-        ? Array.from(coachSelect.selectedOptions).map((o) => o.value).filter(Boolean)
-        : [];
+      const coachIds = coachSelect ? Array.from(coachSelect.selectedOptions).map((o) => o.value).filter(Boolean) : [];
 
       const matchRow = await DB.savePoolTeamMatchConfig({
         pool_id: poolId,
@@ -817,7 +706,7 @@ window.NSK2App = (() => {
       });
 
       await DB.saveLineup(matchRow.id, selectedPlayers, coachIds);
-      await regenerateShiftSchemaForMatch(poolId, lagNo, matchNo);
+      await regenerateShiftSchemaFor(poolId, lagNo, matchNo);
       await fillLaguppstallningFormFromSelection();
       setText("lineupMsg", "Laguppställning sparad.");
     } catch (err) {
@@ -825,83 +714,11 @@ window.NSK2App = (() => {
     }
   }
 
-  async function randomizeGoalieForCurrentAndLaterMatches() {
-    const poolId = sessionStorage.getItem("nsk2_pool_id") || "";
-    const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
-    const matchNo = parseInt(byId("lineupMatch")?.value || "1", 10);
-    if (!poolId) return;
-
-    const players = await DB.listPlayers();
-    const stats = await DB.listGoalieStats();
-    const count = parseInt(byId("lineupPlayerCount")?.value || "1", 10);
-    const blocked = new Set();
-    for (let i = 1; i <= count; i++) {
-      const v = byId(`lineupPlayer${i}`)?.value || "";
-      if (v) blocked.add(String(v));
-    }
-
-    const goalieCounts = {};
-    stats.forEach(s => {
-      if (!s.goalie_name) return;
-      goalieCounts[s.goalie_name] = (goalieCounts[s.goalie_name] || 0) + 1;
-    });
-
-    const candidates = players.filter(p => !blocked.has(String(p.id)));
-    if (!candidates.length) {
-      setText("lineupMsg", "Ingen spelare tillgänglig för målvaktsval.");
-      return;
-    }
-
-    const enriched = candidates.map(p => ({
-      id: String(p.id),
-      full_name: p.full_name,
-      count: goalieCounts[p.full_name] || 0
-    }));
-
-    let chosen = null;
-    const zeroes = enriched.filter(x => x.count === 0);
-    if (zeroes.length === 1) chosen = zeroes[0];
-    else if (zeroes.length > 1) chosen = zeroes[Math.floor(Math.random() * zeroes.length)];
-    else {
-      const minCount = Math.min(...enriched.map(x => x.count));
-      const lowest = enriched.filter(x => x.count === minCount);
-      chosen = lowest.length === 1 ? lowest[0] : lowest[Math.floor(Math.random() * lowest.length)];
-    }
-
-    if (!chosen) return;
-
-    if (byId("lineupGoalie")) byId("lineupGoalie").value = chosen.id;
-    await renderLineupSelectors({ goalieId: chosen.id, playerIds: getCurrentSelectedPlayerValues().filter(Boolean) });
-    updateVisiblePlayers();
-    updateCoachEnabledState();
-    await applyAutoCoachFromCurrentSelection();
-
-    const pool = await DB.getPool(poolId);
-    const totalMatches = parseInt(pool?.matches || "4", 10);
-    for (let m = matchNo; m <= totalMatches; m++) {
-      const existing = await DB.getPoolTeamMatchConfig(poolId, lagNo, String(m));
-      const base = existing || {};
-      await DB.savePoolTeamMatchConfig({
-        pool_id: poolId,
-        lag_no: parseInt(lagNo, 10),
-        match_no: m,
-        start_time: base.start_time || null,
-        opponent: base.opponent || "",
-        plan: base.plan || "Plan 1",
-        player_count: base.player_count ?? parseInt(byId("lineupPlayerCount")?.value || "1", 10),
-        goalie_player_id: chosen.id
-      });
-    }
-
-    setText("lineupMsg", `Målvakt vald: ${chosen.full_name}`);
-  }
-
   async function initBytesschemaPage() {
     const teamBox = byId("shiftTeamButtons");
     const matchBox = byId("shiftMatchButtons");
     const matchSelect = byId("shiftMatch");
     const genBtn = byId("generateShiftBtn");
-
     if (!teamBox || !matchBox || !matchSelect || !genBtn) return;
 
     try {
@@ -910,7 +727,6 @@ window.NSK2App = (() => {
         setText("shiftMsg", "Välj först ett poolspel från startsidan.");
         return;
       }
-
       const pool = await DB.getPool(poolId);
       const teams = parseInt(pool?.teams || "2", 10) || 2;
       const matches = parseInt(pool?.matches || "4", 10) || 4;
@@ -937,7 +753,6 @@ window.NSK2App = (() => {
     const box = byId("shiftTeamButtons");
     if (!box) return;
     box.innerHTML = "";
-
     for (let i = 1; i <= teams; i++) {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -964,7 +779,6 @@ window.NSK2App = (() => {
     const box = byId("shiftMatchButtons");
     if (!box) return;
     box.innerHTML = "";
-
     for (let i = 1; i <= matches; i++) {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -1000,65 +814,53 @@ window.NSK2App = (() => {
     });
   }
 
-  async function regenerateShiftSchemaForMatch(poolId, lagNo, matchNo) {
+  async function toggleShiftDone(poolId, lagNo, matchNo, shiftNo) {
+    const rows = await DB.listShiftSchema(poolId, lagNo, matchNo);
+    const row = rows.find(r => String(r.shift_no) === String(shiftNo));
+    const done = !row?.done;
+    await DB.setShiftDone(poolId, lagNo, matchNo, shiftNo, done);
+    await renderShiftSchema();
+  }
+
+  async function regenerateShiftSchemaFor(poolId, lagNo, matchNo) {
     const pool = await DB.getPool(poolId);
     let row = await DB.getPoolTeamMatchConfig(poolId, lagNo, matchNo);
     if (!row && String(matchNo) !== "1") row = await DB.getPoolTeamMatchConfig(poolId, lagNo, 1);
-    if (!row?.id) return;
+    if (!row?.id) return [];
 
     const lineup = await DB.getLineup(row.id);
-    const playerIds = lineup
-      .filter(x => x.person_type === "player")
-      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-      .map(x => String(x.person_id));
-
+    const playerIds = lineup.filter(x => x.person_type === "player").sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)).map(x => String(x.person_id));
     if (!playerIds.length) {
       await DB.deleteShiftSchema(poolId, lagNo, matchNo);
-      return;
+      return [];
     }
-
-    const playersOnField = parseInt(row.player_count || pool.players_on_field || 3, 10);
-    const periods = parseInt(pool.periods || 1, 10);
-    const periodTime = parseInt(pool.period_time || 15, 10);
-    const subTime = parseInt(pool.sub_time || 90, 10);
 
     const shifts = buildShiftSchedule({
       matchNo: parseInt(matchNo, 10),
       playerIds,
-      playersOnField,
-      periods,
-      periodTime,
-      subTime
+      playersOnField: parseInt(row.player_count || pool.players_on_field || 3, 10),
+      periods: parseInt(pool.periods || 1, 10),
+      periodTime: parseInt(pool.period_time || 15, 10),
+      subTime: parseInt(pool.sub_time || 90, 10)
     });
-
     await DB.saveShiftSchema(poolId, lagNo, matchNo, shifts);
-  }
-
-  async function regenerateAllShiftSchemasForPool(poolId) {
-    const rows = await DB.listPoolTeamMatchConfigs(poolId);
-    const uniq = rows.map(r => `${r.lag_no}:${r.match_no}`);
-    const seen = new Set();
-
-    for (const key of uniq) {
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const [lagNo, matchNo] = key.split(":");
-      await regenerateShiftSchemaForMatch(poolId, lagNo, matchNo);
-    }
+    return shifts;
   }
 
   async function generateAndRenderShiftSchema() {
     const poolId = sessionStorage.getItem("nsk2_pool_id");
     const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
     const matchNo = byId("shiftMatch")?.value || "1";
-
     if (!poolId) {
       setText("shiftMsg", "Välj ett poolspel först.");
       return;
     }
-
-    await regenerateShiftSchemaForMatch(poolId, lagNo, matchNo);
-    setText("shiftMsg", "Bytesschema skapat.");
+    const shifts = await regenerateShiftSchemaFor(poolId, lagNo, matchNo);
+    if (!shifts.length) {
+      setText("shiftMsg", "Spara laguppställning för matchen först.");
+      return;
+    }
+    setText("shiftMsg", "Bytesschema skapat/uppdaterat.");
     await renderShiftSchema();
   }
 
@@ -1068,11 +870,10 @@ window.NSK2App = (() => {
     const shiftCountPerPeriod = Math.max(1, Math.ceil(totalSeconds / subTime));
     const offset = (matchNo - 1) % Math.max(1, playerIds.length);
     const rotated = playerIds.slice(offset).concat(playerIds.slice(0, offset));
-
     const exposure = {};
     playerIds.forEach((id, idx) => { exposure[id] = idx; });
-
     let lastLine = [];
+
     for (let period = 1; period <= periods; period++) {
       for (let s = 0; s < shiftCountPerPeriod; s++) {
         const candidates = [...rotated].sort((a, b) => {
@@ -1080,29 +881,20 @@ window.NSK2App = (() => {
           const bRecent = lastLine.includes(b) ? 1000 : 0;
           return (exposure[a] + aRecent) - (exposure[b] + bRecent);
         });
-
         const chosen = [];
         for (const pid of candidates) {
           if (chosen.length >= playersOnField) break;
           if (!chosen.includes(pid)) chosen.push(pid);
         }
-
         chosen.forEach(pid => { exposure[pid] += playerIds.length + 3; });
-        playerIds.filter(pid => !chosen.includes(pid)).forEach(pid => {
-          exposure[pid] = Math.max(0, exposure[pid] - 1);
-        });
-
+        playerIds.filter(pid => !chosen.includes(pid)).forEach(pid => { exposure[pid] = Math.max(0, exposure[pid] - 1); });
         lastLine = [...chosen];
+
         const elapsed = s * subTime;
         const left = Math.max(0, totalSeconds - elapsed);
         const mm = String(Math.floor(left / 60)).padStart(2, "0");
         const ss = String(left % 60).padStart(2, "0");
-
-        shifts.push({
-          period_no: period,
-          time_left: `${mm}:${ss}`,
-          players: chosen
-        });
+        shifts.push({ period_no: period, time_left: `${mm}:${ss}`, players: chosen });
       }
     }
     return shifts;
@@ -1120,8 +912,7 @@ window.NSK2App = (() => {
 
     const players = await DB.listPlayers();
     const coaches = await DB.listCoaches();
-    const playerMap = {};
-    const coachMap = {};
+    const playerMap = {}, coachMap = {};
     players.forEach(p => { playerMap[String(p.id)] = p.full_name; });
     coaches.forEach(c => { coachMap[String(c.id)] = c.full_name; });
 
@@ -1139,11 +930,7 @@ window.NSK2App = (() => {
     let coachNames = "—";
     if (row?.id) {
       const lineup = await DB.getLineup(row.id);
-      const ids = lineup
-        .filter(x => x.person_type === "coach")
-        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-        .map(x => coachMap[String(x.person_id)] || "—")
-        .filter(Boolean);
+      const ids = lineup.filter(x => x.person_type === "coach").sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)).map(x => coachMap[String(x.person_id)] || "—").filter(Boolean);
       if (ids.length) coachNames = ids.join(", ");
     }
     setText("shiftCoachNames", coachNames);
@@ -1151,57 +938,41 @@ window.NSK2App = (() => {
     setActiveShiftTeamButton(lagNo);
     setActiveShiftMatchButton(matchNo);
 
-    const rows = await DB.listShiftSchema(poolId, lagNo, matchNo);
+    const rows = await regenerateShiftSchemaFor(poolId, lagNo, matchNo);
+    const savedRows = await DB.listShiftSchema(poolId, lagNo, matchNo);
+    const doneMap = {};
+    savedRows.forEach(r => { doneMap[String(r.shift_no)] = !!r.done; });
+
     const wrap = byId("shiftTableWrap");
     if (!wrap) return;
-
     if (!rows.length) {
-      wrap.innerHTML = '<div class="small">Inget bytesschema ännu. Klicka på "Skapa bytesschema".</div>';
+      wrap.innerHTML = '<div class="small">Inget bytesschema ännu. Spara laguppställning först.</div>';
       return;
     }
 
     wrap.innerHTML = `
       <table class="shift-table">
         <thead>
-          <tr>
-            <th></th>
-            <th>#</th>
-            <th>Tid kvar</th>
-            <th>På plan</th>
-          </tr>
+          <tr><th></th><th>#</th><th>Tid kvar</th><th>På plan</th></tr>
         </thead>
         <tbody>
-          ${rows.map((r) => {
-            const names = (Array.isArray(r.players_json) ? r.players_json : [])
-              .map(id => playerMap[String(id)] || "—")
-              .join("<br>");
-            return `
-              <tr>
-                <td class="check-cell">
-                  <button type="button" class="shift-check ${r.done ? "done" : ""}" data-toggle-shift-id="${r.id}" data-done="${r.done ? "1" : "0"}"></button>
-                </td>
-                <td>${r.shift_no}</td>
-                <td>${esc(r.time_left)}</td>
-                <td class="shift-players">${names || "—"}</td>
-              </tr>
-            `;
+          ${rows.map((r, i) => {
+            const shiftNo = i + 1;
+            const names = (Array.isArray(r.players) ? r.players : []).map(id => playerMap[String(id)] || "—").join("<br>");
+            const done = doneMap[String(shiftNo)] ? "done" : "";
+            return `<tr>
+              <td class="check-cell"><span class="shift-check ${done}" data-shift-toggle-pool="${poolId}" data-shift-toggle-lag="${lagNo}" data-shift-toggle-match="${matchNo}" data-shift-toggle-shift="${shiftNo}"></span></td>
+              <td>${shiftNo}</td>
+              <td>${esc(r.time_left)}</td>
+              <td class="shift-players">${names || "—"}</td>
+            </tr>`;
           }).join("")}
         </tbody>
-      </table>
-    `;
+      </table>`;
   }
 
   function rowHtml(item, type) {
-    return `
-      <div class="person-row">
-        <div class="person-main">
-          <input class="inline-name-input" value="${esc(item.full_name)}" data-auto-type="${type}" data-auto-id="${item.id}">
-        </div>
-        <div class="row-actions" style="margin-top:0">
-          <button class="row-btn danger" data-delete-${type}="${item.id}">Ta bort</button>
-        </div>
-      </div>
-    `;
+    return `<div class="person-row"><div class="person-main"><input class="inline-name-input" value="${esc(item.full_name)}" data-inline-${type}="${item.id}"></div><div class="row-actions"><button class="row-btn danger" data-delete-${type}="${item.id}">Ta bort</button></div></div>`;
   }
 
   async function renderPlayers() {
@@ -1216,6 +987,26 @@ window.NSK2App = (() => {
     if (!list) return;
     const coaches = await DB.listCoaches();
     list.innerHTML = coaches.length ? coaches.map((c) => rowHtml(c, "coach")).join("") : '<div class="muted-note">Inga tränare ännu.</div>';
+  }
+
+  function queueInlinePlayerSave(id, value) {
+    clearTimeout(saveTimers[`p_${id}`]);
+    saveTimers[`p_${id}`] = setTimeout(async () => { await DB.updatePlayer(id, String(value || "").trim()); }, 600);
+  }
+
+  function queueInlineCoachSave(id, value) {
+    clearTimeout(saveTimers[`c_${id}`]);
+    saveTimers[`c_${id}`] = setTimeout(async () => { await DB.updateCoach(id, String(value || "").trim()); }, 600);
+  }
+
+  async function flushInlinePlayerSave(id, value) {
+    clearTimeout(saveTimers[`p_${id}`]);
+    await DB.updatePlayer(id, String(value || "").trim());
+  }
+
+  async function flushInlineCoachSave(id, value) {
+    clearTimeout(saveTimers[`c_${id}`]);
+    await DB.updateCoach(id, String(value || "").trim());
   }
 
   async function addPlayer() {
@@ -1236,25 +1027,15 @@ window.NSK2App = (() => {
     await renderCoaches();
   }
 
-  async function deletePlayer(id) {
-    await DB.deletePlayer(id);
-    await renderPlayers();
-  }
-
-  async function deleteCoach(id) {
-    await DB.deleteCoach(id);
-    await renderCoaches();
-  }
+  async function deletePlayer(id) { await DB.deletePlayer(id); await renderPlayers(); }
+  async function deleteCoach(id) { await DB.deleteCoach(id); await renderCoaches(); }
 
   async function initTruppenPage() {
     if (!byId("playersList") && !byId("coachesList")) return;
-
     byId("addPlayerBtn")?.addEventListener("click", addPlayer);
     byId("addCoachBtn")?.addEventListener("click", addCoach);
-
     await renderPlayers();
     await renderCoaches();
-
     if (!truppenRealtime) {
       truppenRealtime = await DB.subscribeTruppen(async (type) => {
         if (type === "players") await renderPlayers();
@@ -1266,7 +1047,6 @@ window.NSK2App = (() => {
   async function initGoalieStatsPage() {
     const list = byId("goalieStatsList");
     if (!list) return;
-
     const stats = await DB.listGoalieStats();
     const grouped = {};
     stats.forEach((row) => {
@@ -1274,16 +1054,8 @@ window.NSK2App = (() => {
       if (!grouped[name]) grouped[name] = new Set();
       grouped[name].add(row.match_id);
     });
-
-    const rows = Object.entries(grouped)
-      .map(([name, set]) => ({ name, count: set.size }))
-      .sort((a, b) => b.count - a.count);
-
-    list.innerHTML = rows.map((r) => `
-      <div class="listrow">
-        <strong>${esc(r.name)}</strong> — ${r.count} matcher
-      </div>
-    `).join("");
+    const rows = Object.entries(grouped).map(([name, set]) => ({ name, count: set.size })).sort((a, b) => b.count - a.count);
+    list.innerHTML = rows.map((r) => `<div class="listrow"><strong>${esc(r.name)}</strong> — ${r.count} matcher</div>`).join("");
   }
 
   return { init };
