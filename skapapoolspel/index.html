@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Skapa poolspel</title>
-  <link rel="stylesheet" href="../app.css?v=600">
+  <link rel="stylesheet" href="../app.css?v=611">
 </head>
 <body>
   <div class="wrap">
@@ -22,8 +22,8 @@
     <section class="hero-card">
       <img src="../icon-192.png" alt="NSK" class="hero-logo">
       <div>
-        <h1 class="hero-title">Skapa poolspel</h1>
-        <div class="hero-sub">Ort • Datum • Förutsättningar • Laguppställning</div>
+        <h1 class="hero-title">Poolspel</h1>
+        <div class="hero-sub">Ort • Datum • Förutsättningar</div>
       </div>
     </section>
 
@@ -77,7 +77,6 @@
       <label for="periodTime">Periodtid</label>
       <select id="periodTime">
         <option value="10">10</option>
-        <option value="12">12</option>
         <option value="15" selected>15</option>
         <option value="20">20</option>
       </select>
@@ -85,19 +84,12 @@
       <label for="subTime">Bytestid</label>
       <select id="subTime">
         <option value="30">30</option>
-        <option value="45">45</option>
         <option value="60">60</option>
-        <option value="75">75</option>
         <option value="90" selected>90</option>
       </select>
 
-      <button id="savePool">Spara poolspel</button>
+      <button id="savePool" type="button">Spara poolspel</button>
       <div id="poolMsg" class="small"></div>
-    </section>
-
-    <section class="card">
-      <h2>Lag</h2>
-      <div id="teamButtons" class="team-buttons"></div>
     </section>
 
     <section class="card">
@@ -108,11 +100,11 @@
     <div id="appError" class="small"></div>
 
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="../config.js?v=600"></script>
-    <script src="../auth.js?v=600"></script>
-    <script src="../login-patch.js?v=600"></script>
-    <script src="../db.js?v=600"></script>
-    <script src="../app.js?v=600"></script>
+    <script src="../config.js?v=611"></script>
+    <script src="../auth.js?v=611"></script>
+    <script src="../login-patch.js?v=611"></script>
+    <script src="../db.js?v=611"></script>
+    <script src="../app.js?v=611"></script>
   </div>
 </body>
 </html>
