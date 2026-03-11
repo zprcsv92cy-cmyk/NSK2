@@ -1,44 +1,80 @@
 <!doctype html>
 <html lang="sv">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Bytesschema</title>
-  <link rel="stylesheet" href="/NSK2/app.css?v=91">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>Bytesschema</title>
+
+<link rel="stylesheet" href="../app.css?v=640">
 </head>
+
 <body>
-  <div class="wrap">
-    <nav class="mainmenu">
-      <a href="/NSK2/startsida/">Startsida</a>
-      <a href="/NSK2/truppen/">Truppen</a>
-      <a href="/NSK2/skapapoolspel/">Skapa poolspel</a>
-      <a href="/NSK2/malvaktsstatistik/">Målvaktsstatistik</a>
-      <a href="/NSK2/bytesschema/">Bytesschema</a>
-      <a href="/NSK2/matchvy/">Matchvy</a>
-      <a href="/NSK2/lag/">Lag</a>
-    </nav>
 
-    <section class="card">
-      <h1>Bytesschema</h1>
-      <div class="small">Spelare sorteras A–Ö. Hockeyrotation genereras automatiskt och synkar live.</div>
-      <div class="btnrow">
-        <button id="generateLineupsBtn">Generera hockeyrotation</button>
-      </div>
-      <div id="lineupMsg" class="small"></div>
-    </section>
+<div class="wrap">
 
-    <section class="card">
-      <h2>Aktivt schema</h2>
-      <div id="lineupList"></div>
-    </section>
+<nav class="mainmenu">
+<a href="../startsida/">Startsida</a>
+<a href="../truppen/">Truppen</a>
+<a href="../skapapoolspel/">Skapa poolspel</a>
+<a href="../malvaktsstatistik/">Målvaktsstatistik</a>
+<a href="../bytesschema/">Bytesschema</a>
+<a href="../matchvy/">Matchvy</a>
+<a href="../lag/">Lag</a>
+</nav>
 
-    <div id="appError" class="small"></div>
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="/NSK2/config.js?v=91"></script>
-    <script src="/NSK2/auth.js?v=91"></script>
-    <script src="/NSK2/login-patch.js?v=91"></script>
-    <script src="/NSK2/db.js?v=91"></script>
-    <script src="/NSK2/app.js?v=91"></script>
-  </div>
+<section class="hero-card">
+<img src="../icon-192.png" class="hero-logo">
+
+<div>
+<h1 class="hero-title">Bytesschema</h1>
+<div id="shiftTitle" class="hero-sub">Lag 1 • Match 1</div>
+</div>
+</section>
+
+<section class="card">
+
+<h2>Lag</h2>
+
+<div id="shiftTeamButtons" class="team-buttons"></div>
+
+<div class="match-buttons-wrap">
+<div id="shiftMatchButtons" class="team-buttons"></div>
+</div>
+
+</section>
+
+<section class="card">
+
+<div id="shiftMeta"></div>
+
+<table class="shift-table">
+
+<thead>
+<tr>
+<th>#</th>
+<th>Tid kvar</th>
+<th>På plan</th>
+</tr>
+</thead>
+
+<tbody id="shiftTable"></tbody>
+
+</table>
+
+<button id="generateShiftsBtn">Generera bytesschema</button>
+
+</section>
+
+<div id="appError" class="small"></div>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+<script src="../config.js?v=640"></script>
+<script src="../auth.js?v=640"></script>
+<script src="../db.js?v=640"></script>
+<script src="../app.js?v=640"></script>
+
+</div>
 </body>
 </html>
