@@ -4,106 +4,144 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Skapa poolspel</title>
-  <link rel="stylesheet" href="../app.css?v=620">
+
+  <link rel="stylesheet" href="../app.css?v=621">
 </head>
+
 <body>
-  <div class="wrap">
-    <nav class="mainmenu">
-      <a href="../startsida/">Startsida</a>
-      <a href="../truppen/">Truppen</a>
-      <a href="../skapapoolspel/" class="active">Skapa poolspel</a>
-      <a href="../malvaktsstatistik/">Målvaktsstatistik</a>
-      <a href="../bytesschema/">Bytesschema</a>
-      <a href="../matchvy/">Matchvy</a>
-      <a href="../lag/">Lag</a>
-    </nav>
 
-    <section class="hero-card">
-      <img src="../icon-192.png" alt="NSK" class="hero-logo">
-      <div>
-        <h1 class="hero-title">Poolspel</h1>
-        <div class="hero-sub">Ort • Datum • Förutsättningar</div>
-      </div>
-    </section>
+<div class="wrap">
 
-    <section class="card">
-      <h2>Poolspel</h2>
+<nav class="mainmenu">
+  <a href="../startsida/">Startsida</a>
+  <a href="../truppen/">Truppen</a>
+  <a href="../skapapoolspel/" class="active">Skapa poolspel</a>
+  <a href="../malvaktsstatistik/">Målvaktsstatistik</a>
+  <a href="../bytesschema/">Bytesschema</a>
+  <a href="../matchvy/">Matchvy</a>
+  <a href="../lag/">Lag</a>
+</nav>
 
-      <label for="poolPlace">Ort</label>
-      <input id="poolPlace" type="text" placeholder="Ort">
+<section class="hero-card">
 
-      <label for="poolDate">Datum</label>
-      <input id="poolDate" type="date">
-    </section>
+<img src="../icon-192.png" alt="NSK" class="hero-logo">
 
-    <section class="card">
-      <h2>Förutsättningar</h2>
+<div>
+<h1 class="hero-title">Poolspel</h1>
+<div class="hero-sub">
+Skapa poolspel • Ange förutsättningar
+</div>
+</div>
 
-      <label for="teams">Antal egna lag</label>
-      <select id="teams">
-        <option value="1">1</option>
-        <option value="2" selected>2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
-      </select>
+</section>
 
-      <label for="matches">Antal matcher</label>
-      <select id="matches">
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4" selected>4</option>
-        <option value="5">5</option>
-        <option value="6">6</option>
-        <option value="7">7</option>
-        <option value="8">8</option>
-      </select>
+<section class="card">
 
-      <label for="players">Spelare på plan</label>
-      <select id="players">
-        <option value="3" selected>3</option>
-        <option value="4">4</option>
-        <option value="5">5</option>
-      </select>
+<h2>Poolspel</h2>
 
-      <label for="periods">Perioder</label>
-      <select id="periods">
-        <option value="1" selected>1</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-      </select>
+<label for="poolPlace">Ort</label>
+<input id="poolPlace" type="text" placeholder="Ort">
 
-      <label for="periodTime">Periodtid</label>
-      <select id="periodTime">
-        <option value="10">10</option>
-        <option value="15" selected>15</option>
-        <option value="20">20</option>
-      </select>
+<label for="poolDate">Datum</label>
+<input id="poolDate" type="date">
 
-      <label for="subTime">Bytestid</label>
-      <select id="subTime">
-        <option value="30">30</option>
-        <option value="60">60</option>
-        <option value="90" selected>90</option>
-      </select>
+</section>
 
-      <button id="savePool" type="button">Spara poolspel</button>
-      <div id="poolMsg" class="small"></div>
-    </section>
+<section class="card">
 
-    <section class="card">
-      <h2>Laguppställning</h2>
-      <div id="lagButtons" class="team-buttons"></div>
-    </section>
+<h2>Förutsättningar</h2>
 
-    <div id="appError" class="small"></div>
+<label for="teams">Antal egna lag</label>
+<select id="teams">
 
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="../config.js?v=620"></script>
-    <script src="../auth.js?v=620"></script>
-    <script src="../login-patch.js?v=620"></script>
-    <script src="../db.js?v=620"></script>
-    <script src="../app.js?v=620"></script>
-  </div>
+<option value="1">1</option>
+<option value="2" selected>2</option>
+<option value="3">3</option>
+<option value="4">4</option>
+
+</select>
+
+<label for="matches">Antal matcher</label>
+<select id="matches">
+
+<option value="1">1</option>
+<option value="2">2</option>
+<option value="3">3</option>
+<option value="4" selected>4</option>
+<option value="5">5</option>
+<option value="6">6</option>
+<option value="7">7</option>
+<option value="8">8</option>
+
+</select>
+
+<label for="players">Spelare på plan</label>
+<select id="players">
+
+<option value="3" selected>3</option>
+<option value="4">4</option>
+<option value="5">5</option>
+
+</select>
+
+<label for="periods">Perioder</label>
+<select id="periods">
+
+<option value="1" selected>1</option>
+<option value="2">2</option>
+<option value="3">3</option>
+
+</select>
+
+<label for="periodTime">Periodtid</label>
+<select id="periodTime">
+
+<option value="10">10</option>
+<option value="15" selected>15</option>
+<option value="20">20</option>
+
+</select>
+
+<label for="subTime">Bytestid</label>
+<select id="subTime">
+
+<option value="30">30</option>
+<option value="60">60</option>
+<option value="90" selected>90</option>
+
+</select>
+
+<button id="savePool" type="button">
+Spara poolspel
+</button>
+
+<div id="poolMsg" class="small"></div>
+
+</section>
+
+<section class="card">
+
+<h2>Laguppställning</h2>
+
+<div class="small">
+Välj lag för att skapa laguppställning
+</div>
+
+<div id="lagButtons" class="team-buttons"></div>
+
+</section>
+
+<div id="appError" class="small"></div>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+<script src="../config.js?v=621"></script>
+<script src="../auth.js?v=621"></script>
+<script src="../login-patch.js?v=621"></script>
+<script src="../db.js?v=621"></script>
+<script src="../app.js?v=621"></script>
+
+</div>
+
 </body>
 </html>
