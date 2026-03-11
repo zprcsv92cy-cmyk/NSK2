@@ -1,6 +1,4 @@
-
 window.DB = (() => {
-
   const TEAM_NAME = "NSK Team 18";
   const TEAM_SEASON = "2026";
 
@@ -34,6 +32,15 @@ window.DB = (() => {
     if(byName.error) throw byName.error;
     if(byName.data?.id) return byName.data.id;
 
+    let anyTeam = await client
+      .from("nsk_teams")
+      .select("id,name,season")
+      .limit(1)
+      .maybeSingle();
+
+    if(anyTeam.error) throw anyTeam.error;
+    if(anyTeam.data?.id) return anyTeam.data.id;
+
     const inserted = await client
       .from("nsk_teams")
       .insert({ name: TEAM_NAME, season: TEAM_SEASON })
@@ -43,10 +50,6 @@ window.DB = (() => {
     if(inserted.error) throw inserted.error;
     return inserted.data.id;
   }
-
-  /* ==========================
-     PLAYERS
-  ========================== */
 
   async function listPlayers(){
     const client = await getClient();
@@ -103,10 +106,6 @@ window.DB = (() => {
     return true;
   }
 
-  /* ==========================
-     COACHES
-  ========================== */
-
   async function listCoaches(){
     const client = await getClient();
     const teamId = await getTeamId();
@@ -162,10 +161,6 @@ window.DB = (() => {
     if(error) throw error;
     return true;
   }
-
-  /* ==========================
-     POOLS
-  ========================== */
 
   async function listPools(){
     const client = await getClient();
@@ -246,27 +241,7 @@ window.DB = (() => {
     return true;
   }
 
-  /* ==========================
-     MATCH CONFIG
-  ========================== */
-
   async function listPoolTeamMatchConfigs(poolId){
-
-    const client = await getClient();
-    const teamId = await getTeamId();
-
-    const { data, error } = await client
-      .from("nsk_pool_team_matches")
-      .select("*")
-      .eq("team_id", teamId)
-      .eq("pool_id", poolId);
-
-    if(error) throw error;
-    return data || [];
-  }
-
-  async function getPoolTeamMatchConfig(poolId, lagNo, matchNo){
-
     const client = await getClient();
     const teamId = await getTeamId();
 
@@ -275,8 +250,24 @@ window.DB = (() => {
       .select("*")
       .eq("team_id", teamId)
       .eq("pool_id", poolId)
-      .eq("lag_no", parseInt(lagNo,10))
-      .eq("match_no", parseInt(matchNo,10))
+      .order("lag_no", { ascending:true })
+      .order("match_no", { ascending:true });
+
+    if(error) throw error;
+    return data || [];
+  }
+
+  async function getPoolTeamMatchConfig(poolId, lagNo, matchNo){
+    const client = await getClient();
+    const teamId = await getTeamId();
+
+    const { data, error } = await client
+      .from("nsk_pool_team_matches")
+      .select("*")
+      .eq("team_id", teamId)
+      .eq("pool_id", poolId)
+      .eq("lag_no", parseInt(lagNo, 10))
+      .eq("match_no", parseInt(matchNo, 10))
       .maybeSingle();
 
     if(error) throw error;
@@ -284,7 +275,6 @@ window.DB = (() => {
   }
 
   async function savePoolTeamMatchConfig(payload){
-
     const client = await getClient();
     const teamId = await getTeamId();
 
@@ -297,19 +287,12 @@ window.DB = (() => {
       opponent: payload.opponent || "",
       plan: payload.plan || "Plan 1",
       player_count: payload.player_count ?? null,
-      goalie_player_id: payload.goalie_player_id || null,
-      coach_ids: payload.coach_ids || []
+      goalie_player_id: payload.goalie_player_id || null
     };
-
-    for(let i=1;i<=25;i++){
-      row["player"+i+"_id"] = payload["player"+i+"_id"] || null;
-    }
 
     const { data, error } = await client
       .from("nsk_pool_team_matches")
-      .upsert(row, {
-        onConflict: "team_id,pool_id,lag_no,match_no"
-      })
+      .upsert(row, { onConflict: "team_id,pool_id,lag_no,match_no" })
       .select("*")
       .single();
 
@@ -317,12 +300,103 @@ window.DB = (() => {
     return data;
   }
 
-  /* ==========================
-     GOALIE STATS
-  ========================== */
+  async function getLineup(matchId){
+    const client = await getClient();
+
+    const { data, error } = await client
+      .from("nsk_pool_team_match_people")
+      .select("*")
+      .eq("match_id", matchId)
+      .order("person_type", { ascending:true })
+      .order("sort_order", { ascending:true });
+
+    if(error) throw error;
+    return data || [];
+  }
+
+  async function saveLineup(matchId, players, coaches){
+    const client = await getClient();
+
+    const del = await client
+      .from("nsk_pool_team_match_people")
+      .delete()
+      .eq("match_id", matchId);
+
+    if(del.error) throw del.error;
+
+    const rows = [];
+
+    (players || []).forEach((playerId, i) => {
+      if(!playerId) return;
+      rows.push({
+        match_id: matchId,
+        person_id: playerId,
+        person_type: "player",
+        sort_order: i + 1
+      });
+    });
+
+    (coaches || []).forEach((coachId, i) => {
+      if(!coachId) return;
+      rows.push({
+        match_id: matchId,
+        person_id: coachId,
+        person_type: "coach",
+        sort_order: i + 1
+      });
+    });
+
+    if(!rows.length) return true;
+
+    const ins = await client
+      .from("nsk_pool_team_match_people")
+      .insert(rows);
+
+    if(ins.error) throw ins.error;
+    return true;
+  }
+
+  async function listUsedPlayersInPool(poolId, excludeLagNo){
+    const client = await getClient();
+    const teamId = await getTeamId();
+
+    const { data: matches, error: matchesError } = await client
+      .from("nsk_pool_team_matches")
+      .select("id,lag_no,goalie_player_id")
+      .eq("team_id", teamId)
+      .eq("pool_id", poolId);
+
+    if(matchesError) throw matchesError;
+
+    const filteredMatches = (matches || []).filter(
+      m => String(m.lag_no) !== String(excludeLagNo)
+    );
+
+    const used = new Set();
+
+    filteredMatches.forEach(m => {
+      if(m.goalie_player_id) used.add(String(m.goalie_player_id));
+    });
+
+    const matchIds = filteredMatches.map(m => m.id);
+    if(!matchIds.length) return Array.from(used);
+
+    const { data: people, error: peopleError } = await client
+      .from("nsk_pool_team_match_people")
+      .select("match_id,person_id,person_type")
+      .in("match_id", matchIds)
+      .eq("person_type", "player");
+
+    if(peopleError) throw peopleError;
+
+    (people || []).forEach(p => {
+      if(p.person_id) used.add(String(p.person_id));
+    });
+
+    return Array.from(used);
+  }
 
   async function listGoalieStats(){
-
     const client = await getClient();
 
     const { data, error } = await client
@@ -333,12 +407,7 @@ window.DB = (() => {
     return data || [];
   }
 
-  /* ==========================
-     REALTIME
-  ========================== */
-
   async function subscribeTruppen(callback){
-
     const client = await getClient();
 
     return client
@@ -377,9 +446,11 @@ window.DB = (() => {
     getPoolTeamMatchConfig,
     savePoolTeamMatchConfig,
 
-    listGoalieStats,
+    getLineup,
+    saveLineup,
+    listUsedPlayersInPool,
 
+    listGoalieStats,
     subscribeTruppen
   };
-
 })();
