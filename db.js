@@ -391,6 +391,66 @@ window.DB = (() => {
     return Array.from(used);
   }
 
+  async function deleteShiftSchema(poolId, lagNo, matchNo) {
+    const client = await getClient();
+    const teamId = await getTeamId();
+
+    const { error } = await client
+      .from("nsk_pool_team_shifts")
+      .delete()
+      .eq("team_id", teamId)
+      .eq("pool_id", poolId)
+      .eq("lag_no", parseInt(lagNo, 10))
+      .eq("match_no", parseInt(matchNo, 10));
+
+    if (error) throw error;
+    return true;
+  }
+
+  async function saveShiftSchema(poolId, lagNo, matchNo, shifts) {
+    const client = await getClient();
+    const teamId = await getTeamId();
+
+    await deleteShiftSchema(poolId, lagNo, matchNo);
+
+    if (!shifts.length) return true;
+
+    const rows = shifts.map((s, i) => ({
+      team_id: teamId,
+      pool_id: poolId,
+      lag_no: parseInt(lagNo, 10),
+      match_no: parseInt(matchNo, 10),
+      shift_no: i + 1,
+      period_no: s.period_no,
+      time_left: s.time_left,
+      players_json: s.players
+    }));
+
+    const { error } = await client
+      .from("nsk_pool_team_shifts")
+      .insert(rows);
+
+    if (error) throw error;
+    return true;
+  }
+
+  async function listShiftSchema(poolId, lagNo, matchNo) {
+    const client = await getClient();
+    const teamId = await getTeamId();
+
+    const { data, error } = await client
+      .from("nsk_pool_team_shifts")
+      .select("*")
+      .eq("team_id", teamId)
+      .eq("pool_id", poolId)
+      .eq("lag_no", parseInt(lagNo, 10))
+      .eq("match_no", parseInt(matchNo, 10))
+      .order("shift_no", { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  }
+
   async function listGoalieStats() {
     const client = await getClient();
 
@@ -444,6 +504,10 @@ window.DB = (() => {
     getLineup,
     saveLineup,
     listUsedPlayersInPool,
+
+    deleteShiftSchema,
+    saveShiftSchema,
+    listShiftSchema,
 
     listGoalieStats,
     subscribeTruppen
