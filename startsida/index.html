@@ -3,22 +3,26 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>NSK Team 18</title>
+  <title>Startsida</title>
+
   <script src="../version.js"></script>
   <script>
-    document.write('<link rel="stylesheet" href="../app.css?v=' + window.NSK_VERSION + '>');
+    document.write('<link rel="stylesheet" href="../app.css?v=' + window.NSK_VERSION + '">');
   </script>
   <link rel="manifest" href="../manifest.webmanifest">
-  
+
+  <style>
+    .pool-lineup-block + .pool-lineup-block{margin-top:16px;}
+  </style>
 </head>
 <body>
   <div class="wrap">
+
     <nav class="mainmenu">
       <a href="../startsida/" class="active">Startsida</a>
       <a href="../truppen/">Truppen</a>
       <a href="../skapapoolspel/">Skapa poolspel</a>
       <a href="../malvaktsstatistik/">Målvaktsstatistik</a>
-      <a href="../bytesschema/">Bytesschema</a>
       <a href="../matchvy/">Matchvy</a>
       <a href="../lag/">Lag</a>
     </nav>
@@ -27,17 +31,16 @@
       <div class="home-hero-logo-box">
         <img src="../icon-192.png" alt="NSK" class="home-hero-logo">
       </div>
-
       <div class="home-hero-text">
-        <h1>Nyköpings Sportklubb<br>• Team 18</h1>
-        <div class="home-hero-sub">Poolspel • PDF • Behörigheter</div>
+        <h1>Startsida</h1>
+        <div class="home-hero-sub">Sparade poolspel och snabbval</div>
       </div>
     </section>
 
     <section class="card home-shortcuts">
-      <a class="home-shortcut primary" href="../truppen/">Truppen team 18</a>
-      <a class="home-shortcut" href="../skapapoolspel/">Skapa nytt poolspel</a>
-      <a class="home-shortcut primary" href="../malvaktsstatistik/">Statistik målvakter</a>
+      <a class="home-shortcut primary" href="../skapapoolspel/">Skapa poolspel</a>
+      <a class="home-shortcut" href="../truppen/">Truppen</a>
+      <a class="home-shortcut" href="../malvaktsstatistik/">Målvaktsstatistik</a>
     </section>
 
     <section class="card">
@@ -46,14 +49,15 @@
     </section>
 
     <div id="appError" class="small"></div>
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="../config.js"></script>
-    <script src="../auth.js"></script>
-    <script src="../login-patch.js"></script>
-    <script>
-      document.write('<script src="../db.js?v=' + window.NSK_VERSION + '"><\/script>');
-      document.write('<script src="../app.js?v=' + window.NSK_VERSION + '"><\/script>');
-    </script>
   </div>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="../config.js"></script>
+  <script src="../auth.js"></script>
+  <script src="../login-patch.js"></script>
+  <script>
+    document.write('<script src="../db.js?v=' + window.NSK_VERSION + '"><\\/script>');
+    document.write('<script src="../app.js?v=' + window.NSK_VERSION + '"><\\/script>');
+  </script>
 </body>
 </html>
