@@ -273,7 +273,11 @@ window.DB = (() => {
 
   async function listGoalieStats() {
     const client = await getClient();
-    const { data, error } = await client.from("nsk_goalie_stats").select("goalie_name,match_id");
+    const teamId = await getTeamId();
+    const { data, error } = await client
+      .from("nsk_goalie_stats_v")
+      .select("goalie_name,match_id,team_id")
+      .eq("team_id", teamId);
     if (error) throw error;
     return data || [];
   }
