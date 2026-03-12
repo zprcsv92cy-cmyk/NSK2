@@ -1,4 +1,4 @@
-const CACHE_NAME = "nsk-static-v676";
+const CACHE_NAME = "nsk-static-v677";
 
 const URLS_TO_CACHE = [
   "./",
