@@ -4,60 +4,78 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Matchvy</title>
-  <link rel="stylesheet" href="/NSK2/app.css?v=655">
+  <script src="../version.js"></script>
+  <script>
+    document.write('<link rel="stylesheet" href="../app.css?v=' + window.NSK_VERSION + '>');
+  </script>
+  <link rel="manifest" href="../manifest.webmanifest">
+  
 </head>
 <body>
   <div class="wrap">
     <nav class="mainmenu">
-      <a href="/NSK2/startsida/">Startsida</a>
-      <a href="/NSK2/truppen/">Truppen</a>
-      <a href="/NSK2/skapapoolspel/">Skapa poolspel</a>
-      <a href="/NSK2/malvaktsstatistik/">Målvaktsstatistik</a>
-      <a href="/NSK2/bytesschema/">Bytesschema</a>
-      <a href="/NSK2/matchvy/" class="active">Matchvy</a>
-      <a href="/NSK2/lag/">Lag</a>
+      <a href="../startsida/">Startsida</a>
+      <a href="../truppen/">Truppen</a>
+      <a href="../skapapoolspel/">Skapa poolspel</a>
+      <a href="../malvaktsstatistik/">Målvaktsstatistik</a>
+      <a href="../bytesschema/">Bytesschema</a>
+      <a href="../matchvy/">Matchvy</a>
+      <a href="../lag/">Lag</a>
     </nav>
 
-    <section class="hero-card">
-      <img src="/NSK2/icon-192.png" alt="NSK" class="hero-logo">
-      <div>
-        <h1 class="hero-title">Matchvy</h1>
-        <div class="hero-sub">Nuvarande och nästa byte</div>
+    <section class="card match-admin-card">
+      <h1>Matchvy</h1>
+      <div class="row2">
+        <div><label>Matchnamn</label><input id="matchTitle" placeholder="Poolspel / match"></div>
+        <div><label>Motståndare</label><input id="matchOpponent" placeholder="Motståndare"></div>
+        <div><label>Plats</label><input id="matchPlace" placeholder="Nyköping"></div>
+        <div><label>Tid</label><input id="matchTime" placeholder="10:20"></div>
+        <div><label>Bytestid sek</label><input id="matchShiftSeconds" type="number" value="90"></div>
       </div>
+      <div class="btnrow">
+        <button id="saveMatchBtn">Spara matchinfo</button>
+        <button id="coachFullscreenBtn" class="ghost">Coach-skärm</button>
+      </div>
+      <div id="matchMsg" class="small"></div>
     </section>
 
-    <section class="card">
-      <div id="coachCard" class="coach-card">
-        <div class="toolbar">
-          <h2>Coachläge</h2>
-          <div class="btnrow">
-            <button id="prevMatch" class="ghost">Föregående</button>
-            <button id="nextMatch" class="ghost">Nästa</button>
-          </div>
+    <section class="card coach-screen-card">
+      <div class="coach-screen-top">
+        <h2 id="shiftLabel">Inget schema</h2>
+        <div id="matchInfo"></div>
+      </div>
+
+      <div class="coach-panels">
+        <div class="coach-panel">
+          <div class="coach-panel-label">NU</div>
+          <div id="currentPlayers" class="coach-panel-main">—</div>
         </div>
-        <div class="coach-grid">
-          <div class="coach-box">
-            <div class="coach-label">NU</div>
-            <div id="coachCurrentMatch" class="coach-meta">—</div>
-            <div id="coachCurrentPlayers" class="coach-main">—</div>
-          </div>
-          <div class="coach-box">
-            <div class="coach-label">NÄSTA</div>
-            <div id="coachNextMatch" class="coach-meta">—</div>
-            <div id="coachNextPlayers" class="coach-next">—</div>
-          </div>
+        <div class="coach-panel">
+          <div class="coach-panel-label">NÄSTA</div>
+          <div id="nextPlayers" class="coach-panel-next">—</div>
+        </div>
+      </div>
+
+      <div class="coach-timer-wrap">
+        <div class="coach-panel-label">BYTE OM</div>
+        <div id="matchTimer" class="coach-timer">00:00</div>
+        <div class="btnrow">
+          <button id="startTimerBtn">Start</button>
+          <button id="stopTimerBtn" class="ghost">Stoppa</button>
+          <button id="nextShiftBtn" class="ghost">Nästa byte</button>
         </div>
       </div>
     </section>
 
     <div id="appError" class="small"></div>
-
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="/NSK2/config.js?v=655"></script>
-    <script src="/NSK2/auth.js?v=655"></script>
-    <script src="/NSK2/login-patch.js?v=655"></script>
-    <script src="/NSK2/db.js?v=655"></script>
-    <script src="/NSK2/app.js?v=655"></script>
+    <script src="../config.js"></script>
+    <script src="../auth.js"></script>
+    <script src="../login-patch.js"></script>
+    <script>
+      document.write('<script src="../db.js?v=' + window.NSK_VERSION + '"><\/script>');
+      document.write('<script src="../app.js?v=' + window.NSK_VERSION + '"><\/script>');
+    </script>
   </div>
 </body>
 </html>
