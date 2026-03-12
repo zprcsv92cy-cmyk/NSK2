@@ -49,8 +49,7 @@ window.NSK2App = (() => {
           const ok = window.confirm("Ta bort poolspelet?");
           if (!ok) return;
           await DB.deletePool(t.dataset.deletePool);
-          await initStartsidaPage();
-          setText("appError", "");
+          window.location.reload();
           return;
         }
 
@@ -58,6 +57,13 @@ window.NSK2App = (() => {
           sessionStorage.setItem("nsk2_pool_id", t.dataset.poolId || "");
           sessionStorage.setItem("nsk2_lag_nr", t.dataset.lagNo || "1");
           window.location.href = "../laguppstallning/";
+          return;
+        }
+
+        if (t.dataset.poolShifts && t.dataset.lagNo) {
+          sessionStorage.setItem("nsk2_pool_id", t.dataset.poolShifts || "");
+          sessionStorage.setItem("nsk2_lag_nr", t.dataset.lagNo || "1");
+          window.location.href = "../bytesschema/";
           return;
         }
 
@@ -138,6 +144,15 @@ window.NSK2App = (() => {
           `;
         }).join("");
 
+        const shiftButtons = Array.from({ length: teams }, (_, i) => {
+          const lagNo = i + 1;
+          return `
+            <button class="team-btn" type="button" data-pool-shifts="${p.id}" data-lag-no="${lagNo}">
+              Lag ${lagNo}
+            </button>
+          `;
+        }).join("");
+
         return `
           <article class="pool-item">
             <div class="pool-top">
@@ -156,6 +171,11 @@ window.NSK2App = (() => {
             <div class="pool-lineup-block">
               <div class="pool-lineup-title">Laguppställning</div>
               <div class="team-buttons">${lagButtons}</div>
+            </div>
+
+            <div class="pool-lineup-block">
+              <div class="pool-lineup-title">Bytesschema</div>
+              <div class="team-buttons">${shiftButtons}</div>
             </div>
           </article>
         `;
@@ -275,7 +295,6 @@ window.NSK2App = (() => {
       renderLaguppstallningMatchOptions(matches);
       renderMatchButtons(matches);
       renderPlayerCountOptions(playersOnField);
-      updatePlayerCountLabel();
       await renderCoachOptions();
       await renderLineupSelectors();
 
@@ -375,11 +394,6 @@ window.NSK2App = (() => {
       if (i === Number(defaultCount)) opt.selected = true;
       sel.appendChild(opt);
     }
-  }
-
-  function updatePlayerCountLabel() {
-    const label = document.querySelector('label[for="lineupPlayerCount"]');
-    if (label) label.textContent = "Antal spelare i laguppställningen";
   }
 
   async function renderCoachOptions() {
@@ -504,6 +518,10 @@ window.NSK2App = (() => {
 
     const enabled = !!goalie && selectedPlayers === count;
     coachSelect.disabled = !enabled;
+
+    if (!enabled) {
+      Array.from(coachSelect.options).forEach(opt => opt.selected = false);
+    }
   }
 
   function attachLineupHandlers() {
@@ -572,13 +590,13 @@ window.NSK2App = (() => {
     for (let i = 1; i <= count; i++) {
       const sel = byId(`lineupPlayer${i}`);
       if (!sel) continue;
-
+      const currentValue = sel.value;
       Array.from(sel.options).forEach(opt => {
-        if (!opt.value) return;
-        opt.disabled = !!goalieId && opt.value === goalieId;
+        if (opt.value && opt.value === goalieId) {
+          opt.remove();
+        }
       });
-
-      if (sel.value && sel.value === goalieId) {
+      if (currentValue === goalieId) {
         sel.value = "";
       }
     }
@@ -608,23 +626,8 @@ window.NSK2App = (() => {
     const coachSelect = byId("lineupCoach");
     if (!coachSelect) return;
 
-    const manualEnabled = !coachSelect.disabled;
-
     Array.from(coachSelect.options).forEach(opt => {
-      if (opt.dataset.autoCoach === "1") {
-        opt.selected = false;
-        delete opt.dataset.autoCoach;
-      }
-    });
-
-    Array.from(coachSelect.options).forEach(opt => {
-      const isAuto = autoCoachIds.has(String(opt.value));
-      if (isAuto) {
-        opt.selected = true;
-        opt.dataset.autoCoach = "1";
-      } else if (!manualEnabled) {
-        opt.selected = false;
-      }
+      if (autoCoachIds.has(String(opt.value))) opt.selected = true;
     });
   }
 
@@ -640,7 +643,6 @@ window.NSK2App = (() => {
       if (v) ids.push(v);
     }
 
-    updateCoachEnabledState();
     await applyAutoCoach(ids);
     updateCoachEnabledState();
   }
