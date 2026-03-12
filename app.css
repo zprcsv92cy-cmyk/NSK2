@@ -659,3 +659,52 @@ button:disabled{
     border-radius:18px;
   }
 }
+
+
+/* =========================
+   V651 – TRUPPEN IPHONE STÅENDE
+   ========================= */
+
+.person-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  width:100%;
+}
+
+.person-main{
+  flex:1 1 auto;
+  min-width:0;
+}
+
+.inline-name-input{
+  width:100%;
+  min-width:0;
+}
+
+.row-actions{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+}
+
+.row-actions .row-btn{
+  white-space:nowrap;
+  padding:8px 12px;
+}
+
+@media (max-width:430px){
+  .person-row{
+    gap:8px;
+  }
+
+  .inline-name-input{
+    font-size:16px;
+    padding:10px 12px;
+  }
+
+  .row-actions .row-btn{
+    padding:8px 10px;
+    font-size:13px;
+  }
+}
