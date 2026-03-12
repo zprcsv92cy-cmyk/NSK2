@@ -49,7 +49,8 @@ window.NSK2App = (() => {
           const ok = window.confirm("Ta bort poolspelet?");
           if (!ok) return;
           await DB.deletePool(t.dataset.deletePool);
-          window.location.reload();
+          await initStartsidaPage();
+          setText("appError", "");
           return;
         }
 
@@ -274,6 +275,7 @@ window.NSK2App = (() => {
       renderLaguppstallningMatchOptions(matches);
       renderMatchButtons(matches);
       renderPlayerCountOptions(playersOnField);
+      updatePlayerCountLabel();
       await renderCoachOptions();
       await renderLineupSelectors();
 
@@ -373,6 +375,11 @@ window.NSK2App = (() => {
       if (i === Number(defaultCount)) opt.selected = true;
       sel.appendChild(opt);
     }
+  }
+
+  function updatePlayerCountLabel() {
+    const label = document.querySelector('label[for="lineupPlayerCount"]');
+    if (label) label.textContent = "Antal spelare i laguppställningen";
   }
 
   async function renderCoachOptions() {
@@ -497,10 +504,6 @@ window.NSK2App = (() => {
 
     const enabled = !!goalie && selectedPlayers === count;
     coachSelect.disabled = !enabled;
-
-    if (!enabled) {
-      Array.from(coachSelect.options).forEach(opt => opt.selected = false);
-    }
   }
 
   function attachLineupHandlers() {
@@ -569,13 +572,13 @@ window.NSK2App = (() => {
     for (let i = 1; i <= count; i++) {
       const sel = byId(`lineupPlayer${i}`);
       if (!sel) continue;
-      const currentValue = sel.value;
+
       Array.from(sel.options).forEach(opt => {
-        if (opt.value && opt.value === goalieId) {
-          opt.remove();
-        }
+        if (!opt.value) return;
+        opt.disabled = !!goalieId && opt.value === goalieId;
       });
-      if (currentValue === goalieId) {
+
+      if (sel.value && sel.value === goalieId) {
         sel.value = "";
       }
     }
@@ -605,8 +608,23 @@ window.NSK2App = (() => {
     const coachSelect = byId("lineupCoach");
     if (!coachSelect) return;
 
+    const manualEnabled = !coachSelect.disabled;
+
     Array.from(coachSelect.options).forEach(opt => {
-      if (autoCoachIds.has(String(opt.value))) opt.selected = true;
+      if (opt.dataset.autoCoach === "1") {
+        opt.selected = false;
+        delete opt.dataset.autoCoach;
+      }
+    });
+
+    Array.from(coachSelect.options).forEach(opt => {
+      const isAuto = autoCoachIds.has(String(opt.value));
+      if (isAuto) {
+        opt.selected = true;
+        opt.dataset.autoCoach = "1";
+      } else if (!manualEnabled) {
+        opt.selected = false;
+      }
     });
   }
 
@@ -622,6 +640,7 @@ window.NSK2App = (() => {
       if (v) ids.push(v);
     }
 
+    updateCoachEnabledState();
     await applyAutoCoach(ids);
     updateCoachEnabledState();
   }
