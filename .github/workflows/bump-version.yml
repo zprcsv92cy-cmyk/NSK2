@@ -1,0 +1,81 @@
+name: Bump NSK version
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  bump-version:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Bump version and sync files
+        run: |
+          python <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          version_path = Path("version.js")
+          sw_path = Path("sw.js")
+          manifest_path = Path("manifest.webmanifest")
+
+          if not version_path.exists():
+              version_path.write_text('window.NSK_VERSION = "1";\n', encoding="utf-8")
+
+          version_text = version_path.read_text(encoding="utf-8")
+          m = re.search(r'window\.NSK_VERSION\s*=\s*"([0-9]+)"', version_text)
+          if not m:
+              raise SystemExit("Kunde inte läsa NSK_VERSION i version.js")
+
+          current = int(m.group(1))
+          new = current + 1
+
+          version_text = re.sub(
+              r'window\.NSK_VERSION\s*=\s*"[0-9]+"',
+              f'window.NSK_VERSION = "{new}"',
+              version_text
+          )
+          version_path.write_text(version_text, encoding="utf-8")
+          print(f"NSK_VERSION: {current} -> {new}")
+
+          if sw_path.exists():
+              sw_text = sw_path.read_text(encoding="utf-8")
+              sw_text = re.sub(
+                  r'const CACHE_NAME = "nsk-static-v[0-9]+";',
+                  f'const CACHE_NAME = "nsk-static-v{new}";',
+                  sw_text
+              )
+              sw_path.write_text(sw_text, encoding="utf-8")
+              print("Uppdaterade sw.js")
+
+          if manifest_path.exists():
+              manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+              manifest["version"] = str(new)
+              manifest_path.write_text(
+                  json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+                  encoding="utf-8"
+              )
+              print("Uppdaterade manifest.webmanifest")
+          PY
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add version.js sw.js manifest.webmanifest
+          git diff --cached --quiet || git commit -m "chore: bump NSK version"
+          git push
