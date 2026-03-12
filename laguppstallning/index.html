@@ -4,10 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Laguppställning</title>
-  <link rel="stylesheet" href="../app.css?v=643">
+  <link rel="stylesheet" href="../app.css?v=645">
 </head>
 <body>
   <div class="wrap">
+
     <nav class="mainmenu">
       <a href="../startsida/">Startsida</a>
       <a href="../truppen/">Truppen</a>
@@ -28,24 +29,31 @@
 
     <section class="card">
       <h2>Laguppställning</h2>
+
       <div id="laguppstallningTeamButtons" class="team-buttons"></div>
+
       <div class="coach-block">
         <label for="lineupCoach">Tränare</label>
         <select id="lineupCoach" multiple></select>
       </div>
+
       <div class="match-buttons-wrap">
         <div class="small">Matcher</div>
         <div id="matchButtons" class="team-buttons"></div>
       </div>
+
       <select id="lineupMatch" style="display:none"></select>
     </section>
 
     <section class="card">
       <h2>Matchinfo</h2>
+
       <label for="lineupStartTime">Starttid</label>
       <input id="lineupStartTime" type="time">
+
       <label for="lineupOpponent">Motståndare</label>
       <input id="lineupOpponent" type="text" placeholder="Motståndare">
+
       <label for="lineupPlan">Plan</label>
       <select id="lineupPlan">
         <option value="Plan 1">Plan 1</option>
@@ -53,6 +61,7 @@
         <option value="Plan 3">Plan 3</option>
         <option value="Plan 4">Plan 4</option>
       </select>
+
       <label for="lineupPlayerCount">Antal spelare</label>
       <select id="lineupPlayerCount"></select>
     </section>
@@ -66,11 +75,11 @@
     <div id="appError" class="small"></div>
 
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="../config.js?v=643"></script>
-    <script src="../auth.js?v=643"></script>
-    <script src="../login-patch.js?v=643"></script>
-    <script src="../db.js?v=643"></script>
-    <script src="../app.js?v=643"></script>
+    <script src="../config.js?v=645"></script>
+    <script src="../auth.js?v=645"></script>
+    <script src="../login-patch.js?v=645"></script>
+    <script src="../db.js?v=645"></script>
+    <script src="../app.js?v=645"></script>
   </div>
 </body>
 </html>
