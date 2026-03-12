@@ -4,7 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Målvaktsstatistik</title>
-  <link rel="stylesheet" href="../app.css?v=655">
+  <script src="../version.js"></script>
+  <script>
+    document.write('<link rel="stylesheet" href="../app.css?v=' + window.NSK_VERSION + '>');
+  </script>
+  <link rel="manifest" href="../manifest.webmanifest">
+  
 </head>
 <body>
   <div class="wrap">
@@ -29,13 +34,14 @@
     </section>
 
     <div id="appError" class="small"></div>
-
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="../config.js?v=655"></script>
-    <script src="../auth.js?v=655"></script>
-    <script src="../login-patch.js?v=655"></script>
-    <script src="../db.js?v=655"></script>
-    <script src="../app.js?v=655"></script>
+    <script src="../config.js"></script>
+    <script src="../auth.js"></script>
+    <script src="../login-patch.js"></script>
+    <script>
+      document.write('<script src="../db.js?v=' + window.NSK_VERSION + '"><\/script>');
+      document.write('<script src="../app.js?v=' + window.NSK_VERSION + '"><\/script>');
+    </script>
   </div>
 </body>
 </html>
