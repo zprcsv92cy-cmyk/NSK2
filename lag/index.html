@@ -4,18 +4,23 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Lag</title>
-  <link rel="stylesheet" href="/NSK2/app.css?v=655">
+  <script src="../version.js"></script>
+  <script>
+    document.write('<link rel="stylesheet" href="../app.css?v=' + window.NSK_VERSION + '>');
+  </script>
+  <link rel="manifest" href="../manifest.webmanifest">
+  
 </head>
 <body>
   <div class="wrap">
     <nav class="mainmenu">
-      <a href="/NSK2/startsida/">Startsida</a>
-      <a href="/NSK2/truppen/">Truppen</a>
-      <a href="/NSK2/skapapoolspel/">Skapa poolspel</a>
-      <a href="/NSK2/malvaktsstatistik/">Målvaktsstatistik</a>
-      <a href="/NSK2/bytesschema/">Bytesschema</a>
-      <a href="/NSK2/matchvy/">Matchvy</a>
-      <a href="/NSK2/lag/" class="active">Lag</a>
+      <a href="../startsida/">Startsida</a>
+      <a href="../truppen/">Truppen</a>
+      <a href="../skapapoolspel/">Skapa poolspel</a>
+      <a href="../malvaktsstatistik/">Målvaktsstatistik</a>
+      <a href="../bytesschema/">Bytesschema</a>
+      <a href="../matchvy/">Matchvy</a>
+      <a href="../lag/">Lag</a>
     </nav>
 
     <section class="card">
@@ -38,13 +43,14 @@
     </section>
 
     <div id="appError" class="small"></div>
-
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="/NSK2/config.js?v=655"></script>
-    <script src="/NSK2/auth.js?v=655"></script>
-    <script src="/NSK2/login-patch.js?v=655"></script>
-    <script src="/NSK2/db.js?v=655"></script>
-    <script src="/NSK2/app.js?v=655"></script>
+    <script src="../config.js"></script>
+    <script src="../auth.js"></script>
+    <script src="../login-patch.js"></script>
+    <script>
+      document.write('<script src="../db.js?v=' + window.NSK_VERSION + '"><\/script>');
+      document.write('<script src="../app.js?v=' + window.NSK_VERSION + '"><\/script>');
+    </script>
   </div>
 </body>
 </html>
