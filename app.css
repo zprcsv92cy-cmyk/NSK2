@@ -708,3 +708,14 @@ button:disabled{
     font-size:13px;
   }
 }
+/* Skapa poolspel – mindre datumruta */
+#poolDate{
+  width: 180px;
+  max-width: 100%;
+}
+
+@media (max-width: 430px){
+  #poolDate{
+    width: 160px;
+  }
+}
