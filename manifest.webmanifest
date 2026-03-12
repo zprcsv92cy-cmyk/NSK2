@@ -1,21 +1,22 @@
 {
-  "name": "NSK Team 18 V655",
-  "short_name": "NSK T18",
-  "display": "standalone",
+  "name": "NSK Team 18",
+  "short_name": "NSK",
+  "description": "NSK lagapp för poolspel, laguppställning och bytesschema.",
   "start_url": "./",
-  "background_color": "#0f0f10",
-  "theme_color": "#b11226",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#c8102e",
+  "version": "655",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "./icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "icon-512.png",
+      "src": "./icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
-  ],
-  "version": "657"
+  ]
 }
