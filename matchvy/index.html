@@ -3,12 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Målvaktsstatistik</title>
+  <title>Matchvy</title>
   <script src="../version.js"></script>
+<script>
+  document.write('<link rel="manifest" href="../manifest.webmanifest?v=' + window.NSK_VERSION + '">');
+</script>
   <script>
     document.write('<link rel="stylesheet" href="../app.css?v=' + window.NSK_VERSION + '>');
   </script>
-  <link rel="manifest" href="../manifest.webmanifest?v=700">
+  
   
 </head>
 <body>
@@ -23,21 +26,55 @@
       <a href="../lag/">Lag</a>
     </nav>
 
-    <section class="card">
-      <h1>Målvaktsstatistik</h1>
-      <div class="small">Visar bara antal matcher som målvakt.</div>
+    <section class="card match-admin-card">
+      <h1>Matchvy</h1>
+      <div class="row2">
+        <div><label>Matchnamn</label><input id="matchTitle" placeholder="Poolspel / match"></div>
+        <div><label>Motståndare</label><input id="matchOpponent" placeholder="Motståndare"></div>
+        <div><label>Plats</label><input id="matchPlace" placeholder="Nyköping"></div>
+        <div><label>Tid</label><input id="matchTime" placeholder="10:20"></div>
+        <div><label>Bytestid sek</label><input id="matchShiftSeconds" type="number" value="90"></div>
+      </div>
+      <div class="btnrow">
+        <button id="saveMatchBtn">Spara matchinfo</button>
+        <button id="coachFullscreenBtn" class="ghost">Coach-skärm</button>
+      </div>
+      <div id="matchMsg" class="small"></div>
     </section>
 
-    <section class="card">
-      <h2>Översikt</h2>
-      <div id="goalieStatsList"></div>
+    <section class="card coach-screen-card">
+      <div class="coach-screen-top">
+        <h2 id="shiftLabel">Inget schema</h2>
+        <div id="matchInfo"></div>
+      </div>
+
+      <div class="coach-panels">
+        <div class="coach-panel">
+          <div class="coach-panel-label">NU</div>
+          <div id="currentPlayers" class="coach-panel-main">—</div>
+        </div>
+        <div class="coach-panel">
+          <div class="coach-panel-label">NÄSTA</div>
+          <div id="nextPlayers" class="coach-panel-next">—</div>
+        </div>
+      </div>
+
+      <div class="coach-timer-wrap">
+        <div class="coach-panel-label">BYTE OM</div>
+        <div id="matchTimer" class="coach-timer">00:00</div>
+        <div class="btnrow">
+          <button id="startTimerBtn">Start</button>
+          <button id="stopTimerBtn" class="ghost">Stoppa</button>
+          <button id="nextShiftBtn" class="ghost">Nästa byte</button>
+        </div>
+      </div>
     </section>
 
     <div id="appError" class="small"></div>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="../config.js"></script>
-    <script src="../auth.js"></script>
-    <script src="../login-patch.js"></script>
+    
+    
+    
     <script>
       document.write('<script src="../db.js?v=' + window.NSK_VERSION + '"><\/script>');
       document.write('<script src="../app.js?v=' + window.NSK_VERSION + '"><\/script>');
