@@ -8,21 +8,29 @@ window.Auth = (() => {
   }
 
   function setStatus(message = "", isError = false) {
-    const el = byId("authStatus");
+    const el = byId("authStatus") || byId("loginMsg");
     if (!el) return;
     el.textContent = message || "";
     el.classList.toggle("error", !!isError);
   }
 
   function showApp() {
-    byId("loginView")?.classList.remove("active");
-    byId("appView")?.classList.add("active");
+    const loginView = byId("loginView");
+    const appView = byId("appView");
+
+    if (loginView) loginView.classList.remove("active");
+    if (appView) appView.classList.add("active");
+
     setStatus("");
   }
 
   function showLogin() {
-    byId("appView")?.classList.remove("active");
-    byId("loginView")?.classList.add("active");
+    const appView = byId("appView");
+    const loginView = byId("loginView");
+
+    if (appView) appView.classList.remove("active");
+    if (loginView) loginView.classList.add("active");
+
     setStatus("");
   }
 
@@ -41,8 +49,46 @@ window.Auth = (() => {
     return { url, key };
   }
 
+  async function login(email) {
+    if (!supabase) {
+      await init();
+    }
+
+    const safeEmail = String(email || "").trim();
+    if (!safeEmail) {
+      setStatus("Fyll i e-postadress.", true);
+      return;
+    }
+
+    setStatus("Skickar inloggningslänk...");
+
+    const redirectTo = window.location.origin + window.location.pathname;
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email: safeEmail,
+      options: { emailRedirectTo: redirectTo }
+    });
+
+    if (error) throw error;
+
+    setStatus("Kolla din e-post för inloggningslänken.");
+  }
+
+  async function logout() {
+    if (!supabase) {
+      await init();
+    }
+
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+
+    currentSession = null;
+    showLogin();
+  }
+
   function bindUi() {
     const loginBtn = byId("loginBtn");
+    const refreshBtn = byId("refreshBtn");
     const logoutBtn = byId("logoutBtn");
     const mailInput = byId("emailInput");
 
@@ -50,24 +96,19 @@ window.Auth = (() => {
       loginBtn.dataset.bound = "1";
       loginBtn.addEventListener("click", async () => {
         try {
-          const email = String(mailInput?.value || "").trim();
-          if (!email) {
-            setStatus("Fyll i e-postadress.", true);
-            return;
-          }
+          await login(mailInput?.value || "");
+        } catch (err) {
+          setStatus(err.message || String(err), true);
+        }
+      });
+    }
 
-          setStatus("Skickar inloggningslänk...");
-
-          const redirectTo = window.location.origin + window.location.pathname;
-
-          const { error } = await supabase.auth.signInWithOtp({
-            email,
-            options: { emailRedirectTo: redirectTo }
-          });
-
-          if (error) throw error;
-
-          setStatus("Kolla din e-post för inloggningslänken.");
+    if (refreshBtn && !refreshBtn.dataset.bound) {
+      refreshBtn.dataset.bound = "1";
+      refreshBtn.addEventListener("click", async () => {
+        try {
+          await applySession();
+          setStatus("Session uppdaterad.");
         } catch (err) {
           setStatus(err.message || String(err), true);
         }
@@ -78,9 +119,7 @@ window.Auth = (() => {
       logoutBtn.dataset.bound = "1";
       logoutBtn.addEventListener("click", async () => {
         try {
-          await supabase.auth.signOut();
-          currentSession = null;
-          showLogin();
+          await logout();
         } catch (err) {
           setStatus(err.message || String(err), true);
         }
@@ -115,7 +154,6 @@ window.Auth = (() => {
     });
 
     bindUi();
-
     await applySession();
 
     supabase.auth.onAuthStateChange((_event, session) => {
@@ -138,6 +176,8 @@ window.Auth = (() => {
 
   return {
     init,
+    login,
+    logout,
     getClient,
     getSession
   };
