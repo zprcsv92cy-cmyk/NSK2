@@ -14,7 +14,19 @@ window.Auth = (() => {
     el.classList.toggle("error", !!isError);
   }
 
+  function isRootLoginPage() {
+    return (
+      location.pathname === "/NSK2/" ||
+      location.pathname === "/NSK2/index.html"
+    );
+  }
+
   function showApp() {
+    if (isRootLoginPage()) {
+      window.location.href = "./startsida/";
+      return;
+    }
+
     const loginView = byId("loginView");
     const appView = byId("appView");
 
@@ -62,7 +74,7 @@ window.Auth = (() => {
 
     setStatus("Skickar inloggningslänk...");
 
-    const redirectTo = window.location.origin + window.location.pathname;
+    const redirectTo = window.location.origin + "/NSK2/";
 
     const { error } = await supabase.auth.signInWithOtp({
       email: safeEmail,
@@ -83,6 +95,12 @@ window.Auth = (() => {
     if (error) throw error;
 
     currentSession = null;
+
+    if (!isRootLoginPage()) {
+      window.location.href = "../";
+      return;
+    }
+
     showLogin();
   }
 
@@ -136,7 +154,9 @@ window.Auth = (() => {
     if (currentSession) {
       showApp();
     } else {
-      showLogin();
+      if (isRootLoginPage()) {
+        showLogin();
+      }
     }
   }
 
@@ -158,8 +178,12 @@ window.Auth = (() => {
 
     supabase.auth.onAuthStateChange((_event, session) => {
       currentSession = session || null;
-      if (currentSession) showApp();
-      else showLogin();
+
+      if (currentSession) {
+        showApp();
+      } else if (isRootLoginPage()) {
+        showLogin();
+      }
     });
 
     ready = true;
