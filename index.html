@@ -1,12 +1,130 @@
 <!doctype html>
 <html lang="sv">
 <head>
-  <meta charset="utf-8">
-  <meta http-equiv="refresh" content="0; url=./startsida/">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>NSK Team 18</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NSK Team 18 V7.5</title>
+<meta name="theme-color" content="#b11226">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="stylesheet" href="./app.css?v=75">
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="./config.js?v=75"></script>
 </head>
 <body>
-  <p>Skickar vidare till <a href="./startsida/">startsidan</a>…</p>
+<header class="topbar">
+  <div>
+    <h1>NSK Team 18 – V7.5</h1>
+    <div class="sub">automatisk nästa match • superstor coachskärm</div>
+  </div>
+  <div class="topright">
+    <div class="badge" id="authStatus">Ej inloggad</div>
+    <div class="badge" id="syncStatus">lokal</div>
+  </div>
+</header>
+
+<section id="loginView" class="view active">
+  <div class="card narrow">
+    <h2>Logga in</h2>
+    <input id="email" type="email" autocomplete="email" placeholder="namn@exempel.se">
+    <div class="btnrow">
+      <button id="loginBtn">Magic link</button>
+      <button id="refreshBtn" class="ghost">Uppdatera session</button>
+    </div>
+    <div id="loginMsg" class="msg"></div>
+  </div>
+</section>
+
+<section id="appView" class="view">
+  <div class="grid">
+    <div class="card">
+      <h2>Poolspel</h2>
+      <label>Namn</label>
+      <input id="poolName" placeholder="Rosvalla Poolspel">
+      <label>Cloud id</label>
+      <input id="cloudId" placeholder="auto eller eget id">
+      <div class="btnrow">
+        <button id="savePool">Spara</button>
+        <button id="pullPool" class="ghost">Hämta</button>
+        <button id="newPool" class="ghost">Nytt poolspel</button>
+      </div>
+      <div id="poolMsg" class="msg"></div>
+    </div>
+
+    <div class="card">
+      <h2>Spelare & schema</h2>
+      <label>Spelare (en per rad)</label>
+      <textarea id="playersInput" rows="8" placeholder="Alex&#10;Ben&#10;Hugo"></textarea>
+      <div class="row2">
+        <div>
+          <label>Målvakt</label>
+          <input id="goalieInput" placeholder="Målvakt">
+        </div>
+        <div>
+          <label>Bytestid sekunder</label>
+          <input id="shiftSeconds" type="number" min="20" max="300" value="90">
+        </div>
+      </div>
+      <div class="btnrow">
+        <button id="savePlayers">Spara spelare</button>
+        <button id="rebuildLineups" class="ghost">Bygg bytesschema</button>
+      </div>
+      <div id="playersMsg" class="msg"></div>
+    </div>
+
+    <div class="card span2">
+      <div class="toolbar">
+        <h2>Matchlista</h2>
+        <div class="btnrow">
+          <button id="addMatch">Ny match</button>
+          <button id="coachFullscreen" class="ghost">Coach-helscreen</button>
+        </div>
+      </div>
+      <div id="matches"></div>
+    </div>
+
+    <div class="card span2 coach-card" id="coachCard">
+      <div class="toolbar">
+        <h2>Coachläge</h2>
+        <div class="btnrow">
+          <button id="prevMatch" class="ghost">Föregående</button>
+          <button id="nextMatch" class="ghost">Nästa</button>
+        </div>
+      </div>
+      <div class="coach-grid">
+        <div class="coach-box">
+          <div class="coach-label">NU</div>
+          <div id="coachCurrentMatch" class="coach-meta">—</div>
+          <div id="coachCurrentPlayers" class="coach-main">—</div>
+        </div>
+        <div class="coach-box">
+          <div class="coach-label">NÄSTA</div>
+          <div id="coachNextMatch" class="coach-meta">—</div>
+          <div id="coachNextPlayers" class="coach-next">—</div>
+        </div>
+      </div>
+      <div class="timerwrap">
+        <div id="timer" class="timer">00:00</div>
+        <div class="btnrow">
+          <button id="startTimer">Start</button>
+          <button id="pauseTimer" class="ghost">Paus</button>
+          <button id="resetTimer" class="ghost">Reset</button>
+          <button id="tickShift" class="ghost">Bocka byte</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script src="./auth.js?v=75"></script>
+<script src="./db.js?v=75"></script>
+<script>
+  if (!window.DB) {
+    document.body.insertAdjacentHTML("beforeend", '<div style="position:fixed;left:12px;right:12px;bottom:12px;background:#7a0c18;color:#fff;padding:12px 14px;border-radius:12px;z-index:9999">db.js laddades inte. Töm cache eller ladda om sidan.</div>');
+  } else {
+    var s = document.createElement("script");
+    s.src = "./app.js?v=75";
+    document.body.appendChild(s);
+  }
+</script>
 </body>
 </html>
