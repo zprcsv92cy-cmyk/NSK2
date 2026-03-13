@@ -37,23 +37,6 @@ window.DB = (() => {
     window.dispatchEvent(new CustomEvent("nsk:truppen-changed", { detail: { type } }));
   }
 
-  function normalizePool(pool) {
-    const p = pool || {};
-    return {
-      id: p.id || uid(),
-      title: p.title || "Poolspel",
-      place: p.place || "",
-      pool_date: p.pool_date || "",
-      status: p.status || "Aktiv",
-      teams: Number(p.teams || 2),
-      matches: Number(p.matches || 4),
-      players_on_field: Number(p.players_on_field || 3),
-      periods: Number(p.periods || 1),
-      period_time: Number(p.period_time || 15),
-      sub_time: Number(p.sub_time || 90)
-    };
-  }
-
   async function getClient() {
     if (window.Auth?.init) await window.Auth.init();
     const client = window.Auth?.getClient?.();
@@ -71,22 +54,8 @@ window.DB = (() => {
       .eq("season", TEAM_SEASON)
       .limit(1)
       .maybeSingle();
+
     if (!exact.error && exact.data?.id) return exact.data.id;
-
-    let byName = await client
-      .from("nsk_teams")
-      .select("id,name,season")
-      .eq("name", TEAM_NAME)
-      .limit(1)
-      .maybeSingle();
-    if (!byName.error && byName.data?.id) return byName.data.id;
-
-    let anyTeam = await client
-      .from("nsk_teams")
-      .select("id,name,season")
-      .limit(1)
-      .maybeSingle();
-    if (!anyTeam.error && anyTeam.data?.id) return anyTeam.data.id;
 
     const inserted = await client
       .from("nsk_teams")
@@ -98,7 +67,23 @@ window.DB = (() => {
     return inserted.data.id;
   }
 
-  // ---------- Pools (local) ----------
+  function normalizePool(pool) {
+    const p = pool || {};
+    return {
+      id: p.id || uid(),
+      title: p.title || "Poolspel",
+      place: p.place || "",
+      pool_date: p.pool_date || "",
+      status: p.status || "Aktiv",
+      teams: Number(p.teams || 2),
+      matches: Number(p.matches || 4),
+      players_on_field: Number(p.players_on_field || 3),
+      periods: Number(p.periods || 1),
+      period_time: Number(p.period_time || 15),
+      sub_time: Number(p.sub_time || 90)
+    };
+  }
+
   async function listPools() {
     return read().pools;
   }
@@ -137,7 +122,6 @@ window.DB = (() => {
     return true;
   }
 
-  // ---------- Players ----------
   async function listPlayers() {
     const client = await getClient();
     try {
@@ -148,7 +132,7 @@ window.DB = (() => {
             .from("nsk_players")
             .select("id, full_name")
             .eq("team_id", teamId)
-            .order("full_name", { ascending: true });
+            .order("full_name");
 
           if (!error && Array.isArray(data)) {
             const local = read();
@@ -158,7 +142,7 @@ window.DB = (() => {
           }
         }
       }
-    } catch (_) {}
+    } catch {}
 
     return read().players;
   }
@@ -168,35 +152,20 @@ window.DB = (() => {
     if (!full_name) throw new Error("Spelarnamn saknas.");
 
     const client = await getClient();
+
     if (client) {
-      try {
-        const teamId = await getTeamId();
-        if (teamId) {
-          const existing = await listPlayers();
-          const hit = existing.find(p => p.full_name.toLowerCase() === full_name.toLowerCase());
-          if (hit) return hit;
+      const teamId = await getTeamId();
+      const { data } = await client
+        .from("nsk_players")
+        .insert({ team_id: teamId, full_name })
+        .select("id, full_name")
+        .single();
 
-          const { data, error } = await client
-            .from("nsk_players")
-            .insert({ team_id: teamId, full_name })
-            .select("id, full_name")
-            .single();
-
-          if (!error && data) {
-            const local = read();
-            local.players = [...local.players.filter(p => String(p.id) !== String(data.id)), data];
-            write(local);
-            emitTruppen("players");
-            return data;
-          }
-        }
-      } catch (_) {}
+      emitTruppen("players");
+      return data;
     }
 
     const data = read();
-    const exists = data.players.some(p => p.full_name.toLowerCase() === full_name.toLowerCase());
-    if (exists) return data.players.find(p => p.full_name.toLowerCase() === full_name.toLowerCase());
-
     const row = { id: uid(), full_name };
     data.players.push(row);
     write(data);
@@ -209,30 +178,15 @@ window.DB = (() => {
     const client = await getClient();
 
     if (client) {
-      try {
-        const { data, error } = await client
-          .from("nsk_players")
-          .update({ full_name })
-          .eq("id", id)
-          .select("id, full_name")
-          .single();
-
-        if (!error && data) {
-          const local = read();
-          const idx = local.players.findIndex(p => String(p.id) === String(id));
-          if (idx >= 0) local.players[idx] = data;
-          else local.players.push(data);
-          write(local);
-          emitTruppen("players");
-          return data;
-        }
-      } catch (_) {}
+      await client
+        .from("nsk_players")
+        .update({ full_name })
+        .eq("id", id);
     }
 
     const data = read();
     const row = data.players.find(p => String(p.id) === String(id));
-    if (!row) throw new Error("Spelare hittades inte.");
-    row.full_name = full_name;
+    if (row) row.full_name = full_name;
     write(data);
     emitTruppen("players");
     return row;
@@ -240,11 +194,8 @@ window.DB = (() => {
 
   async function deletePlayer(id) {
     const client = await getClient();
-
     if (client) {
-      try {
-        await client.from("nsk_players").delete().eq("id", id);
-      } catch (_) {}
+      await client.from("nsk_players").delete().eq("id", id);
     }
 
     const data = read();
@@ -254,66 +205,41 @@ window.DB = (() => {
     return true;
   }
 
-  // ---------- Coaches ----------
   async function listCoaches() {
     const client = await getClient();
     try {
       if (client) {
         const teamId = await getTeamId();
-        if (teamId) {
-          const { data, error } = await client
-            .from("nsk_coaches")
-            .select("id, full_name")
-            .eq("team_id", teamId)
-            .order("full_name", { ascending: true });
+        const { data } = await client
+          .from("nsk_coaches")
+          .select("id, full_name")
+          .eq("team_id", teamId)
+          .order("full_name");
 
-          if (!error && Array.isArray(data)) {
-            const local = read();
-            local.coaches = data;
-            write(local);
-            return data;
-          }
-        }
+        if (data) return data;
       }
-    } catch (_) {}
+    } catch {}
 
     return read().coaches;
   }
 
   async function addCoach(name) {
     const full_name = String(name || "").trim();
-    if (!full_name) throw new Error("Tränarnamn saknas.");
-
     const client = await getClient();
+
     if (client) {
-      try {
-        const teamId = await getTeamId();
-        if (teamId) {
-          const existing = await listCoaches();
-          const hit = existing.find(c => c.full_name.toLowerCase() === full_name.toLowerCase());
-          if (hit) return hit;
+      const teamId = await getTeamId();
+      const { data } = await client
+        .from("nsk_coaches")
+        .insert({ team_id: teamId, full_name })
+        .select("id, full_name")
+        .single();
 
-          const { data, error } = await client
-            .from("nsk_coaches")
-            .insert({ team_id: teamId, full_name })
-            .select("id, full_name")
-            .single();
-
-          if (!error && data) {
-            const local = read();
-            local.coaches = [...local.coaches.filter(c => String(c.id) !== String(data.id)), data];
-            write(local);
-            emitTruppen("coaches");
-            return data;
-          }
-        }
-      } catch (_) {}
+      emitTruppen("coaches");
+      return data;
     }
 
     const data = read();
-    const exists = data.coaches.some(c => c.full_name.toLowerCase() === full_name.toLowerCase());
-    if (exists) return data.coaches.find(c => c.full_name.toLowerCase() === full_name.toLowerCase());
-
     const row = { id: uid(), full_name };
     data.coaches.push(row);
     write(data);
@@ -326,30 +252,15 @@ window.DB = (() => {
     const client = await getClient();
 
     if (client) {
-      try {
-        const { data, error } = await client
-          .from("nsk_coaches")
-          .update({ full_name })
-          .eq("id", id)
-          .select("id, full_name")
-          .single();
-
-        if (!error && data) {
-          const local = read();
-          const idx = local.coaches.findIndex(c => String(c.id) === String(id));
-          if (idx >= 0) local.coaches[idx] = data;
-          else local.coaches.push(data);
-          write(local);
-          emitTruppen("coaches");
-          return data;
-        }
-      } catch (_) {}
+      await client
+        .from("nsk_coaches")
+        .update({ full_name })
+        .eq("id", id);
     }
 
     const data = read();
     const row = data.coaches.find(c => String(c.id) === String(id));
-    if (!row) throw new Error("Tränare hittades inte.");
-    row.full_name = full_name;
+    if (row) row.full_name = full_name;
     write(data);
     emitTruppen("coaches");
     return row;
@@ -359,9 +270,7 @@ window.DB = (() => {
     const client = await getClient();
 
     if (client) {
-      try {
-        await client.from("nsk_coaches").delete().eq("id", id);
-      } catch (_) {}
+      await client.from("nsk_coaches").delete().eq("id", id);
     }
 
     const data = read();
@@ -375,7 +284,9 @@ window.DB = (() => {
     const handler = (e) => {
       if (typeof callback === "function") callback(e.detail?.type || "");
     };
+
     window.addEventListener("nsk:truppen-changed", handler);
+
     return {
       unsubscribe() {
         window.removeEventListener("nsk:truppen-changed", handler);
@@ -389,14 +300,17 @@ window.DB = (() => {
     addPool,
     updatePool,
     deletePool,
+
     listPlayers,
     addPlayer,
     updatePlayer,
     deletePlayer,
+
     listCoaches,
     addCoach,
     updateCoach,
     deleteCoach,
+
     subscribeTruppen
   };
 })();
