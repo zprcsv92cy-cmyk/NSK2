@@ -1,81 +1,111 @@
 name: Bump NSK version
 
 on:
-  push:
-    branches:
-      - main
-
-permissions:
-  contents: write
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Ny version, t.ex. 701"
+        required: true
+        type: string
 
 jobs:
-  bump-version:
-    if: github.actor != 'github-actions[bot]'
+  bump:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-
-      - name: Bump version and sync files
+      - name: Set version
+        env:
+          VERSION: ${{ github.event.inputs.version }}
         run: |
-          python <<'PY'
-          import json
-          import re
-          from pathlib import Path
+          echo "Sätter version till $VERSION"
 
-          version_path = Path("version.js")
-          sw_path = Path("sw.js")
-          manifest_path = Path("manifest.webmanifest")
+          # 1. version.js
+          cat > version.js <<EOF
+          window.NSK_VERSION = "$VERSION";
+          EOF
 
-          if not version_path.exists():
-              version_path.write_text('window.NSK_VERSION = "1";\n', encoding="utf-8")
+          # 2. deploy.json
+          cat > deploy.json <<EOF
+          {
+            "version": "$VERSION"
+          }
+          EOF
 
-          version_text = version_path.read_text(encoding="utf-8")
-          m = re.search(r'window\.NSK_VERSION\s*=\s*"([0-9]+)"', version_text)
-          if not m:
-              raise SystemExit("Kunde inte läsa NSK_VERSION i version.js")
+          # 3. sw.js
+          cat > sw.js <<EOF
+          const VERSION = "$VERSION";
+          const CACHE_NAME = "nsk-team18-v" + VERSION;
 
-          current = int(m.group(1))
-          new = current + 1
+          const ASSETS = [
+            "./",
+            "./index.html?v=$VERSION",
+            "./version.js?v=$VERSION",
+            "./deploy.json?v=$VERSION",
+            "./app.css?v=$VERSION",
+            "./config.js?v=$VERSION",
+            "./auth.js?v=$VERSION",
+            "./login-patch.js?v=$VERSION",
+            "./db.js?v=$VERSION",
+            "./app.js?v=$VERSION",
+            "./manifest.webmanifest?v=$VERSION",
+            "./icon-192.png",
+            "./icon-512.png"
+          ];
 
-          version_text = re.sub(
-              r'window\.NSK_VERSION\s*=\s*"[0-9]+"',
-              f'window.NSK_VERSION = "{new}"',
-              version_text
-          )
-          version_path.write_text(version_text, encoding="utf-8")
-          print(f"NSK_VERSION: {current} -> {new}")
+          self.addEventListener("install", (event) => {
+            event.waitUntil(
+              caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+            );
+          });
 
-          if sw_path.exists():
-              sw_text = sw_path.read_text(encoding="utf-8")
-              sw_text = re.sub(
-                  r'const CACHE_NAME = "nsk-static-v[0-9]+";',
-                  f'const CACHE_NAME = "nsk-static-v{new}";',
-                  sw_text
-              )
-              sw_path.write_text(sw_text, encoding="utf-8")
-              print("Uppdaterade sw.js")
+          self.addEventListener("activate", (event) => {
+            event.waitUntil(
+              caches.keys().then((keys) =>
+                Promise.all(
+                  keys
+                    .filter((key) => key !== CACHE_NAME)
+                    .map((key) => caches.delete(key))
+                )
+              ).then(() => self.clients.claim())
+            );
+          });
 
-          if manifest_path.exists():
-              manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-              manifest["version"] = str(new)
-              manifest_path.write_text(
-                  json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
-                  encoding="utf-8"
-              )
-              print("Uppdaterade manifest.webmanifest")
-          PY
+          self.addEventListener("fetch", (event) => {
+            event.respondWith(
+              caches.match(event.request).then((cached) => cached || fetch(event.request))
+            );
+          });
+          EOF
 
-      - name: Commit and push
+          # 4. Uppdatera manifest.webmanifest version/start_url om filen finns
+          if [ -f manifest.webmanifest ]; then
+            sed -i 's/"version":[[:space:]]*"[^"]*"/"version": "'"$VERSION"'"/g' manifest.webmanifest || true
+            sed -i 's#"start_url":[[:space:]]*"[^"]*"#"start_url": "./?v='"$VERSION"'"#g' manifest.webmanifest || true
+          fi
+
+          # 5. Uppdatera alla HTML-filer med rätt ?v=
+          find . -name "*.html" -type f | while read -r file; do
+            sed -i -E 's/(app\.css\?v=)[0-9]+/\1'"$VERSION"'/g' "$file"
+            sed -i -E 's/(config\.js\?v=)[0-9]+/\1'"$VERSION"'/g' "$file"
+            sed -i -E 's/(auth\.js\?v=)[0-9]+/\1'"$VERSION"'/g' "$file"
+            sed -i -E 's/(login-patch\.js\?v=)[0-9]+/\1'"$VERSION"'/g' "$file"
+            sed -i -E 's/(db\.js\?v=)[0-9]+/\1'"$VERSION"'/g' "$file"
+            sed -i -E 's/(app\.js\?v=)[0-9]+/\1'"$VERSION"'/g' "$file"
+            sed -i -E 's/(version\.js\?v=)[0-9]+/\1'"$VERSION"'/g' "$file"
+          done
+
+      - name: Commit changes
+        env:
+          VERSION: ${{ github.event.inputs.version }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add version.js sw.js manifest.webmanifest
-          git diff --cached --quiet || git commit -m "chore: bump NSK version"
-          git push
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add version.js deploy.json sw.js manifest.webmanifest . || true
+          git add $(find . -name "*.html" -type f) || true
+          git commit -m "Bump version to $VERSION" || echo "Inga ändringar att committa"
+
+      - name: Push
+        run: git push
