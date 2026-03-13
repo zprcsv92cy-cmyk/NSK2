@@ -5,17 +5,20 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>NSK Team 18</title>
   <meta name="theme-color" content="#b11226">
+
   <script src="./version.js?v=704"></script>
   <script>
     document.write('<link rel="manifest" href="./manifest.webmanifest?v=' + window.NSK_VERSION + '">');
     document.write('<link rel="stylesheet" href="./app.css?v=' + window.NSK_VERSION + '">');
   </script>
+
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script>
     document.write('<script src="./config.js?v=' + window.NSK_VERSION + '"><\\/script>');
     document.write('<script src="./auth.js?v=' + window.NSK_VERSION + '"><\\/script>');
     document.write('<script src="./login-patch.js?v=' + window.NSK_VERSION + '"><\\/script>');
     document.write('<script src="./db.js?v=' + window.NSK_VERSION + '"><\\/script>');
+    document.write('<script src="./app.js?v=' + window.NSK_VERSION + '"><\\/script>');
   </script>
 </head>
 <body>
@@ -33,7 +36,7 @@
 <section id="loginView" class="view active">
   <div class="card narrow">
     <h2>Logga in</h2>
-    <input id="email" type="email" autocomplete="email" placeholder="namn@exempel.se">
+    <input id="emailInput" type="email" autocomplete="email" placeholder="namn@exempel.se">
     <div class="btnrow">
       <button id="loginBtn">Magic link</button>
       <button id="refreshBtn" class="ghost">Uppdatera session</button>
@@ -127,17 +130,6 @@
   document.title = 'NSK Team 18 V' + window.NSK_VERSION;
   const titleEl = document.getElementById('appTitle');
   if (titleEl) titleEl.textContent = 'NSK Team 18 – V' + window.NSK_VERSION;
-
-  if (!window.DB) {
-    document.body.insertAdjacentHTML(
-      'beforeend',
-      '<div style="position:fixed;left:12px;right:12px;bottom:12px;background:#7a0c18;color:#fff;padding:12px 14px;border-radius:12px;z-index:9999">db.js laddades inte. Töm cache eller ladda om sidan.</div>'
-    );
-  } else {
-    const s = document.createElement('script');
-    s.src = './app.js?v=' + window.NSK_VERSION;
-    document.body.appendChild(s);
-  }
 </script>
 </body>
 </html>
