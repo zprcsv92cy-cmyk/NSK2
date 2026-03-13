@@ -40,15 +40,8 @@ jobs:
 
           echo "Sätter version till $VERSION"
 
-          cat > version.js <<EOF
-          window.NSK_VERSION = "$VERSION";
-          EOF
-
-          cat > deploy.json <<EOF
-          {
-            "version": "$VERSION"
-          }
-          EOF
+          printf 'window.NSK_VERSION = "%s";\n' "$VERSION" > version.js
+          printf '{\n  "version": "%s"\n}\n' "$VERSION" > deploy.json
 
           if [ -f manifest.webmanifest ]; then
             sed -i -E 's/"version":[[:space:]]*"[^"]*"/"version": "'"$VERSION"'"/g' manifest.webmanifest || true
