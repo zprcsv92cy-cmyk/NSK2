@@ -2,7 +2,15 @@ const VERSION = "700";
 const CACHE_NAME = `nsk-team18-v${VERSION}`;
 const ASSETS = [
   "./",
-  "./index.html?v=700",
+  "./index.html",
+  "./startsida/",
+  "./truppen/",
+  "./skapapoolspel/",
+  "./lag/",
+  "./laguppstallning/",
+  "./bytesschema/",
+  "./malvaktsstatistik/",
+  "./matchvy/",
   "./version.js?v=700",
   "./deploy.json?v=700",
   "./config.js?v=700",
@@ -36,7 +44,7 @@ self.addEventListener("fetch", event => {
   if (req.method !== "GET") return;
 
   event.respondWith((async () => {
-    const cached = await caches.match(req, { ignoreSearch: false });
+    const cached = await caches.match(req, { ignoreSearch: true });
     if (cached) return cached;
 
     try {
@@ -47,7 +55,7 @@ self.addEventListener("fetch", event => {
       }
       return fresh;
     } catch (err) {
-      return caches.match("./index.html?v=700") || Response.error();
+      return caches.match("./index.html", { ignoreSearch: true }) || Response.error();
     }
   })());
 });
