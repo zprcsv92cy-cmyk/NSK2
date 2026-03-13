@@ -3,18 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NSK Team 18 V7.5</title>
+<title>NSK Team 18 V6.57</title>
 <meta name="theme-color" content="#b11226">
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="stylesheet" href="./app.css?v=75">
+<link rel="stylesheet" href="./app.css?v=657">
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<script src="./config.js?v=75"></script>
+<script src="./config.js?v=657"></script>
 </head>
 <body>
 <header class="topbar">
   <div>
-    <h1>NSK Team 18 – V7.5</h1>
-    <div class="sub">automatisk nästa match • superstor coachskärm</div>
+    <h1>NSK Team 18 – V6.57</h1>
+    <div class="sub">stabil laddning • cache-fix • coachskärm</div>
   </div>
   <div class="topright">
     <div class="badge" id="authStatus">Ej inloggad</div>
@@ -115,14 +115,17 @@
   </div>
 </section>
 
-<script src="./auth.js?v=75"></script>
-<script src="./db.js?v=75"></script>
+<script src="./auth.js?v=657"></script>
+<script src="./db.js?v=657"></script>
 <script>
   if (!window.DB) {
-    document.body.insertAdjacentHTML("beforeend", '<div style="position:fixed;left:12px;right:12px;bottom:12px;background:#7a0c18;color:#fff;padding:12px 14px;border-radius:12px;z-index:9999">db.js laddades inte. Töm cache eller ladda om sidan.</div>');
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<div style="position:fixed;left:12px;right:12px;bottom:12px;background:#7a0c18;color:#fff;padding:12px 14px;border-radius:12px;z-index:9999">db.js laddades inte. Töm cache eller ladda om sidan.</div>'
+    );
   } else {
-    var s = document.createElement("script");
-    s.src = "./app.js?v=75";
+    const s = document.createElement("script");
+    s.src = "./app.js?v=657";
     document.body.appendChild(s);
   }
 </script>
