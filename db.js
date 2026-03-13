@@ -43,6 +43,7 @@ window.DB = (() => {
     const client = await getClient();
     if (!client) return null;
 
+    // 1. Exakt match: namn + säsong
     const exact = await client
       .from("nsk_teams")
       .select("id,name,season")
@@ -53,6 +54,7 @@ window.DB = (() => {
 
     if (!exact.error && exact.data?.id) return exact.data.id;
 
+    // 2. Matcha bara på namn
     const byName = await client
       .from("nsk_teams")
       .select("id,name,season")
@@ -62,6 +64,16 @@ window.DB = (() => {
 
     if (!byName.error && byName.data?.id) return byName.data.id;
 
+    // 3. Ta första teamet som finns
+    const anyTeam = await client
+      .from("nsk_teams")
+      .select("id,name,season")
+      .limit(1)
+      .maybeSingle();
+
+    if (!anyTeam.error && anyTeam.data?.id) return anyTeam.data.id;
+
+    // 4. Skapa nytt team bara om tabellen verkar tom
     const inserted = await client
       .from("nsk_teams")
       .insert({ name: TEAM_NAME, season: TEAM_SEASON })
