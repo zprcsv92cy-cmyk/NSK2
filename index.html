@@ -3,70 +3,147 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>NSK Team 18</title>
+  <title>NSK Login</title>
   <meta name="theme-color" content="#b11226">
 
   <script src="./version.js?v=707"></script>
-  <script>
-    document.write('<link rel="manifest" href="./manifest.webmanifest?v=' + window.NSK_VERSION + '">');
-    document.write('<link rel="stylesheet" href="./app.css?v=' + window.NSK_VERSION + '">');
-  </script>
-
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script>
-    document.write('<script src="./config.js?v=' + window.NSK_VERSION + '"><\\/script>');
-    document.write('<script src="./auth.js?v=' + window.NSK_VERSION + '"><\\/script>');
-  </script>
+  <script src="./config.js?v=707"></script>
+  <script src="./auth.js?v=707"></script>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: #0b1020;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    }
+
+    .page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 420px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 20px;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 28px;
+    }
+
+    .sub {
+      opacity: .8;
+      margin-bottom: 18px;
+    }
+
+    input {
+      width: 100%;
+      height: 52px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      padding: 0 14px;
+      box-sizing: border-box;
+      font-size: 16px;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      height: 52px;
+      border: 0;
+      border-radius: 14px;
+      padding: 0 18px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #fff;
+      background: linear-gradient(180deg,#e11d3d,#9f0d20);
+    }
+
+    #loginMsg, #appError, #authStatus {
+      margin-top: 14px;
+      opacity: .9;
+      font-size: 14px;
+      word-break: break-word;
+    }
+
+    #appView {
+      display: none;
+    }
+
+    .test {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 99999;
+      background: #fff;
+      color: #000;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-weight: 700;
+    }
+  </style>
 </head>
 <body>
-  <div style="position:fixed;top:10px;left:10px;z-index:99999;background:#fff;color:#000;padding:8px 12px;border-radius:8px;font-weight:700">
-    ROOT 707 TEST
-  </div>
+  <div class="test">ROOT 707 MINIMAL</div>
 
-  <header class="topbar">
-    <div>
-      <h1 id="appTitle">NSK Team 18</h1>
+  <section id="loginView" class="page">
+    <div class="card">
+      <h1>NSK Team 18</h1>
       <div class="sub">Logga in för att öppna appen</div>
-    </div>
-    <div class="topright">
-      <div class="badge" id="authStatus">Ej inloggad</div>
-    </div>
-  </header>
 
-  <section id="loginView" class="view active">
-    <div class="card narrow">
-      <h2>Logga in</h2>
       <input id="emailInput" type="email" autocomplete="email" placeholder="namn@exempel.se">
 
-      <div class="btnrow">
-        <button id="loginBtn">Magic link</button>
-        <button id="refreshBtn" class="ghost" type="button">Uppdatera session</button>
+      <div class="row">
+        <button id="loginBtn" type="button">Magic link</button>
+        <button id="refreshBtn" type="button">Uppdatera</button>
       </div>
 
-      <div id="loginMsg" class="msg"></div>
+      <div id="authStatus">Ej inloggad</div>
+      <div id="loginMsg"></div>
+      <div id="appError"></div>
     </div>
   </section>
 
-  <section id="appView" class="view"></section>
-
-  <div id="appError" class="small"></div>
+  <section id="appView"></section>
 
   <script>
-    document.title = "NSK Team 18 V" + window.NSK_VERSION;
-
-    window.onerror = function (msg, url, line) {
-      const el = document.getElementById("appError");
+    window.onerror = function (msg, url, line, col, err) {
+      var el = document.getElementById("appError");
       if (el) el.textContent = "JS-fel: " + msg + " rad " + line;
-      console.error(msg, url, line);
+      console.error(msg, url, line, col, err);
     };
 
-    document.addEventListener("DOMContentLoaded", () => {
+    document.addEventListener("DOMContentLoaded", function () {
       if (window.Auth && typeof window.Auth.init === "function") {
-        window.Auth.init().catch((err) => {
-          const el = document.getElementById("appError");
+        window.Auth.init().catch(function (err) {
+          var el = document.getElementById("appError");
           if (el) el.textContent = err.message || String(err);
           console.error(err);
         });
+      } else {
+        var el = document.getElementById("appError");
+        if (el) el.textContent = "Auth.init saknas";
       }
     });
   </script>
