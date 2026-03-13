@@ -1,17 +1,17 @@
-const VERSION = "701";
+const VERSION = "700";
 const CACHE_NAME = `nsk-team18-v${VERSION}`;
 const ASSETS = [
   "./",
-  `./index.html?v=${VERSION}`,
-  `./version.js?v=${VERSION}`,
-  `./deploy.json?v=${VERSION}`,
-  `./app.css?v=${VERSION}`,
-  `./config.js?v=${VERSION}`,
-  `./auth.js?v=${VERSION}`,
-  `./login-patch.js?v=${VERSION}`,
-  `./db.js?v=${VERSION}`,
-  `./app.js?v=${VERSION}`,
-  `./manifest.webmanifest?v=${VERSION}`,
+  "./index.html?v=700",
+  "./version.js?v=700",
+  "./deploy.json?v=700",
+  "./config.js?v=700",
+  "./app.css?v=700",
+  "./auth.js?v=700",
+  "./login-patch.js?v=700",
+  "./db.js?v=700",
+  "./app.js?v=700",
+  "./manifest.webmanifest?v=700",
   "./icon-192.png",
   "./icon-512.png"
 ];
@@ -35,23 +35,19 @@ self.addEventListener("fetch", event => {
   const req = event.request;
   if (req.method !== "GET") return;
 
-  const url = new URL(req.url);
-  const isVersionPing = url.pathname.endsWith("/deploy.json") || url.pathname.endsWith("deploy.json");
-
-  if (isVersionPing) {
-    event.respondWith(fetch(req, { cache: "no-store" }).catch(() => caches.match(req)));
-    return;
-  }
-
   event.respondWith((async () => {
-    const cached = await caches.match(req);
+    const cached = await caches.match(req, { ignoreSearch: false });
     if (cached) return cached;
 
-    const fresh = await fetch(req);
-    if (fresh && fresh.ok) {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(req, fresh.clone());
+    try {
+      const fresh = await fetch(req);
+      if (fresh && fresh.status === 200) {
+        const cache = await caches.open(CACHE_NAME);
+        cache.put(req, fresh.clone());
+      }
+      return fresh;
+    } catch (err) {
+      return caches.match("./index.html?v=700") || Response.error();
     }
-    return fresh;
   })());
 });
