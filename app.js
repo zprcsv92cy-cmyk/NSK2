@@ -55,17 +55,19 @@ window.NSK2App = (() => {
   let laguppstallningBound = false;
 
   async function init() {
-    if (window.Auth?.init) await Auth.init();
+  await checkAppVersion();
 
-    bindGlobalClicks();
+  if (window.Auth?.init) await Auth.init();
 
-    await initStartsidaPage();
-    await initSkapaPoolspelPage();
-    await initLaguppstallningPage();
-    await initBytesschemaPage();
-    await initTruppenPage();
-    await initGoalieStatsPage();
-  }
+  bindGlobalClicks();
+
+  await initStartsidaPage();
+  await initSkapaPoolspelPage();
+  await initLaguppstallningPage();
+  await initBytesschemaPage();
+  await initTruppenPage();
+  await initGoalieStatsPage();
+}
 
   function bindGlobalClicks() {
     if (globalClicksBound) return;
