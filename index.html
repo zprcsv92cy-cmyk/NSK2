@@ -132,6 +132,19 @@
   document.title = 'NSK Team 18 V' + window.NSK_VERSION;
   const titleEl = document.getElementById('appTitle');
   if (titleEl) titleEl.textContent = 'NSK Team 18 – V' + window.NSK_VERSION;
+
+  window.onerror = function(msg, url, line, col, err) {
+    const el = document.getElementById("appError");
+    if (el) {
+      el.textContent = "JS-fel: " + msg + " @ rad " + line;
+    }
+    console.error(msg, url, line, col, err);
+  };
+
+  document.body.insertAdjacentHTML(
+    "beforeend",
+    '<div style="position:fixed;top:10px;left:10px;z-index:99999;background:#fff;color:#000;padding:8px 12px;border-radius:8px;font-weight:700">ROOT 705 TEST</div>'
+  );
 </script>
 </body>
 </html>
