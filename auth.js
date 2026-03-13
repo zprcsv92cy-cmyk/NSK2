@@ -8,7 +8,7 @@ window.Auth = (() => {
   }
 
   function setStatus(message = "", isError = false) {
-    const el = byId("authStatus") || byId("loginMsg");
+    const el = byId("authStatus") || byId("loginMsg") || byId("appError");
     if (!el) return;
     el.textContent = message || "";
     el.classList.toggle("error", !!isError);
@@ -32,8 +32,6 @@ window.Auth = (() => {
 
     if (loginView) loginView.classList.remove("active");
     if (appView) appView.classList.add("active");
-
-    setStatus("");
   }
 
   function showLogin() {
@@ -42,8 +40,6 @@ window.Auth = (() => {
 
     if (appView) appView.classList.remove("active");
     if (loginView) loginView.classList.add("active");
-
-    setStatus("");
   }
 
   function ensureConfig() {
@@ -55,16 +51,14 @@ window.Auth = (() => {
     }
 
     if (!window.supabase?.createClient) {
-      throw new Error("Supabase-biblioteket saknas. Ladda supabase-js före auth.js.");
+      throw new Error("Supabase-biblioteket saknas.");
     }
 
     return { url, key };
   }
 
   async function login(email) {
-    if (!supabase) {
-      await init();
-    }
+    if (!supabase) await init();
 
     const safeEmail = String(email || "").trim();
     if (!safeEmail) {
@@ -74,11 +68,13 @@ window.Auth = (() => {
 
     setStatus("Skickar inloggningslänk...");
 
-    const redirectTo = window.location.origin + "/NSK2/";
+    const redirectTo = "https://zprcsv92cy-cmyk.github.io/NSK2/";
 
     const { error } = await supabase.auth.signInWithOtp({
       email: safeEmail,
-      options: { emailRedirectTo: redirectTo }
+      options: {
+        emailRedirectTo: redirectTo
+      }
     });
 
     if (error) throw error;
@@ -87,9 +83,7 @@ window.Auth = (() => {
   }
 
   async function logout() {
-    if (!supabase) {
-      await init();
-    }
+    if (!supabase) await init();
 
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
@@ -110,36 +104,53 @@ window.Auth = (() => {
     const logoutBtn = byId("logoutBtn");
     const mailInput = byId("emailInput");
 
-    if (loginBtn && !loginBtn.dataset.bound) {
-      loginBtn.dataset.bound = "1";
+    if (loginBtn && !loginBtn.dataset.boundAuth) {
+      loginBtn.dataset.boundAuth = "1";
       loginBtn.addEventListener("click", async () => {
         try {
           await login(mailInput?.value || "");
         } catch (err) {
           setStatus(err.message || String(err), true);
+          console.error(err);
         }
       });
     }
 
-    if (refreshBtn && !refreshBtn.dataset.bound) {
-      refreshBtn.dataset.bound = "1";
+    if (mailInput && !mailInput.dataset.boundAuth) {
+      mailInput.dataset.boundAuth = "1";
+      mailInput.addEventListener("keydown", async (e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        try {
+          await login(mailInput?.value || "");
+        } catch (err) {
+          setStatus(err.message || String(err), true);
+          console.error(err);
+        }
+      });
+    }
+
+    if (refreshBtn && !refreshBtn.dataset.boundAuth) {
+      refreshBtn.dataset.boundAuth = "1";
       refreshBtn.addEventListener("click", async () => {
         try {
           await applySession();
           setStatus("Session uppdaterad.");
         } catch (err) {
           setStatus(err.message || String(err), true);
+          console.error(err);
         }
       });
     }
 
-    if (logoutBtn && !logoutBtn.dataset.bound) {
-      logoutBtn.dataset.bound = "1";
+    if (logoutBtn && !logoutBtn.dataset.boundAuth) {
+      logoutBtn.dataset.boundAuth = "1";
       logoutBtn.addEventListener("click", async () => {
         try {
           await logout();
         } catch (err) {
           setStatus(err.message || String(err), true);
+          console.error(err);
         }
       });
     }
@@ -153,10 +164,8 @@ window.Auth = (() => {
 
     if (currentSession) {
       showApp();
-    } else {
-      if (isRootLoginPage()) {
-        showLogin();
-      }
+    } else if (isRootLoginPage()) {
+      showLogin();
     }
   }
 
@@ -179,11 +188,8 @@ window.Auth = (() => {
     supabase.auth.onAuthStateChange((_event, session) => {
       currentSession = session || null;
 
-      if (currentSession) {
-        showApp();
-      } else if (isRootLoginPage()) {
-        showLogin();
-      }
+      if (currentSession) showApp();
+      else if (isRootLoginPage()) showLogin();
     });
 
     ready = true;
@@ -198,24 +204,11 @@ window.Auth = (() => {
     return currentSession;
   }
 
-async function login(email) {
-  if (!supabase) await init();
-
-  const redirectTo = window.location.origin + "/NSK2/";
-
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: redirectTo
-    }
-  });
-
-  if (error) throw error;
-}
-
   return {
-  init,
-  login,
-  getClient,
-  getSession
-};
+    init,
+    login,
+    logout,
+    getClient,
+    getSession
+  };
+})();
