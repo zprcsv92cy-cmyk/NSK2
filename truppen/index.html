@@ -8,7 +8,7 @@
   <script>
     document.write('<link rel="stylesheet" href="../app.css?v=' + window.NSK_VERSION + '>');
   </script>
-  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="manifest" href="../manifest.webmanifest?v=700">
   
 </head>
 <body>
@@ -71,5 +71,10 @@
       document.write('<script src="../app.js?v=' + window.NSK_VERSION + '"><\/script>');
     </script>
   </div>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js?v=' + window.NSK_VERSION).catch(() => {}));
+    }
+  </script>
 </body>
 </html>
