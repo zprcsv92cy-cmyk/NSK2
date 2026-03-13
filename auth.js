@@ -214,10 +214,8 @@ async function login(email) {
 }
 
   return {
-    init,
-    login,
-    logout,
-    getClient,
-    getSession
-  };
-})();
+  init,
+  login,
+  getClient,
+  getSession
+};
