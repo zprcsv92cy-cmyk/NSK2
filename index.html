@@ -1,25 +1,28 @@
 <!doctype html>
 <html lang="sv">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NSK Team 18 V7.00</title>
-<meta name="theme-color" content="#b11226">
-<link rel="manifest" href="./manifest.webmanifest?v=701">
-<script src="./version.js"></script>
-<script>
-  document.write('<link rel="stylesheet" href="./app.css?v=' + window.NSK_VERSION + '">');
-</script>
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<script>
-  document.write('<script src="./config.js?v=' + window.NSK_VERSION + '"><\/script>');
-</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>NSK Team 18</title>
+  <meta name="theme-color" content="#b11226">
+  <script src="./version.js?v=701"></script>
+  <script>
+    document.write('<link rel="manifest" href="./manifest.webmanifest?v=' + window.NSK_VERSION + '">');
+    document.write('<link rel="stylesheet" href="./app.css?v=' + window.NSK_VERSION + '">');
+  </script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script>
+    document.write('<script src="./config.js?v=' + window.NSK_VERSION + '"><\\/script>');
+    document.write('<script src="./auth.js?v=' + window.NSK_VERSION + '"><\\/script>');
+    document.write('<script src="./login-patch.js?v=' + window.NSK_VERSION + '"><\\/script>');
+    document.write('<script src="./db.js?v=' + window.NSK_VERSION + '"><\\/script>');
+  </script>
 </head>
 <body>
 <header class="topbar">
   <div>
-    <h1>NSK Team 18 – V7.00</h1>
-    <div class="sub">stabil deploy • versionssynk • cache-fix</div>
+    <h1 id="appTitle">NSK Team 18</h1>
+    <div class="sub">stabil laddning • versionsstyrning • cache-fix</div>
   </div>
   <div class="topright">
     <div class="badge" id="authStatus">Ej inloggad</div>
@@ -121,27 +124,9 @@
 </section>
 
 <script>
-  document.write('<script src="./auth.js?v=' + window.NSK_VERSION + '"><\/script>');
-  document.write('<script src="./db.js?v=' + window.NSK_VERSION + '"><\/script>');
-</script>
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=' + window.NSK_VERSION).catch(() => {}));
-  }
-
-  async function nskCheckDeployVersion() {
-    try {
-      const res = await fetch('./deploy.json?t=' + Date.now(), { cache: 'no-store' });
-      const data = await res.json();
-      if (data && data.version && data.version !== window.NSK_VERSION) {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map(r => r.unregister()));
-        const keys = await caches.keys();
-        await Promise.all(keys.map(k => caches.delete(k)));
-        location.reload();
-      }
-    } catch (e) {}
-  }
+  document.title = 'NSK Team 18 V' + window.NSK_VERSION;
+  const titleEl = document.getElementById('appTitle');
+  if (titleEl) titleEl.textContent = 'NSK Team 18 – V' + window.NSK_VERSION;
 
   if (!window.DB) {
     document.body.insertAdjacentHTML(
@@ -152,7 +137,6 @@
     const s = document.createElement('script');
     s.src = './app.js?v=' + window.NSK_VERSION;
     document.body.appendChild(s);
-    nskCheckDeployVersion();
   }
 </script>
 </body>
