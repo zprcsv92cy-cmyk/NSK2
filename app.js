@@ -1,3 +1,40 @@
+async function checkAppVersion() {
+  try {
+    const pathParts = location.pathname.split("/").filter(Boolean);
+    const isSubPage = pathParts.length > 1;
+    const base = isSubPage ? "../" : "./";
+
+    const res = await fetch(base + "deploy.json?ts=" + Date.now(), {
+      cache: "no-store"
+    });
+
+    if (!res.ok) return;
+
+    const data = await res.json();
+
+    if (!data?.version || !window.NSK_VERSION) return;
+
+    if (String(data.version) !== String(window.NSK_VERSION)) {
+      console.warn("Ny version upptäckt:", data.version, "lokal:", window.NSK_VERSION);
+
+      if ("serviceWorker" in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const reg of regs) {
+          await reg.unregister();
+        }
+      }
+
+      if (window.caches) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+
+      location.reload();
+    }
+  } catch (err) {
+    console.warn("Version check failed", err);
+  }
+}
 window.NSK2App = (() => {
   function byId(id) { return document.getElementById(id); }
 
