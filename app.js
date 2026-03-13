@@ -35,6 +35,7 @@ async function checkAppVersion() {
     console.warn("Version check failed", err);
   }
 }
+
 window.NSK2App = (() => {
   function byId(id) { return document.getElementById(id); }
 
@@ -55,19 +56,21 @@ window.NSK2App = (() => {
   let laguppstallningBound = false;
 
   async function init() {
-  await checkAppVersion();
+    await checkAppVersion();
 
-  if (window.Auth?.init) await Auth.init();
+    if (window.Auth && typeof window.Auth.init === "function") {
+      await window.Auth.init();
+    }
 
-  bindGlobalClicks();
+    bindGlobalClicks();
 
-  await initStartsidaPage();
-  await initSkapaPoolspelPage();
-  await initLaguppstallningPage();
-  await initBytesschemaPage();
-  await initTruppenPage();
-  await initGoalieStatsPage();
-}
+    await initStartsidaPage();
+    await initSkapaPoolspelPage();
+    await initLaguppstallningPage();
+    await initBytesschemaPage();
+    await initTruppenPage();
+    await initGoalieStatsPage();
+  }
 
   function bindGlobalClicks() {
     if (globalClicksBound) return;
@@ -456,7 +459,15 @@ window.NSK2App = (() => {
       const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
       const currentMatchNo = byId("lineupMatch")?.value || "1";
 
-      const players = await DB.getPlayersOnField(poolId, lagNo, currentMatchNo);
+      let players = [];
+      if (poolId) {
+        players = await DB.getPlayersOnField(poolId, lagNo, currentMatchNo);
+      }
+
+      if (!players || !players.length) {
+        players = await DB.listPlayers();
+      }
+
       const usedSet = poolId ? await getUsedPlayersInOtherTeams(poolId, lagNo) : new Set();
 
       let matchRow = poolId ? await DB.getPoolTeamMatchConfig(poolId, lagNo, currentMatchNo) : null;
@@ -947,7 +958,8 @@ window.NSK2App = (() => {
         opponent: byId("lineupOpponent")?.value?.trim() || "",
         plan: byId("lineupPlan")?.value || "Plan 1",
         player_count: playerCount,
-        goalie_player_id: goalie || null
+        goalie_player_id: goalie || null,
+        players_on_field: selectedPlayers
       });
 
       await DB.saveLineup(matchRow.id, selectedPlayers, coachIds);
