@@ -17,7 +17,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: pages
   cancel-in-progress: true
 
 jobs:
@@ -41,14 +41,14 @@ jobs:
           echo "Sätter version till $VERSION"
 
           cat > version.js <<EOF
-window.NSK_VERSION = "$VERSION";
-EOF
+          window.NSK_VERSION = "$VERSION";
+          EOF
 
           cat > deploy.json <<EOF
-{
-  "version": "$VERSION"
-}
-EOF
+          {
+            "version": "$VERSION"
+          }
+          EOF
 
           if [ -f manifest.webmanifest ]; then
             sed -i -E 's/"version":[[:space:]]*"[^"]*"/"version": "'"$VERSION"'"/g' manifest.webmanifest || true
@@ -83,8 +83,6 @@ EOF
             sed -i -E 's/(app\.js\?v=)[0-9]+/\1'"$VERSION"'/g' "$file"
             sed -i -E 's/(version\.js\?v=)[0-9]+/\1'"$VERSION"'/g' "$file"
             sed -i -E 's/(manifest\.webmanifest\?v=)[0-9]+/\1'"$VERSION"'/g' "$file"
-
-            sed -i -E 's#(manifest\.webmanifest)(["'\''])#\1?v='"$VERSION"'\2#g' "$file"
           done
 
           test -f deploy.json
@@ -116,6 +114,7 @@ EOF
           fetch-depth: 0
 
       - name: Pull latest pushed commit
+        shell: bash
         run: |
           git fetch origin ${{ github.ref_name }}
           git checkout ${{ github.ref_name }}
