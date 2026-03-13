@@ -1,4 +1,4 @@
-const VERSION = "700";
+const VERSION = "701";
 const CACHE_NAME = `nsk-team18-v${VERSION}`;
 const ASSETS = [
   "./",
