@@ -275,5 +275,13 @@ console.error(msg, url, line);
 
 </script>
 
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  if (window.Auth && Auth.init) {
+    Auth.init().catch(console.error);
+  }
+});
+</script>
+
 </body>
 </html>
