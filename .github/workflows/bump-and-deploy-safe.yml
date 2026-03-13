@@ -8,6 +8,9 @@ on:
         required: true
         type: string
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 permissions:
   contents: write
   pages: write
@@ -22,8 +25,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout current branch
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
 
       - name: Update version files
         env:
@@ -34,25 +40,21 @@ jobs:
 
           echo "Sätter version till $VERSION"
 
-          # 1. version.js
           cat > version.js <<EOF
-          window.NSK_VERSION = "$VERSION";
-          EOF
+window.NSK_VERSION = "$VERSION";
+EOF
 
-          # 2. deploy.json
           cat > deploy.json <<EOF
-          {
-            "version": "$VERSION"
-          }
-          EOF
+{
+  "version": "$VERSION"
+}
+EOF
 
-          # 3. manifest.webmanifest
           if [ -f manifest.webmanifest ]; then
             sed -i -E 's/"version":[[:space:]]*"[^"]*"/"version": "'"$VERSION"'"/g' manifest.webmanifest || true
             sed -i -E 's#"start_url":[[:space:]]*"[^"]*"#"start_url": "./?v='"$VERSION"'"#g' manifest.webmanifest || true
           fi
 
-          # 4. sw.js - uppdatera bara versionsnummer, skriv inte över logiken
           if [ -f sw.js ]; then
             sed -i -E 's/(const VERSION = ")[^"]+(")/\1'"$VERSION"'\2/g' sw.js || true
             sed -i -E 's/(const CACHE_NAME = "nsk-team18-v)[^"]+(")/\1'"$VERSION"'\2/g' sw.js || true
@@ -70,7 +72,6 @@ jobs:
             sed -i -E 's/(manifest\.webmanifest\?v=)[0-9]+/\1'"$VERSION"'/g' sw.js || true
           fi
 
-          # 5. Alla html-filer i root och undersidor
           find . -name "*.html" -type f | while read -r file; do
             echo "Uppdaterar $file"
 
@@ -81,12 +82,12 @@ jobs:
             sed -i -E 's/(db\.js\?v=)[0-9]+/\1'"$VERSION"'/g' "$file"
             sed -i -E 's/(app\.js\?v=)[0-9]+/\1'"$VERSION"'/g' "$file"
             sed -i -E 's/(version\.js\?v=)[0-9]+/\1'"$VERSION"'/g' "$file"
+            sed -i -E 's/(manifest\.webmanifest\?v=)[0-9]+/\1'"$VERSION"'/g' "$file"
+
+            sed -i -E 's#(manifest\.webmanifest)(["'\''])#\1?v='"$VERSION"'\2#g' "$file"
           done
 
-          # 6. Säkerställ att deploy.json finns i root
           test -f deploy.json
-
-          # 7. Visa vad som ändrats
           git diff --stat || true
 
       - name: Commit and push
@@ -98,7 +99,7 @@ jobs:
           git config user.email "github-actions@github.com"
           git add .
           git commit -m "Bump version to $VERSION" || echo "Inga ändringar att committa"
-          git push
+          git push origin HEAD:${{ github.ref_name }}
 
   deploy:
     needs: bump
@@ -108,8 +109,17 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - name: Checkout updated repo
-        uses: actions/checkout@v4
+      - name: Checkout bumped branch head
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Pull latest pushed commit
+        run: |
+          git fetch origin ${{ github.ref_name }}
+          git checkout ${{ github.ref_name }}
+          git reset --hard origin/${{ github.ref_name }}
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
