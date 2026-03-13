@@ -456,7 +456,7 @@ window.NSK2App = (() => {
       const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
       const currentMatchNo = byId("lineupMatch")?.value || "1";
 
-      const players = await DB.listPlayers();
+      const players = await DB.getPlayersOnField(poolId, lagNo, currentMatchNo);
       const usedSet = poolId ? await getUsedPlayersInOtherTeams(poolId, lagNo) : new Set();
 
       let matchRow = poolId ? await DB.getPoolTeamMatchConfig(poolId, lagNo, currentMatchNo) : null;
