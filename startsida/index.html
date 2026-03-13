@@ -4,10 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Startsida</title>
-  <link rel="stylesheet" href="../app.css?v=656">
-  <link rel="manifest" href="../manifest.webmanifest">
+  <script src="../version.js?v=700"></script>
+  <script>
+    document.write('<link rel="stylesheet" href="../app.css?v=' + window.NSK_VERSION + '">');
+  </script>
+  <link rel="manifest" href="../manifest.webmanifest?v=700">
   <style>
-    .pool-lineup-block + .pool-lineup-block{margin-top:16px;}
+    .pool-lineup-block + .pool-lineup-block { margin-top: 16px; }
   </style>
 </head>
 <body>
@@ -46,10 +49,12 @@
   </div>
 
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="../config.js?v=656"></script>
-  <script src="../auth.js?v=656"></script>
-  <script src="../login-patch.js?v=656"></script>
-  <script src="../db.js?v=656"></script>
-  <script src="../app.js?v=656"></script>
+  <script src="../config.js?v=700"></script>
+  <script src="../auth.js?v=700"></script>
+  <script src="../login-patch.js?v=700"></script>
+  <script>
+    document.write('<script src="../db.js?v=' + window.NSK_VERSION + '"><\\/script>');
+    document.write('<script src="../app.js?v=' + window.NSK_VERSION + '"><\\/script>');
+  </script>
 </body>
 </html>
