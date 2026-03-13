@@ -43,7 +43,6 @@ window.DB = (() => {
     const client = await getClient();
     if (!client) return null;
 
-    // 1. Exakt match: namn + säsong
     const exact = await client
       .from("nsk_teams")
       .select("id,name,season")
@@ -54,7 +53,6 @@ window.DB = (() => {
 
     if (!exact.error && exact.data?.id) return exact.data.id;
 
-    // 2. Matcha bara på namn
     const byName = await client
       .from("nsk_teams")
       .select("id,name,season")
@@ -64,7 +62,6 @@ window.DB = (() => {
 
     if (!byName.error && byName.data?.id) return byName.data.id;
 
-    // 3. Ta första teamet som finns
     const anyTeam = await client
       .from("nsk_teams")
       .select("id,name,season")
@@ -73,7 +70,6 @@ window.DB = (() => {
 
     if (!anyTeam.error && anyTeam.data?.id) return anyTeam.data.id;
 
-    // 4. Skapa nytt team bara om tabellen verkar tom
     const inserted = await client
       .from("nsk_teams")
       .insert({ name: TEAM_NAME, season: TEAM_SEASON })
@@ -154,7 +150,6 @@ window.DB = (() => {
 
     if (client) {
       const teamId = await getTeamId();
-
       const { data, error } = await client
         .from("nsk_players")
         .insert({ team_id: teamId, full_name })
@@ -255,7 +250,6 @@ window.DB = (() => {
 
     if (client) {
       const teamId = await getTeamId();
-
       const { data, error } = await client
         .from("nsk_coaches")
         .insert({ team_id: teamId, full_name })
@@ -320,7 +314,7 @@ window.DB = (() => {
     return true;
   }
 
-  // ---------- MATCH CONFIG ----------
+  // ---------- MATCH CONFIG / FÖRUTSÄTTNINGAR ----------
 
   async function getPoolTeamMatchConfig(poolId, lagNo, matchNo) {
     const data = read();
@@ -339,21 +333,42 @@ window.DB = (() => {
   async function savePoolTeamMatchConfig(payload) {
     const data = read();
 
+    const safePayload = {
+      ...payload,
+      players_on_field: Array.isArray(payload.players_on_field)
+        ? payload.players_on_field.map(String)
+        : []
+    };
+
     let row = data.pool_team_match_configs.find(r =>
-      String(r.pool_id) === String(payload.pool_id) &&
-      String(r.lag_no) === String(payload.lag_no) &&
-      String(r.match_no) === String(payload.match_no)
+      String(r.pool_id) === String(safePayload.pool_id) &&
+      String(r.lag_no) === String(safePayload.lag_no) &&
+      String(r.match_no) === String(safePayload.match_no)
     );
 
     if (!row) {
-      row = { id: uid(), ...payload };
+      row = { id: uid(), ...safePayload };
       data.pool_team_match_configs.push(row);
     } else {
-      Object.assign(row, payload);
+      Object.assign(row, safePayload);
     }
 
     write(data);
     return row;
+  }
+
+  async function getPlayersOnField(poolId, lagNo, matchNo) {
+    const config = await getPoolTeamMatchConfig(poolId, lagNo, matchNo);
+    if (!config) return [];
+
+    const ids = Array.isArray(config.players_on_field)
+      ? config.players_on_field.map(String)
+      : [];
+
+    if (!ids.length) return [];
+
+    const players = await listPlayers();
+    return players.filter(p => ids.includes(String(p.id)));
   }
 
   // ---------- LINEUP ----------
@@ -372,7 +387,7 @@ window.DB = (() => {
 
     let sort = 1;
 
-    playerIds.forEach(p => {
+    (playerIds || []).forEach(p => {
       data.lineups.push({
         id: uid(),
         match_config_id: matchConfigId,
@@ -382,7 +397,7 @@ window.DB = (() => {
       });
     });
 
-    coachIds.forEach(c => {
+    (coachIds || []).forEach(c => {
       data.lineups.push({
         id: uid(),
         match_config_id: matchConfigId,
@@ -422,7 +437,7 @@ window.DB = (() => {
       )
     );
 
-    shifts.forEach((s, i) => {
+    (shifts || []).forEach((s, i) => {
       data.shift_schemas.push({
         id: uid(),
         pool_id: poolId,
@@ -437,6 +452,7 @@ window.DB = (() => {
     });
 
     write(data);
+    return true;
   }
 
   async function listShiftSchema(poolId, lagNo, matchNo) {
@@ -460,6 +476,7 @@ window.DB = (() => {
       )
     );
     write(data);
+    return true;
   }
 
   async function setShiftDone(poolId, lagNo, matchNo, shiftNo, done) {
@@ -472,7 +489,10 @@ window.DB = (() => {
     );
     if (row) row.done = done;
     write(data);
+    return true;
   }
+
+  // ---------- ÖVRIGT ----------
 
   async function listGoalieStats() {
     return read().goalie_stats;
@@ -503,6 +523,7 @@ window.DB = (() => {
     getPoolTeamMatchConfig,
     listPoolTeamMatchConfigs,
     savePoolTeamMatchConfig,
+    getPlayersOnField,
     getLineup,
     saveLineup,
     listUsedPlayersInPool,
