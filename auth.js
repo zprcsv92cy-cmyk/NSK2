@@ -198,6 +198,21 @@ window.Auth = (() => {
     return currentSession;
   }
 
+async function login(email) {
+  if (!supabase) await init();
+
+  const redirectTo = window.location.origin + "/NSK2/";
+
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: redirectTo
+    }
+  });
+
+  if (error) throw error;
+}
+
   return {
     init,
     login,
