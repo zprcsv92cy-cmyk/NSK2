@@ -61,7 +61,7 @@ window.NSK2App = (() => {
     return lastInitial ? `${first} ${lastInitial}` : first;
   }
 
-  function normalizeName(value) {
+  function normalizeCoachMapName(value) {
     return String(value || "")
       .trim()
       .toLowerCase()
@@ -702,13 +702,14 @@ window.NSK2App = (() => {
 
     const coachMap = {};
     coaches.forEach((c) => {
-      coachMap[normalizeName(c.full_name)] = String(c.id);
+      coachMap[normalizeCoachMapName(c.full_name)] = String(c.id);
     });
 
     const playerCoachMap = {};
-    mappings.forEach((m) => {
-      const playerKey = normalizeName(m.player_name);
-      const coachKey = normalizeName(m.coach_name);
+    (mappings || []).forEach((m) => {
+      const playerKey = normalizeCoachMapName(m.player_name);
+      const coachKey = normalizeCoachMapName(m.coach_name);
+
       if (playerKey && coachKey) {
         playerCoachMap[playerKey] = coachKey;
       }
@@ -717,10 +718,11 @@ window.NSK2App = (() => {
     const autoCoachIds = new Set();
 
     (playerIds || []).forEach((pid) => {
-      const playerName = normalizeName(playerMap[String(pid)]);
+      const playerName = normalizeCoachMapName(playerMap[String(pid)]);
       const coachName = playerCoachMap[playerName];
+
       if (coachName && coachMap[coachName]) {
-        autoCoachIds.add(String(coachMap[coachName]));
+        autoCoachIds.add(coachMap[coachName]);
       }
     });
 
