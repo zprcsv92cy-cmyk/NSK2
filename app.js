@@ -58,9 +58,7 @@ window.NSK2App = (() => {
   async function init() {
     await checkAppVersion();
 
-    if (window.Auth && typeof window.Auth.init === "function") {
-      await window.Auth.init();
-    }
+    if (window.Auth?.init) await Auth.init();
 
     bindGlobalClicks();
 
@@ -445,9 +443,31 @@ window.NSK2App = (() => {
     coachSelect.innerHTML = coaches.map(c => `<option value="${c.id}">${esc(c.full_name)}</option>`).join("");
   }
 
-  async function getUsedPlayersInOtherTeams(poolId, currentLagNo) {
-    const usedIds = await DB.listUsedPlayersInPool(poolId, currentLagNo);
-    return new Set((usedIds || []).map(String));
+  async function getUsedPlayersInSameMatch(poolId, currentLagNo, matchNo) {
+    const used = new Set();
+    if (!poolId) return used;
+
+    const rows = await DB.listPoolTeamMatchConfigs(poolId);
+
+    for (const row of rows) {
+      const sameMatch = String(row.match_no) === String(matchNo);
+      const otherLag = String(row.lag_no) !== String(currentLagNo);
+
+      if (!sameMatch || !otherLag) continue;
+
+      if (row.goalie_player_id) {
+        used.add(String(row.goalie_player_id));
+      }
+
+      if (row.id) {
+        const lineup = await DB.getLineup(row.id);
+        lineup
+          .filter(x => x.person_type === "player")
+          .forEach(x => used.add(String(x.person_id)));
+      }
+    }
+
+    return used;
   }
 
   async function renderLineupSelectors() {
@@ -459,16 +479,10 @@ window.NSK2App = (() => {
       const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
       const currentMatchNo = byId("lineupMatch")?.value || "1";
 
-      let players = [];
-      if (poolId) {
-        players = await DB.getPlayersOnField(poolId, lagNo, currentMatchNo);
-      }
-
-      if (!players || !players.length) {
-        players = await DB.listPlayers();
-      }
-
-      const usedSet = poolId ? await getUsedPlayersInOtherTeams(poolId, lagNo) : new Set();
+      const players = await DB.getPlayersOnField(poolId, lagNo, currentMatchNo);
+      const usedSameMatchSet = poolId
+        ? await getUsedPlayersInSameMatch(poolId, lagNo, currentMatchNo)
+        : new Set();
 
       let matchRow = poolId ? await DB.getPoolTeamMatchConfig(poolId, lagNo, currentMatchNo) : null;
       if (!matchRow && poolId && String(currentMatchNo) !== "1") {
@@ -485,9 +499,15 @@ window.NSK2App = (() => {
 
       const ownSet = new Set();
       if (matchRow?.goalie_player_id) ownSet.add(String(matchRow.goalie_player_id));
-      lineup.filter(x => x.person_type === "player").forEach(x => ownSet.add(String(x.person_id)));
+      lineup
+        .filter(x => x.person_type === "player")
+        .forEach(x => ownSet.add(String(x.person_id)));
 
-      const allowedPlayers = players.filter(p => !usedSet.has(String(p.id)) || ownSet.has(String(p.id)));
+      const allowedPlayers = players.filter(p => {
+        const pid = String(p.id);
+        return !usedSameMatchSet.has(pid) || ownSet.has(pid);
+      });
+
       const playerOptions = ['<option value="">Välj spelare</option>']
         .concat(allowedPlayers.map(p => `<option value="${p.id}">${esc(p.full_name)}</option>`))
         .join("");
@@ -860,36 +880,33 @@ window.NSK2App = (() => {
     }
   }
 
-  async function validateUniquePlayersAcrossPool(poolId, lagNo, matchNo, startTime, goalieId, playerIds) {
+  async function validateUniquePlayersPerMatch(poolId, lagNo, matchNo, goalieId, playerIds) {
     const rows = await DB.listPoolTeamMatchConfigs(poolId);
 
-    const currentMatchNo = String(matchNo);
-    const currentLagNo = String(lagNo);
-    const currentStart = String(startTime || "");
-
     for (const row of rows) {
-      const sameLag = String(row.lag_no) === currentLagNo;
-      const sameMatch = String(row.match_no) === currentMatchNo;
+      const sameMatch = String(row.match_no) === String(matchNo);
+      const otherLag = String(row.lag_no) !== String(lagNo);
 
-      if (sameLag && sameMatch) continue;
+      if (!sameMatch || !otherLag) continue;
 
-      const lineup = row.id ? await DB.getLineup(row.id) : [];
-      const otherPlayers = lineup.filter(x => x.person_type === "player").map(x => String(x.person_id));
+      const taken = new Set();
 
-      if (!sameLag) {
-        for (const pid of playerIds) {
-          if (otherPlayers.includes(String(pid))) {
-            return "En spelare finns redan i ett annat lag i poolspelet.";
-          }
-        }
+      if (row.goalie_player_id) {
+        taken.add(String(row.goalie_player_id));
       }
 
-      if (!sameLag && goalieId && String(row.goalie_player_id || "") === String(goalieId)) {
-        const otherStart = String(row.start_time || "");
-        if (!currentStart || !otherStart) {
-          if (sameMatch) return "Målvakten kan inte stå i samma matchnummer i två lag när starttid saknas.";
-        } else if (currentStart === otherStart) {
-          return "Målvakten har redan en match med samma starttid i ett annat lag.";
+      const lineup = row.id ? await DB.getLineup(row.id) : [];
+      lineup
+        .filter(x => x.person_type === "player")
+        .forEach(x => taken.add(String(x.person_id)));
+
+      if (goalieId && taken.has(String(goalieId))) {
+        return "Vald målvakt används redan i ett annat lag i samma match.";
+      }
+
+      for (const pid of playerIds) {
+        if (taken.has(String(pid))) {
+          return "En vald spelare används redan i ett annat lag i samma match.";
         }
       }
     }
@@ -928,11 +945,10 @@ window.NSK2App = (() => {
       selectedPlayers.push(val);
     }
 
-    const poolConflict = await validateUniquePlayersAcrossPool(
+    const poolConflict = await validateUniquePlayersPerMatch(
       poolId,
       lagNo,
       matchNo,
-      byId("lineupStartTime")?.value || "",
       goalie,
       selectedPlayers
     );
@@ -958,8 +974,7 @@ window.NSK2App = (() => {
         opponent: byId("lineupOpponent")?.value?.trim() || "",
         plan: byId("lineupPlan")?.value || "Plan 1",
         player_count: playerCount,
-        goalie_player_id: goalie || null,
-        players_on_field: selectedPlayers
+        goalie_player_id: goalie || null
       });
 
       await DB.saveLineup(matchRow.id, selectedPlayers, coachIds);
@@ -1125,10 +1140,7 @@ window.NSK2App = (() => {
       return [];
     }
 
-    const playersOnField = parseInt(
-      row?.player_count || sourceRow?.player_count || pool.players_on_field || 3,
-      10
-    );
+    const playersOnField = parseInt(pool?.players_on_field || 3, 10);
 
     const shifts = buildShiftSchedule({
       matchNo: parseInt(matchNo, 10),
@@ -1143,28 +1155,48 @@ window.NSK2App = (() => {
     return shifts;
   }
 
-  function buildShiftSchedule({ matchNo, playerIds, playersOnField, periods, periodTime, subTime }) {
+  function buildShiftSchedule({
+    matchNo,
+    playerIds,
+    playersOnField,
+    periods,
+    periodTime,
+    subTime
+  }) {
     const shifts = [];
+
+    if (!playerIds || !playerIds.length) return shifts;
+
     const totalSeconds = periodTime * 60;
     const shiftCountPerPeriod = Math.max(1, Math.ceil(totalSeconds / subTime));
     const totalShifts = periods * shiftCountPerPeriod;
 
-    if (!playerIds.length || playersOnField <= 0) return shifts;
-
     const ids = [...playerIds];
     const playerCount = ids.length;
-    const onField = Math.min(playersOnField, playerCount);
 
-    let startIndex = ((Math.max(0, matchNo - 1) * onField) % playerCount);
+    const onField = Math.min(parseInt(playersOnField, 10) || 0, playerCount);
+    if (onField <= 0) return shifts;
 
-    const shiftCounts = {};
-    ids.forEach(id => { shiftCounts[id] = 0; });
+    let startIndex = ((Math.max(1, parseInt(matchNo, 10)) - 1) * onField) % playerCount;
 
-    let prevLine = [];
-    const lineSeen = new Map();
+    const appearances = {};
+    ids.forEach((id) => {
+      appearances[String(id)] = 0;
+    });
 
-    function lineKey(arr) {
-      return [...arr].sort().join("|");
+    let previousLine = [];
+
+    function sameLine(a, b) {
+      if (!Array.isArray(a) || !Array.isArray(b)) return false;
+      if (a.length !== b.length) return false;
+
+      const aa = [...a].map(String).sort();
+      const bb = [...b].map(String).sort();
+
+      for (let i = 0; i < aa.length; i++) {
+        if (aa[i] !== bb[i]) return false;
+      }
+      return true;
     }
 
     for (let shiftIndex = 0; shiftIndex < totalShifts; shiftIndex++) {
@@ -1176,67 +1208,52 @@ window.NSK2App = (() => {
       const mm = String(Math.floor(left / 60)).padStart(2, "0");
       const ss = String(left % 60).padStart(2, "0");
 
-      let nextLine = [];
-      for (let k = 0; k < onField; k++) {
-        nextLine.push(ids[(startIndex + k) % playerCount]);
+      const rotated = [];
+      for (let i = 0; i < playerCount; i++) {
+        rotated.push(ids[(startIndex + i) % playerCount]);
       }
 
-      if (prevLine.length) {
-        const prevSet = new Set(prevLine);
-        const bench = ids.filter(id => !nextLine.includes(id));
-        let overlap = nextLine.filter(id => prevSet.has(id)).length;
-        const maxPreferredOverlap = Math.max(0, (onField * 2) - playerCount);
+      rotated.sort((a, b) => {
+        const diff = appearances[String(a)] - appearances[String(b)];
+        if (diff !== 0) return diff;
+        return 0;
+      });
 
-        if (overlap > maxPreferredOverlap) {
-          for (let i = nextLine.length - 1; i >= 0 && overlap > maxPreferredOverlap; i--) {
-            if (!prevSet.has(nextLine[i])) continue;
+      let line = rotated.slice(0, onField);
 
-            let replacementIndex = -1;
-            let bestScore = Infinity;
-            for (let b = 0; b < bench.length; b++) {
-              const candidate = bench[b];
-              const score = shiftCounts[candidate];
-              if (score < bestScore) {
-                bestScore = score;
-                replacementIndex = b;
-              }
-            }
+      if (sameLine(line, previousLine)) {
+        const bench = rotated.slice(onField);
 
-            if (replacementIndex >= 0) {
-              const out = nextLine[i];
-              const inn = bench.splice(replacementIndex, 1)[0];
-              bench.push(out);
-              nextLine[i] = inn;
-              overlap = nextLine.filter(id => prevSet.has(id)).length;
+        if (bench.length > 0) {
+          let replaceIndex = 0;
+          let maxAppearances = -1;
+
+          for (let i = 0; i < line.length; i++) {
+            const count = appearances[String(line[i])] || 0;
+            if (count > maxAppearances) {
+              maxAppearances = count;
+              replaceIndex = i;
             }
           }
+
+          line[replaceIndex] = bench[0];
+        } else if (line.length > 1) {
+          const first = line.shift();
+          line.push(first);
         }
       }
 
-      const bench = ids.filter(id => !nextLine.includes(id)).sort((a, b) => shiftCounts[a] - shiftCounts[b]);
-      for (let i = 0; i < nextLine.length && bench.length; i++) {
-        const current = nextLine[i];
-        const benchBest = bench[0];
-        const currentWouldRepeat = (lineSeen.get(lineKey(nextLine)) || 0);
-
-        if (shiftCounts[current] - shiftCounts[benchBest] >= 2 || currentWouldRepeat > 1) {
-          nextLine[i] = bench.shift();
-          bench.push(current);
-          bench.sort((a, b) => shiftCounts[a] - shiftCounts[b]);
-        }
-      }
-
-      nextLine.forEach(id => { shiftCounts[id] += 1; });
-      const key = lineKey(nextLine);
-      lineSeen.set(key, (lineSeen.get(key) || 0) + 1);
+      line.forEach((id) => {
+        appearances[String(id)] += 1;
+      });
 
       shifts.push({
         period_no: periodNo,
         time_left: `${mm}:${ss}`,
-        players: [...nextLine]
+        players: [...line]
       });
 
-      prevLine = [...nextLine];
+      previousLine = [...line];
       startIndex = (startIndex + onField) % playerCount;
     }
 
