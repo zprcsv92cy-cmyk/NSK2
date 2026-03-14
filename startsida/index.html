@@ -6,11 +6,36 @@
   <title>Startsida</title>
   <meta name="theme-color" content="#b11226">
 
-  <script src="../version.js?v=713"></script>
+  <script src="../version.js?v=715"></script>
   <script>
     document.write('<link rel="manifest" href="../manifest.webmanifest?v=' + window.NSK_VERSION + '">');
     document.write('<link rel="stylesheet" href="../app.css?v=' + window.NSK_VERSION + '">');
   </script>
+
+  <style>
+    .start-pool-btn{
+      width:100%;
+      min-height:78px;
+      border-radius:22px;
+      font-size:24px;
+      font-weight:900;
+      background:linear-gradient(180deg,#e11d3d,#9f0d20);
+      color:#fff;
+      border:1px solid rgba(255,255,255,.16);
+      box-shadow:0 10px 24px rgba(0,0,0,.22);
+    }
+    .start-pool-btn:disabled{
+      opacity:.55;
+      cursor:not-allowed;
+    }
+    .selected-pool-box{
+      margin-top:12px;
+      padding:14px 16px;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.05);
+    }
+  </style>
 </head>
 <body>
   <div class="wrap">
@@ -45,15 +70,73 @@
       <div id="savedPoolsList"></div>
     </section>
 
+    <section class="card">
+      <button id="startPoolBtn" class="start-pool-btn" type="button">Påbörja poolspel</button>
+      <div id="selectedPoolBox" class="selected-pool-box small">Välj först ett poolspel från listan ovan.</div>
+    </section>
+
     <div id="appError" class="small"></div>
 
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<script>
-  document.write('<script src="../config.js?v=' + window.NSK_VERSION + '"><\/script>');
-  document.write('<script src="../auth.js?v=' + window.NSK_VERSION + '"><\/script>');
-  document.write('<script src="../db.js?v=' + window.NSK_VERSION + '"><\/script>');
-  document.write('<script src="../app.js?v=' + window.NSK_VERSION + '"><\/script>');
-</script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script>
+      document.write('<script src="../config.js?v=' + window.NSK_VERSION + '"><\/script>');
+      document.write('<script src="../auth.js?v=' + window.NSK_VERSION + '"><\/script>');
+      document.write('<script src="../db.js?v=' + window.NSK_VERSION + '"><\/script>');
+      document.write('<script src="../app.js?v=' + window.NSK_VERSION + '"><\/script>');
+    </script>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', async () => {
+        const btn = document.getElementById('startPoolBtn');
+        const info = document.getElementById('selectedPoolBox');
+
+        async function refreshSelectedPoolInfo(){
+          const poolId = sessionStorage.getItem('nsk2_pool_id') || '';
+          if (!poolId) {
+            if (info) info.textContent = 'Välj först ett poolspel från listan ovan.';
+            if (btn) btn.disabled = true;
+            return;
+          }
+
+          try {
+            const pool = await DB.getPool(poolId);
+            if (!pool) {
+              if (info) info.textContent = 'Välj först ett poolspel från listan ovan.';
+              if (btn) btn.disabled = true;
+              return;
+            }
+
+            if (info) {
+              info.textContent = `Valt poolspel: ${pool.place || 'Ort'} • ${pool.pool_date || 'Datum'} • ${pool.title || 'Poolspel'}`;
+            }
+            if (btn) btn.disabled = false;
+          } catch {
+            if (btn) btn.disabled = false;
+          }
+        }
+
+        document.addEventListener('click', (e) => {
+          const t = e.target;
+          if (!(t instanceof HTMLElement)) return;
+          if (t.dataset.poolId || t.dataset.poolShifts || t.dataset.editPool) {
+            setTimeout(refreshSelectedPoolInfo, 50);
+          }
+        });
+
+        if (btn) {
+          btn.addEventListener('click', () => {
+            const poolId = sessionStorage.getItem('nsk2_pool_id') || '';
+            if (!poolId) {
+              if (info) info.textContent = 'Välj först ett poolspel från listan ovan.';
+              return;
+            }
+            window.location.href = '../lag/';
+          });
+        }
+
+        await refreshSelectedPoolInfo();
+      });
+    </script>
   </div>
 </body>
 </html>
