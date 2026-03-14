@@ -23,7 +23,9 @@ window.Auth = (() => {
 
   function showApp() {
     if (isRootLoginPage()) {
-      window.location.href = "./startsida/";
+      setTimeout(() => {
+        window.location.replace("./startsida/");
+      }, 50);
       return;
     }
 
@@ -163,6 +165,7 @@ window.Auth = (() => {
     currentSession = data?.session || null;
 
     if (currentSession) {
+      setStatus("Inloggad.");
       showApp();
     } else if (isRootLoginPage()) {
       showLogin();
@@ -182,14 +185,21 @@ window.Auth = (() => {
       }
     });
 
+    await supabase.auth.refreshSession().catch(() => {});
     bindUi();
     await applySession();
 
-    supabase.auth.onAuthStateChange((_event, session) => {
+    supabase.auth.onAuthStateChange((event, session) => {
       currentSession = session || null;
 
-      if (currentSession) showApp();
-      else if (isRootLoginPage()) showLogin();
+      if (currentSession) {
+        setStatus("Inloggad.");
+        setTimeout(() => {
+          showApp();
+        }, 100);
+      } else if (isRootLoginPage()) {
+        showLogin();
+      }
     });
 
     ready = true;
