@@ -50,6 +50,11 @@ window.NSK2App = (() => {
     if (el) el.textContent = text || "";
   }
 
+  function setHtml(id, html) {
+    const el = byId(id);
+    if (el) el.innerHTML = html || "";
+  }
+
   function shortName(fullName) {
     const name = String(fullName || "").trim();
     if (!name || name === "—") return name || "";
@@ -68,10 +73,27 @@ window.NSK2App = (() => {
       .replace(/\s+/g, " ");
   }
 
+  function toSeconds(mmss) {
+    const parts = String(mmss || "0:00").split(":");
+    const mm = parseInt(parts[0] || "0", 10) || 0;
+    const ss = parseInt(parts[1] || "0", 10) || 0;
+    return (mm * 60) + ss;
+  }
+
+  function formatSeconds(total) {
+    const safe = Math.max(0, parseInt(total || 0, 10) || 0);
+    const mm = String(Math.floor(safe / 60)).padStart(2, "0");
+    const ss = String(safe % 60).padStart(2, "0");
+    return `${mm}:${ss}`;
+  }
+
   const saveTimers = {};
   let truppenRealtime = null;
   let globalClicksBound = false;
   let laguppstallningBound = false;
+  let matchCurrentShiftIndex = 0;
+  let matchTimerSecondsLeft = 0;
+  let matchTimerInterval = null;
 
   async function init() {
     await checkAppVersion();
@@ -86,6 +108,8 @@ window.NSK2App = (() => {
     await initBytesschemaPage();
     await initTruppenPage();
     await initGoalieStatsPage();
+    await initLagPage();
+    await initMatchvyPage();
   }
 
   function bindGlobalClicks() {
@@ -122,6 +146,22 @@ window.NSK2App = (() => {
           sessionStorage.setItem("nsk2_pool_id", t.dataset.poolShifts || "");
           sessionStorage.setItem("nsk2_lag_nr", t.dataset.lagNo || "1");
           window.location.href = "../bytesschema/";
+          return;
+        }
+
+        if (t.dataset.startPoolId) {
+          sessionStorage.setItem("nsk2_pool_id", t.dataset.startPoolId || "");
+          sessionStorage.removeItem("nsk2_lag_nr");
+          sessionStorage.setItem("nsk2_match_no", "1");
+          window.location.href = "../lag/";
+          return;
+        }
+
+        if (t.dataset.activeLag && t.dataset.activePool) {
+          sessionStorage.setItem("nsk2_pool_id", t.dataset.activePool || "");
+          sessionStorage.setItem("nsk2_lag_nr", t.dataset.activeLag || "1");
+          sessionStorage.setItem("nsk2_match_no", "1");
+          window.location.href = "../matchvy/";
           return;
         }
 
@@ -234,6 +274,13 @@ window.NSK2App = (() => {
             <div class="pool-lineup-block">
               <div class="pool-lineup-title">Bytesschema</div>
               <div class="team-buttons">${shiftButtons}</div>
+            </div>
+
+            <div class="pool-lineup-block">
+              <div class="pool-lineup-title">Matchstart för detta poolspel</div>
+              <button class="start-pool-btn" type="button" data-start-pool-id="${p.id}">
+                Påbörja poolspel • ${esc(p.place || "Ort")} ${esc(p.pool_date || "")}
+              </button>
             </div>
           </article>
         `;
@@ -1359,87 +1406,164 @@ window.NSK2App = (() => {
     return shifts;
   }
 
-  async function renderShiftSchema() {
-    const poolId = sessionStorage.getItem("nsk2_pool_id");
-    const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
-    const matchNo = byId("shiftMatch")?.value || "1";
-    if (!poolId) return;
-
-    const pool = await DB.getPool(poolId);
-    let row = await DB.getPoolTeamMatchConfig(poolId, lagNo, matchNo);
-    if (!row && String(matchNo) !== "1") row = await DB.getPoolTeamMatchConfig(poolId, lagNo, 1);
-
-    const players = await DB.listPlayers();
+  async function getCoachNamesForLag(poolId, lagNo) {
+    const rows = await DB.listPoolTeamMatchConfigs(poolId);
     const coaches = await DB.listCoaches();
-    const playerMap = {};
     const coachMap = {};
-    players.forEach(p => { playerMap[String(p.id)] = p.full_name; });
-    coaches.forEach(c => { coachMap[String(c.id)] = c.full_name; });
+    coaches.forEach((c) => { coachMap[String(c.id)] = c.full_name; });
 
-    const title = `Match ${matchNo} • Lag ${lagNo}`;
-    setText("bytesschemaTitle", title);
-    setText("shiftHeaderMain", title);
-    setText("shiftStart", row?.start_time || "—");
-    setText("shiftDate", pool?.pool_date || "—");
-    setText("shiftOpponent", row?.opponent || "—");
-    setText("shiftPlan", row?.plan || "—");
+    const firstRow =
+      rows.find(r => String(r.lag_no) === String(lagNo) && String(r.match_no) === "1") ||
+      rows.find(r => String(r.lag_no) === String(lagNo));
 
-    const goalieName = row?.goalie_player_id ? shortName(playerMap[String(row.goalie_player_id)] || "—") : "—";
-    setText("shiftGoalieName", goalieName);
+    if (!firstRow?.id) return "—";
 
-    let coachNames = "—";
-    if (row?.id) {
-      const lineup = await DB.getLineup(row.id);
-      const ids = lineup
-        .filter(x => x.person_type === "coach")
-        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-        .map(x => shortName(coachMap[String(x.person_id)] || "—"))
-        .filter(Boolean);
-      if (ids.length) coachNames = ids.join(", ");
-    }
-    setText("shiftCoachNames", coachNames);
+    const lineup = await DB.getLineup(firstRow.id);
+    const names = lineup
+      .filter(x => x.person_type === "coach")
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+      .map(x => coachMap[String(x.person_id)] || "")
+      .filter(Boolean);
 
-    setActiveShiftTeamButton(lagNo);
-    setActiveShiftMatchButton(matchNo);
+    return names.length ? names.join(", ") : "—";
+  }
 
-    const rows = await DB.listShiftSchema(poolId, lagNo, matchNo);
-    const wrap = byId("shiftTableWrap");
-    if (!wrap) return;
+  async function initLagPage() {
+    const box = byId("teamButtons");
+    if (!box) return;
 
-    if (!rows.length) {
-      wrap.innerHTML = '<div class="small">Inget bytesschema ännu. Spara laguppställning först.</div>';
+    const poolId = sessionStorage.getItem("nsk2_pool_id");
+    if (!poolId) {
+      box.innerHTML = '<div class="small">Välj först ett poolspel från startsidan.</div>';
       return;
     }
 
-    wrap.innerHTML = `
-      <table class="shift-table">
-        <thead>
-          <tr>
-            <th></th>
-            <th>#</th>
-            <th>Tid kvar</th>
-            <th>På plan</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows.map((r, i) => {
-            const shiftNo = i + 1;
-            const names = (Array.isArray(r.players_json) ? r.players_json : [])
-              .map(id => shortName(playerMap[String(id)] || "—"))
-              .join("<br>");
-            const done = r.done ? "done" : "";
-            return `
-              <tr>
-                <td class="check-cell"><span class="shift-check ${done}" data-shift-toggle="${shiftNo}"></span></td>
-                <td>${shiftNo}</td>
-                <td>${esc(r.time_left)}</td>
-                <td class="shift-players">${names || "—"}</td>
-              </tr>
-            `;
-          }).join("")}
-        </tbody>
-      </table>
-    `;
+    try {
+      const pool = await DB.getPool(poolId);
+      const teams = parseInt(pool?.teams || "2", 10) || 2;
+
+      box.innerHTML = "";
+
+      for (let lagNo = 1; lagNo <= teams; lagNo++) {
+        const coachNames = await getCoachNamesForLag(poolId, lagNo);
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "team-btn lag-overview-btn";
+        btn.dataset.activeLag = String(lagNo);
+        btn.dataset.activePool = String(poolId);
+        btn.innerHTML = `
+          <div class="lag-overview-title">Lag ${lagNo}</div>
+          <div class="lag-overview-coaches">Tränare: ${esc(coachNames)}</div>
+        `;
+
+        box.appendChild(btn);
+      }
+
+      setText("activeTeam", `${pool.place || "Poolspel"} • ${pool.pool_date || ""}`);
+    } catch (err) {
+      setText("appError", err.message || String(err));
+    }
+  }
+
+  async function renderCoachMatchView(poolId, lagNo, matchNo) {
+    const rows = await DB.listShiftSchema(poolId, lagNo, matchNo);
+    const players = await DB.listPlayers();
+    const playerMap = {};
+    players.forEach(p => { playerMap[String(p.id)] = p.full_name; });
+
+    if (!rows.length) {
+      setText("shiftLabel", "Inget schema");
+      setText("currentPlayers", "—");
+      setText("nextPlayers", "—");
+      setText("matchTimer", "00:00");
+      setText("currentShiftMeta", "Pågående byte: —");
+      setText("nextShiftMeta", "Nästa byte: —");
+      setHtml("matchInfo", "");
+      return;
+    }
+
+    if (matchCurrentShiftIndex < 0) matchCurrentShiftIndex = 0;
+    if (matchCurrentShiftIndex > rows.length - 1) matchCurrentShiftIndex = rows.length - 1;
+
+    const current = rows[matchCurrentShiftIndex] || null;
+    const next = rows[matchCurrentShiftIndex + 1] || null;
+
+    const row =
+      await DB.getPoolTeamMatchConfig(poolId, lagNo, matchNo) ||
+      await DB.getPoolTeamMatchConfig(poolId, lagNo, 1);
+
+    const currentClock = current?.time_left || "—";
+    const nextClock = next?.time_left || "—";
+    const totalShifts = rows.length;
+
+    setText("shiftLabel", `Lag ${lagNo} • Match ${matchNo}`);
+    setText("currentShiftMeta", `Pågående byte: ${matchCurrentShiftIndex + 1} av ${totalShifts} • Klockslag ${currentClock}`);
+    setText("nextShiftMeta", `Nästa byte: ${next ? (matchCurrentShiftIndex + 2) : "—"} av ${totalShifts} • Klockslag ${nextClock}`);
+
+    setHtml("matchInfo", `
+      <div class="matchvy-info-row">Motståndare: <strong>${esc(row?.opponent || "—")}</strong></div>
+      <div class="matchvy-info-row">Plan: <strong>${esc(row?.plan || "Plan 1")}</strong></div>
+      <div class="matchvy-info-row">Start: <strong>${esc(row?.start_time || "—")}</strong></div>
+    `);
+
+    const currentNames = (Array.isArray(current?.players_json) ? current.players_json : [])
+      .map(id => shortName(playerMap[String(id)] || "—"))
+      .join("<br>");
+
+    const nextNames = (Array.isArray(next?.players_json) ? next.players_json : [])
+      .map(id => shortName(playerMap[String(id)] || "—"))
+      .join("<br>");
+
+    setHtml("currentPlayers", currentNames || "—");
+    setHtml("nextPlayers", nextNames || "—");
+
+    matchTimerSecondsLeft = toSeconds(currentClock);
+    setText("matchTimer", formatSeconds(matchTimerSecondsLeft));
+
+    if (matchTimerInterval) clearInterval(matchTimerInterval);
+    matchTimerInterval = setInterval(() => {
+      matchTimerSecondsLeft = Math.max(0, matchTimerSecondsLeft - 1);
+      setText("matchTimer", formatSeconds(matchTimerSecondsLeft));
+    }, 1000);
+  }
+
+  async function initMatchvyPage() {
+    const currentEl = byId("currentPlayers");
+    const nextEl = byId("nextPlayers");
+    if (!currentEl || !nextEl) return;
+
+    const poolId = sessionStorage.getItem("nsk2_pool_id");
+    const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
+    const matchNo = sessionStorage.getItem("nsk2_match_no") || "1";
+
+    if (!poolId) {
+      setText("appError", "Välj först ett poolspel.");
+      return;
+    }
+
+    matchCurrentShiftIndex = 0;
+    await renderCoachMatchView(poolId, lagNo, matchNo);
+
+    const prevBtn = byId("prevShiftBtn");
+    const nextBtn = byId("nextShiftBtn");
+
+    if (prevBtn && !prevBtn.dataset.boundMatchvy) {
+      prevBtn.dataset.boundMatchvy = "1";
+      prevBtn.addEventListener("click", async () => {
+        matchCurrentShiftIndex = Math.max(0, matchCurrentShiftIndex - 1);
+        await renderCoachMatchView(poolId, lagNo, matchNo);
+      });
+    }
+
+    if (nextBtn && !nextBtn.dataset.boundMatchvy) {
+      nextBtn.dataset.boundMatchvy = "1";
+      nextBtn.addEventListener("click", async () => {
+        const rows = await DB.listShiftSchema(poolId, lagNo, matchNo);
+        matchCurrentShiftIndex = Math.min(rows.length - 1, matchCurrentShiftIndex + 1);
+        await renderCoachMatchView(poolId, lagNo, matchNo);
+      });
+    }
   }
 
   function rowHtml(item, type) {
