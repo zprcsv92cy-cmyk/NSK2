@@ -6,10 +6,10 @@
   <title>NSK Login</title>
   <meta name="theme-color" content="#b11226">
 
-  <script src="./version.js?v=707"></script>
+  <script src="./version.js?v=708"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  <script src="./config.js?v=707"></script>
-  <script src="./auth.js?v=707"></script>
+  <script src="./config.js?v=708"></script>
+  <script src="./auth.js?v=708"></script>
 
   <style>
     html, body {
@@ -111,7 +111,7 @@
         id="emailInput"
         type="email"
         autocomplete="email"
-        placeholder="namn@exempel.se"
+        placeholder="peter_hasselberg@hotmail.com"
       >
 
       <input
@@ -160,24 +160,5 @@
       }
     });
   </script>
-
-    <script>
-document.addEventListener("DOMContentLoaded", async () => {
-
-  const url = window.APP_CONFIG?.SUPABASE_URL;
-  const key = window.APP_CONFIG?.SUPABASE_KEY;
-
-  if (!url || !key || !window.supabase) return;
-
-  const sb = window.supabase.createClient(url, key);
-
-  const { data } = await sb.auth.getSession();
-
-  if (data?.session) {
-    window.location.replace("./startsida/");
-  }
-
-});
-</script>
 </body>
 </html>
