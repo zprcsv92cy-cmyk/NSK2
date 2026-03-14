@@ -50,6 +50,17 @@ window.NSK2App = (() => {
     if (el) el.textContent = text || "";
   }
 
+  function shortName(fullName) {
+    const name = String(fullName || "").trim();
+    if (!name || name === "—") return name || "";
+
+    const parts = name.split(/\s+/);
+    const first = parts[0] || "";
+    const lastInitial = parts.length > 1 ? (parts[parts.length - 1][0] + ".") : "";
+
+    return lastInitial ? `${first} ${lastInitial}` : first;
+  }
+
   const saveTimers = {};
   let truppenRealtime = null;
   let globalClicksBound = false;
@@ -1266,8 +1277,6 @@ window.NSK2App = (() => {
     const matchNo = byId("shiftMatch")?.value || "1";
     if (!poolId) return;
 
-    await regenerateShiftSchemaFor(poolId, lagNo, matchNo);
-
     const pool = await DB.getPool(poolId);
     let row = await DB.getPoolTeamMatchConfig(poolId, lagNo, matchNo);
     if (!row && String(matchNo) !== "1") row = await DB.getPoolTeamMatchConfig(poolId, lagNo, 1);
@@ -1328,7 +1337,7 @@ window.NSK2App = (() => {
           ${rows.map((r, i) => {
             const shiftNo = i + 1;
             const names = (Array.isArray(r.players_json) ? r.players_json : [])
-              .map(id => playerMap[String(id)] || "—")
+              .map(id => shortName(playerMap[String(id)] || "—"))
               .join("<br>");
             const done = r.done ? "done" : "";
             return `
