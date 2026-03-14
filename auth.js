@@ -176,6 +176,16 @@ window.Auth = (() => {
     currentSession = data?.session || null;
 
     if (currentSession) {
+      const adminEmail = "din@email.se";
+
+      if (currentSession.user?.email !== adminEmail) {
+        await supabase.auth.signOut();
+        currentSession = null;
+        setStatus("Ej behörig användare.", true);
+        showLogin();
+        return;
+      }
+
       showApp();
     } else if (isRootLoginPage()) {
       showLogin();
@@ -198,11 +208,24 @@ window.Auth = (() => {
     bindUi();
     await applySession();
 
-    supabase.auth.onAuthStateChange((_event, session) => {
+    supabase.auth.onAuthStateChange(async (_event, session) => {
       currentSession = session || null;
 
-      if (currentSession) showApp();
-      else if (isRootLoginPage()) showLogin();
+      if (currentSession) {
+        const adminEmail = "din@email.se";
+
+        if (currentSession.user?.email !== adminEmail) {
+          await supabase.auth.signOut();
+          currentSession = null;
+          setStatus("Ej behörig användare.", true);
+          showLogin();
+          return;
+        }
+
+        showApp();
+      } else if (isRootLoginPage()) {
+        showLogin();
+      }
     });
 
     ready = true;
