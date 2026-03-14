@@ -6,42 +6,11 @@
   <title>Lag</title>
   <meta name="theme-color" content="#b11226">
 
-  <script src="../version.js?v=717"></script>
+  <script src="../version.js?v=718"></script>
   <script>
     document.write('<link rel="manifest" href="../manifest.webmanifest?v=' + window.NSK_VERSION + '">');
     document.write('<link rel="stylesheet" href="../app.css?v=' + window.NSK_VERSION + '">');
   </script>
-
-  <style>
-    .lag-grid{
-      display:grid;
-      gap:14px;
-    }
-    .lag-card-btn{
-      width:100%;
-      text-align:left;
-      padding:18px 18px;
-      min-height:88px;
-      border-radius:20px;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.08);
-      color:#fff;
-      font-weight:900;
-      box-shadow:0 10px 24px rgba(0,0,0,.16);
-    }
-    .lag-card-btn strong{
-      display:block;
-      font-size:22px;
-      margin-bottom:6px;
-    }
-    .lag-coaches{
-      display:block;
-      font-size:14px;
-      line-height:1.45;
-      color:rgba(255,255,255,.82);
-      font-weight:700;
-    }
-  </style>
 </head>
 <body>
   <div class="wrap">
@@ -57,8 +26,8 @@
 
     <section class="card">
       <h1>Lag</h1>
-      <div class="small">Välj lag för att starta matchvyn. Tränarna nedan hämtas från laguppställningen.</div>
-      <div id="teamButtons" class="lag-grid"></div>
+      <div class="small">Välj lag för att öppna matchvyn för valt poolspel.</div>
+      <div id="teamButtons" class="team-buttons"></div>
       <div id="activeTeam" class="listrow"></div>
     </section>
 
@@ -70,71 +39,6 @@
       document.write('<script src="../auth.js?v=' + window.NSK_VERSION + '"><\/script>');
       document.write('<script src="../db.js?v=' + window.NSK_VERSION + '"><\/script>');
       document.write('<script src="../app.js?v=' + window.NSK_VERSION + '"><\/script>');
-    </script>
-
-    <script>
-      document.addEventListener('DOMContentLoaded', async () => {
-        const box = document.getElementById('teamButtons');
-        const activeBox = document.getElementById('activeTeam');
-        if (!box) return;
-
-        function esc(s){
-          return String(s ?? '').replace(/[&<>"]/g, (m) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[m]));
-        }
-
-        try {
-          const poolId = sessionStorage.getItem('nsk2_pool_id') || '';
-          if (!poolId) {
-            box.innerHTML = '<div class="small">Välj först ett poolspel från startsidan.</div>';
-            return;
-          }
-
-          const pool = await DB.getPool(poolId);
-          const teams = parseInt(pool?.teams || '2', 10) || 2;
-          const coaches = await DB.listCoaches();
-          const coachMap = {};
-          coaches.forEach(c => { coachMap[String(c.id)] = c.full_name; });
-          const rows = await DB.listPoolTeamMatchConfigs(poolId);
-
-          box.innerHTML = '';
-          for (let lagNo = 1; lagNo <= teams; lagNo++) {
-            const lagRows = rows.filter(r => String(r.lag_no) === String(lagNo));
-            const coachNames = new Set();
-
-            for (const row of lagRows) {
-              const lineup = row?.id ? await DB.getLineup(row.id) : [];
-              lineup
-                .filter(x => x.person_type === 'coach')
-                .forEach(x => {
-                  const name = coachMap[String(x.person_id)] || '';
-                  if (name) coachNames.add(name);
-                });
-            }
-
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'lag-card-btn';
-            btn.innerHTML = `
-              <strong>Lag ${lagNo}</strong>
-              <span class="lag-coaches">Tränare: ${esc([...coachNames].join(', ') || 'Inga tränare kopplade ännu')}</span>
-            `;
-            btn.addEventListener('click', () => {
-              sessionStorage.setItem('nsk2_lag_nr', String(lagNo));
-              localStorage.setItem('nsk_active_team', String(lagNo));
-              window.location.href = '../matchvy/';
-            });
-            box.appendChild(btn);
-          }
-
-          const activeTeam = localStorage.getItem('nsk_active_team') || sessionStorage.getItem('nsk2_lag_nr') || '';
-          if (activeTeam && activeBox) {
-            activeBox.innerHTML = `Aktivt lag: <strong>Lag ${esc(activeTeam)}</strong>`;
-          }
-        } catch (err) {
-          const el = document.getElementById('appError');
-          if (el) el.textContent = err.message || String(err);
-        }
-      });
     </script>
   </div>
 </body>
