@@ -277,3 +277,152 @@ p{
     font-size:30px;
   }
 }
+
+/* =========================
+   V718 START / LAG / MATCHVY / BYTESSCHEMA
+   ========================= */
+
+.start-pool-btn{
+  width:100%;
+  min-height:64px;
+  padding:18px 20px;
+  border-radius:18px;
+  font-size:22px;
+  font-weight:900;
+  background:linear-gradient(180deg,#e11d3d,#9f0d20);
+  color:#fff;
+  border:1px solid rgba(255,255,255,.14);
+}
+
+.lag-overview-btn{
+  width:100%;
+  min-height:88px;
+  text-align:left;
+  padding:18px;
+}
+
+.lag-overview-title{
+  font-size:24px;
+  font-weight:900;
+}
+
+.lag-overview-coaches{
+  margin-top:8px;
+  font-size:15px;
+  color:rgba(255,255,255,.82);
+}
+
+.match-list-stack{
+  display:grid;
+  gap:12px;
+  margin-top:16px;
+}
+
+.match-list-item{
+  width:100%;
+  text-align:left;
+  min-height:78px;
+  padding:16px 18px;
+  border-radius:18px;
+  border:1px solid var(--line);
+  background:var(--btn);
+  color:var(--text);
+}
+
+.match-list-item.active-team-btn{
+  background:linear-gradient(180deg,var(--red1),var(--red2));
+}
+
+.match-list-title{
+  font-size:22px;
+  font-weight:900;
+}
+
+.match-list-sub{
+  margin-top:6px;
+  font-size:14px;
+  color:var(--muted);
+}
+
+.matchview-wrap{
+  max-width:560px;
+}
+
+.iphone-match-card{
+  padding:18px;
+}
+
+.coach-big-title{
+  font-size:28px;
+  font-weight:900;
+  line-height:1.08;
+  margin-bottom:10px;
+}
+
+.coach-match-info{
+  color:var(--muted);
+  font-size:17px;
+  line-height:1.45;
+  margin-bottom:12px;
+}
+
+.single-meta{
+  margin-bottom:10px;
+}
+
+.compact-panel{
+  min-height:0;
+  padding:16px;
+  margin-bottom:12px;
+}
+
+.coach-panel-label-big{
+  font-size:18px;
+  font-weight:900;
+  margin-bottom:10px;
+}
+
+.coach-panel-main-big,
+.coach-panel-next-big{
+  font-size:28px;
+  line-height:1.25;
+  font-weight:900;
+}
+
+.compact-nav-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-top:4px;
+}
+
+.coach-nav-btn{
+  min-height:58px;
+  font-size:18px;
+  font-weight:900;
+  border-radius:18px;
+}
+
+@media (max-width:700px){
+  .matchview-wrap{
+    max-width:100%;
+  }
+
+  .coach-big-title{
+    font-size:24px;
+  }
+
+  .coach-panel-main-big,
+  .coach-panel-next-big{
+    font-size:24px;
+  }
+
+  .compact-mainmenu{
+    gap:8px;
+  }
+
+  .compact-mainmenu a{
+    padding:10px 12px;
+    font-size:15px;
+  }
+}
