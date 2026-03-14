@@ -1,17 +1,17 @@
-const VERSION = "721";
-const CACHE_NAME = "nsk-team18-v721";
+const VERSION = "722";
+const CACHE_NAME = "nsk-team18-v722";
 
 const ASSETS = [
   "./",
-  "./index.html?v=721",
-  "./version.js?v=721",
-  "./deploy.json?v=721",
-  "./app.css?v=721",
-  "./config.js?v=721",
-  "./auth.js?v=721",
-  "./db.js?v=721",
-  "./app.js?v=721",
-  "./manifest.webmanifest?v=721",
+  "./index.html?v=722",
+  "./version.js?v=722",
+  "./deploy.json?v=722",
+  "./app.css?v=722",
+  "./config.js?v=722",
+  "./auth.js?v=722",
+  "./db.js?v=722",
+  "./app.js?v=722",
+  "./manifest.webmanifest?v=722",
   "./icon-192.png",
   "./icon-512.png"
 ];
