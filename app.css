@@ -901,3 +901,151 @@ textarea{
   }
   .grid,.row2{grid-template-columns:1fr;}
 }
+/* ===== v716 STARTSIDA / MATCHVY ===== */
+.start-pool-btn{
+  width:100%;
+  min-height:58px;
+  border-radius:18px;
+  font-weight:900;
+  font-size:22px;
+  background:linear-gradient(180deg,var(--red1),var(--red2));
+  border:1px solid rgba(255,255,255,.16);
+  margin-top:16px;
+}
+
+.start-pool-caption{
+  margin-top:10px;
+  color:var(--muted);
+  font-size:14px;
+  font-weight:700;
+}
+
+.matchvy-topline{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-bottom:14px;
+}
+
+.matchvy-pool,
+.matchvy-team{
+  display:inline-flex;
+  align-items:center;
+  min-height:38px;
+  padding:8px 14px;
+  border-radius:16px;
+  border:1px solid var(--line);
+  background:var(--btn);
+  color:var(--text);
+  font-weight:800;
+}
+
+.matchvy-main-title{
+  margin-bottom:8px;
+}
+
+.matchvy-subtitle{
+  font-size:28px;
+  font-weight:900;
+  margin-bottom:16px;
+}
+
+.matchvy-meta{
+  color:var(--text);
+  opacity:.92;
+  font-size:18px;
+  line-height:1.45;
+  margin-bottom:20px;
+}
+
+.matchvy-panels{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:16px;
+}
+
+.matchvy-panel{
+  border:1px solid var(--line);
+  border-radius:22px;
+  padding:18px;
+  background:rgba(0,0,0,.16);
+}
+
+.current-panel{
+  box-shadow:0 0 0 1px rgba(225,29,61,.15) inset;
+}
+
+.next-panel{
+  box-shadow:0 0 0 1px rgba(255,255,255,.05) inset;
+}
+
+.matchvy-panel-label{
+  color:var(--muted);
+  font-size:14px;
+  font-weight:800;
+  letter-spacing:.06em;
+  margin-bottom:8px;
+}
+
+.matchvy-shift-no{
+  font-size:32px;
+  font-weight:900;
+  margin-bottom:4px;
+}
+
+.matchvy-time{
+  font-size:18px;
+  font-weight:800;
+  margin-bottom:12px;
+  color:var(--muted);
+}
+
+.matchvy-player-list{
+  font-size:28px;
+  font-weight:900;
+  line-height:1.32;
+}
+
+.matchvy-timer-block{
+  margin-top:20px;
+  padding:18px;
+  border:1px solid var(--line);
+  border-radius:22px;
+  background:rgba(0,0,0,.16);
+}
+
+.matchvy-timer{
+  font-size:56px;
+  font-weight:900;
+  line-height:1;
+  margin-top:6px;
+}
+
+.matchvy-nav-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+  margin-top:20px;
+}
+
+.ghost-wide,
+.primary-wide{
+  min-height:58px;
+  font-size:20px;
+  font-weight:900;
+}
+
+.ghost-wide{
+  background:var(--btn);
+}
+
+.primary-wide{
+  background:linear-gradient(180deg,var(--red1),var(--red2));
+}
+
+@media (max-width:700px){
+  .matchvy-subtitle{font-size:24px;}
+  .matchvy-shift-no{font-size:26px;}
+  .matchvy-player-list{font-size:22px;}
+  .matchvy-timer{font-size:44px;}
+}
