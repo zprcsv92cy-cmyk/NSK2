@@ -524,29 +524,16 @@ window.DB = (() => {
     if (client) {
       const teamId = await getTeamId();
 
-      const existing = await client
+      const allRows = await client
         .from("nsk_player_coach_map")
         .select("id, player_name")
-        .eq("team_id", teamId)
-        .maybeSingle();
+        .eq("team_id", teamId);
 
       let matchId = null;
 
-      if (!existing.error && Array.isArray(existing.data)) {
-        const found = existing.data.find(r => normalizeName(r.player_name) === safePlayer);
+      if (!allRows.error && Array.isArray(allRows.data)) {
+        const found = allRows.data.find(r => normalizeName(r.player_name) === safePlayer);
         if (found?.id) matchId = found.id;
-      }
-
-      if (!matchId) {
-        const allRows = await client
-          .from("nsk_player_coach_map")
-          .select("id, player_name")
-          .eq("team_id", teamId);
-
-        if (!allRows.error && Array.isArray(allRows.data)) {
-          const found = allRows.data.find(r => normalizeName(r.player_name) === safePlayer);
-          if (found?.id) matchId = found.id;
-        }
       }
 
       if (matchId) {
