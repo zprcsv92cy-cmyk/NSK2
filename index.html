@@ -20,13 +20,16 @@
       color: #fff;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     }
+
     .page {
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 24px;
+      box-sizing: border-box;
     }
+
     .card {
       width: 100%;
       max-width: 420px;
@@ -36,14 +39,18 @@
       padding: 24px;
       box-sizing: border-box;
     }
+
     h1 {
       margin: 0 0 10px;
       font-size: 28px;
     }
+
     .sub {
       opacity: .8;
       margin-bottom: 18px;
+      font-size: 15px;
     }
+
     input {
       width: 100%;
       height: 52px;
@@ -56,12 +63,18 @@
       font-size: 16px;
       margin-top: 12px;
     }
+
+    input::placeholder {
+      color: rgba(255,255,255,.55);
+    }
+
     .row {
       display: flex;
       gap: 10px;
       margin-top: 14px;
       flex-wrap: wrap;
     }
+
     button {
       height: 52px;
       border: 0;
@@ -73,12 +86,16 @@
       color: #fff;
       background: linear-gradient(180deg,#e11d3d,#9f0d20);
     }
-    #loginMsg, #appError, #authStatus {
+
+    #authStatus,
+    #loginMsg,
+    #appError {
       margin-top: 14px;
-      opacity: .9;
+      opacity: .95;
       font-size: 14px;
       word-break: break-word;
     }
+
     #appView {
       display: none;
     }
@@ -88,10 +105,21 @@
   <section id="loginView" class="page">
     <div class="card">
       <h1>NSK Team 18</h1>
-      <div class="sub">Logga in för att öppna appen</div>
+      <div class="sub">Logga in som admin för att öppna appen</div>
 
-      <input id="emailInput" type="email" autocomplete="email" placeholder="namn@exempel.se">
-      <input id="passwordInput" type="password" autocomplete="current-password" placeholder="Lösenord">
+      <input
+        id="emailInput"
+        type="email"
+        autocomplete="email"
+        placeholder="namn@exempel.se"
+      >
+
+      <input
+        id="passwordInput"
+        type="password"
+        autocomplete="current-password"
+        placeholder="Lösenord"
+      >
 
       <div class="row">
         <button id="loginBtn" type="button">Logga in</button>
@@ -109,7 +137,9 @@
   <script>
     window.onerror = function (msg, url, line, col, err) {
       var el = document.getElementById("appError");
-      if (el) el.textContent = "JS-fel: " + msg + " rad " + line;
+      if (el) {
+        el.textContent = "JS-fel: " + msg + " rad " + line;
+      }
       console.error(msg, url, line, col, err);
     };
 
@@ -117,12 +147,16 @@
       if (window.Auth && typeof window.Auth.init === "function") {
         window.Auth.init().catch(function (err) {
           var el = document.getElementById("appError");
-          if (el) el.textContent = err.message || String(err);
+          if (el) {
+            el.textContent = err.message || String(err);
+          }
           console.error(err);
         });
       } else {
         var el = document.getElementById("appError");
-        if (el) el.textContent = "Auth.init saknas";
+        if (el) {
+          el.textContent = "Auth.init saknas";
+        }
       }
     });
   </script>
