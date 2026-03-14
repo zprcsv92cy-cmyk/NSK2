@@ -6,11 +6,18 @@
   <title>Matchvy</title>
   <meta name="theme-color" content="#b11226">
 
-  <script src="../version.js?v=713"></script>
+  <script src="../version.js?v=715"></script>
   <script>
     document.write('<link rel="manifest" href="../manifest.webmanifest?v=' + window.NSK_VERSION + '">');
     document.write('<link rel="stylesheet" href="../app.css?v=' + window.NSK_VERSION + '">');
   </script>
+
+  <style>
+    .coach-panel-main,
+    .coach-panel-next{
+      white-space:pre-line;
+    }
+  </style>
 </head>
 <body>
   <div class="wrap">
@@ -24,24 +31,9 @@
       <a href="../lag/">Lag</a>
     </nav>
 
-    <section class="card match-admin-card">
-      <h1>Matchvy</h1>
-      <div class="row2">
-        <div><label>Matchnamn</label><input id="matchTitle" placeholder="Poolspel / match"></div>
-        <div><label>Motståndare</label><input id="matchOpponent" placeholder="Motståndare"></div>
-        <div><label>Plats</label><input id="matchPlace" placeholder="Nyköping"></div>
-        <div><label>Tid</label><input id="matchTime" placeholder="10:20"></div>
-        <div><label>Bytestid sek</label><input id="matchShiftSeconds" type="number" value="90"></div>
-      </div>
-      <div class="btnrow">
-        <button id="saveMatchBtn">Spara matchinfo</button>
-        <button id="coachFullscreenBtn" class="ghost">Coach-skärm</button>
-      </div>
-      <div id="matchMsg" class="small"></div>
-    </section>
-
     <section class="card coach-screen-card">
       <div class="coach-screen-top">
+        <h1>Matchvy</h1>
         <h2 id="shiftLabel">Inget schema</h2>
         <div id="matchInfo"></div>
       </div>
@@ -66,17 +58,149 @@
           <button id="nextShiftBtn" class="ghost">Nästa byte</button>
         </div>
       </div>
+      <div id="matchMsg" class="small"></div>
     </section>
 
     <div id="appError" class="small"></div>
 
-   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<script>
-  document.write('<script src="../config.js?v=' + window.NSK_VERSION + '"><\/script>');
-  document.write('<script src="../auth.js?v=' + window.NSK_VERSION + '"><\/script>');
-  document.write('<script src="../db.js?v=' + window.NSK_VERSION + '"><\/script>');
-  document.write('<script src="../app.js?v=' + window.NSK_VERSION + '"><\/script>');
-</script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script>
+      document.write('<script src="../config.js?v=' + window.NSK_VERSION + '"><\/script>');
+      document.write('<script src="../auth.js?v=' + window.NSK_VERSION + '"><\/script>');
+      document.write('<script src="../db.js?v=' + window.NSK_VERSION + '"><\/script>');
+      document.write('<script src="../app.js?v=' + window.NSK_VERSION + '"><\/script>');
+    </script>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', async () => {
+        const shiftLabel = document.getElementById('shiftLabel');
+        const matchInfo = document.getElementById('matchInfo');
+        const currentPlayers = document.getElementById('currentPlayers');
+        const nextPlayers = document.getElementById('nextPlayers');
+        const timerEl = document.getElementById('matchTimer');
+        const msg = document.getElementById('matchMsg');
+        const startBtn = document.getElementById('startTimerBtn');
+        const stopBtn = document.getElementById('stopTimerBtn');
+        const nextBtn = document.getElementById('nextShiftBtn');
+
+        let tickRef = null;
+        let secondsLeft = 0;
+        let currentIndex = 0;
+        let shifts = [];
+        let shiftSeconds = 90;
+
+        function shortName(fullName) {
+          const name = String(fullName || '').trim();
+          if (!name) return '—';
+          const parts = name.split(/\s+/);
+          const first = parts[0] || '';
+          const lastInitial = parts.length > 1 ? (parts[parts.length - 1][0] + '.') : '';
+          return lastInitial ? `${first} ${lastInitial}` : first;
+        }
+
+        function formatPlayers(ids, playerMap) {
+          if (!Array.isArray(ids) || !ids.length) return '—';
+          return ids.map(id => shortName(playerMap[String(id)] || '—')).join('\n');
+        }
+
+        function renderCurrent(playerMap) {
+          const current = shifts[currentIndex] || null;
+          const next = shifts[currentIndex + 1] || null;
+
+          currentPlayers.textContent = current ? formatPlayers(current.players_json || current.players || [], playerMap) : '—';
+          nextPlayers.textContent = next ? formatPlayers(next.players_json || next.players || [], playerMap) : '—';
+
+          if (current) {
+            shiftLabel.textContent = `Pågående byte ${currentIndex + 1}`;
+          }
+        }
+
+        function renderTimer() {
+          const mm = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
+          const ss = String(secondsLeft % 60).padStart(2, '0');
+          timerEl.textContent = `${mm}:${ss}`;
+        }
+
+        function stopTimer() {
+          if (tickRef) clearInterval(tickRef);
+          tickRef = null;
+        }
+
+        try {
+          const poolId = sessionStorage.getItem('nsk2_pool_id') || '';
+          const lagNo = sessionStorage.getItem('nsk2_lag_nr') || localStorage.getItem('nsk_active_team') || '1';
+
+          if (!poolId) {
+            msg.textContent = 'Välj först ett poolspel från startsidan.';
+            return;
+          }
+
+          const playerMap = {};
+          (await DB.listPlayers()).forEach(p => { playerMap[String(p.id)] = p.full_name; });
+
+          const rows = await DB.listPoolTeamMatchConfigs(poolId);
+          const matchRows = rows
+            .filter(r => String(r.lag_no) === String(lagNo))
+            .sort((a, b) => Number(a.match_no || 0) - Number(b.match_no || 0));
+
+          if (!matchRows.length) {
+            msg.textContent = `Ingen laguppställning finns ännu för Lag ${lagNo}.`;
+            return;
+          }
+
+          const row = matchRows[0];
+          const matchNo = row.match_no;
+          shifts = await DB.listShiftSchema(poolId, lagNo, matchNo);
+
+          if (!shifts.length) {
+            msg.textContent = `Inget bytesschema finns ännu för Lag ${lagNo} Match ${matchNo}.`;
+            return;
+          }
+
+          shiftSeconds = parseInt((await DB.getPool(poolId))?.sub_time || '90', 10) || 90;
+          secondsLeft = shiftSeconds;
+          renderTimer();
+
+          const title = `Lag ${lagNo} • Match ${matchNo}`;
+          shiftLabel.textContent = title;
+          matchInfo.innerHTML = `Motståndare: <strong>${row.opponent || '—'}</strong> • Plan: <strong>${row.plan || '—'}</strong> • Start: <strong>${row.start_time || '—'}</strong>`;
+          renderCurrent(playerMap);
+
+          startBtn.addEventListener('click', () => {
+            stopTimer();
+            tickRef = setInterval(() => {
+              if (secondsLeft > 0) {
+                secondsLeft -= 1;
+                renderTimer();
+              } else {
+                if (currentIndex < shifts.length - 1) {
+                  currentIndex += 1;
+                  renderCurrent(playerMap);
+                }
+                secondsLeft = shiftSeconds;
+                renderTimer();
+              }
+            }, 1000);
+          });
+
+          stopBtn.addEventListener('click', () => {
+            stopTimer();
+          });
+
+          nextBtn.addEventListener('click', () => {
+            if (currentIndex < shifts.length - 1) {
+              currentIndex += 1;
+              renderCurrent(playerMap);
+            }
+            secondsLeft = shiftSeconds;
+            renderTimer();
+          });
+        } catch (err) {
+          const el = document.getElementById('appError');
+          if (el) el.textContent = err.message || String(err);
+        }
+      });
+    </script>
   </div>
 </body>
 </html>
