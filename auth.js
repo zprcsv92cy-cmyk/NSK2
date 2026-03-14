@@ -23,9 +23,7 @@ window.Auth = (() => {
 
   function showApp() {
     if (isRootLoginPage()) {
-      setTimeout(() => {
-        window.location.replace("./startsida/");
-      }, 50);
+      window.location.replace("./startsida/");
       return;
     }
 
@@ -59,29 +57,27 @@ window.Auth = (() => {
     return { url, key };
   }
 
-  async function login(email) {
+  async function login(email, password) {
     if (!supabase) await init();
 
     const safeEmail = String(email || "").trim();
-    if (!safeEmail) {
-      setStatus("Fyll i e-postadress.", true);
+    const safePassword = String(password || "");
+
+    if (!safeEmail || !safePassword) {
+      setStatus("Fyll i e-postadress och lösenord.", true);
       return;
     }
 
-    setStatus("Skickar inloggningslänk...");
+    setStatus("Loggar in...");
 
-    const redirectTo = "https://zprcsv92cy-cmyk.github.io/NSK2/";
-
-    const { error } = await supabase.auth.signInWithOtp({
+    const { error } = await supabase.auth.signInWithPassword({
       email: safeEmail,
-      options: {
-        emailRedirectTo: redirectTo
-      }
+      password: safePassword
     });
 
     if (error) throw error;
 
-    setStatus("Kolla din e-post för inloggningslänken.");
+    setStatus("Inloggad.");
   }
 
   async function logout() {
@@ -105,12 +101,13 @@ window.Auth = (() => {
     const refreshBtn = byId("refreshBtn");
     const logoutBtn = byId("logoutBtn");
     const mailInput = byId("emailInput");
+    const passwordInput = byId("passwordInput");
 
     if (loginBtn && !loginBtn.dataset.boundAuth) {
       loginBtn.dataset.boundAuth = "1";
       loginBtn.addEventListener("click", async () => {
         try {
-          await login(mailInput?.value || "");
+          await login(mailInput?.value || "", passwordInput?.value || "");
         } catch (err) {
           setStatus(err.message || String(err), true);
           console.error(err);
@@ -124,7 +121,21 @@ window.Auth = (() => {
         if (e.key !== "Enter") return;
         e.preventDefault();
         try {
-          await login(mailInput?.value || "");
+          await login(mailInput?.value || "", passwordInput?.value || "");
+        } catch (err) {
+          setStatus(err.message || String(err), true);
+          console.error(err);
+        }
+      });
+    }
+
+    if (passwordInput && !passwordInput.dataset.boundAuth) {
+      passwordInput.dataset.boundAuth = "1";
+      passwordInput.addEventListener("keydown", async (e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        try {
+          await login(mailInput?.value || "", passwordInput?.value || "");
         } catch (err) {
           setStatus(err.message || String(err), true);
           console.error(err);
@@ -165,7 +176,6 @@ window.Auth = (() => {
     currentSession = data?.session || null;
 
     if (currentSession) {
-      setStatus("Inloggad.");
       showApp();
     } else if (isRootLoginPage()) {
       showLogin();
@@ -185,21 +195,14 @@ window.Auth = (() => {
       }
     });
 
-    await supabase.auth.refreshSession().catch(() => {});
     bindUi();
     await applySession();
 
-    supabase.auth.onAuthStateChange((event, session) => {
+    supabase.auth.onAuthStateChange((_event, session) => {
       currentSession = session || null;
 
-      if (currentSession) {
-        setStatus("Inloggad.");
-        setTimeout(() => {
-          showApp();
-        }, 100);
-      } else if (isRootLoginPage()) {
-        showLogin();
-      }
+      if (currentSession) showApp();
+      else if (isRootLoginPage()) showLogin();
     });
 
     ready = true;
