@@ -149,9 +149,11 @@ window.NSK2App = (() => {
         }
 
         if (t.dataset.shiftMatchCard) {
+          const nextMatchNo = String(t.dataset.shiftMatchCard);
           const sel = byId("shiftMatch");
-          if (sel) sel.value = String(t.dataset.shiftMatchCard);
-          setActiveShiftMatchButton(String(t.dataset.shiftMatchCard));
+          if (sel) sel.value = nextMatchNo;
+          sessionStorage.setItem("nsk2_match_no", nextMatchNo);
+          setActiveShiftMatchListItem(nextMatchNo);
           await renderShiftSchema();
           return;
         }
@@ -1132,7 +1134,8 @@ window.NSK2App = (() => {
   async function initBytesschemaPage() {
     const teamBox = byId("shiftTeamButtons");
     const matchSelect = byId("shiftMatch");
-    if (!teamBox || !matchSelect) return;
+    const matchList = byId("shiftMatchList");
+    if (!teamBox || !matchSelect || !matchList) return;
 
     try {
       const poolId = sessionStorage.getItem("nsk2_pool_id");
@@ -1145,14 +1148,16 @@ window.NSK2App = (() => {
       const teams = parseInt(pool?.teams || "2", 10) || 2;
       const matches = parseInt(pool?.matches || "4", 10) || 4;
 
+      const savedLag = sessionStorage.getItem("nsk2_lag_nr") || "1";
+      const savedMatch = sessionStorage.getItem("nsk2_match_no") || "1";
+
       renderShiftTeamButtons(teams);
       renderShiftMatchOptions(matches);
-      renderShiftMatchList(matches);
 
-      const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
-      setActiveShiftTeamButton(lagNo);
-      setActiveShiftMatchButton(matchSelect.value || "1");
+      matchSelect.value = String(Math.min(Math.max(parseInt(savedMatch, 10) || 1, 1), matches));
 
+      setActiveShiftTeamButton(savedLag);
+      await renderShiftMatchList(matches);
       await renderShiftSchema();
     } catch (err) {
       setText("appError", err.message || String(err));
@@ -1172,7 +1177,17 @@ window.NSK2App = (() => {
       btn.dataset.shiftLag = String(i);
       btn.addEventListener("click", async () => {
         sessionStorage.setItem("nsk2_lag_nr", String(i));
+        sessionStorage.setItem("nsk2_match_no", "1");
         setActiveShiftTeamButton(String(i));
+
+        const poolId = sessionStorage.getItem("nsk2_pool_id");
+        const pool = await DB.getPool(poolId);
+        const matches = parseInt(pool?.matches || "4", 10) || 4;
+
+        const sel = byId("shiftMatch");
+        if (sel) sel.value = "1";
+
+        await renderShiftMatchList(matches);
         await renderShiftSchema();
       });
       box.appendChild(btn);
@@ -1186,19 +1201,44 @@ window.NSK2App = (() => {
     });
   }
 
-  function renderShiftMatchList(matches) {
+  function setActiveShiftMatchListItem(matchNo) {
+    document.querySelectorAll("[data-shift-match-card]").forEach(btn => {
+      if (btn.dataset.shiftMatchCard === String(matchNo)) btn.classList.add("active-team-btn");
+      else btn.classList.remove("active-team-btn");
+    });
+  }
+
+  async function renderShiftMatchList(matches) {
     const box = byId("shiftMatchList");
     if (!box) return;
+
+    const poolId = sessionStorage.getItem("nsk2_pool_id");
+    const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
+
     box.innerHTML = "";
 
     for (let i = 1; i <= matches; i++) {
+      const row =
+        await DB.getPoolTeamMatchConfig(poolId, lagNo, i) ||
+        (i !== 1 ? await DB.getPoolTeamMatchConfig(poolId, lagNo, 1) : null);
+
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "match-list-item";
       btn.dataset.shiftMatchCard = String(i);
-      btn.innerHTML = `<div class="match-list-title">Match ${i}</div><div class="match-list-sub">Visa bytesschema</div>`;
+
+      btn.innerHTML = `
+        <div class="match-list-title">Match ${i}</div>
+        <div class="match-list-sub">
+          ${esc(row?.start_time || "Ingen starttid")} • ${esc(row?.opponent || "Ingen motståndare")} • ${esc(row?.plan || "Plan saknas")}
+        </div>
+      `;
+
       box.appendChild(btn);
     }
+
+    const active = byId("shiftMatch")?.value || "1";
+    setActiveShiftMatchListItem(active);
   }
 
   function renderShiftMatchOptions(matches) {
@@ -1214,10 +1254,7 @@ window.NSK2App = (() => {
   }
 
   function setActiveShiftMatchButton(matchNo) {
-    document.querySelectorAll("[data-shift-match-card]").forEach(btn => {
-      if (btn.dataset.shiftMatchCard === String(matchNo)) btn.classList.add("active-team-btn");
-      else btn.classList.remove("active-team-btn");
-    });
+    setActiveShiftMatchListItem(matchNo);
   }
 
   async function toggleShiftDone(shiftNo) {
@@ -1396,9 +1433,13 @@ window.NSK2App = (() => {
     const matchNo = byId("shiftMatch")?.value || "1";
     if (!poolId) return;
 
+    sessionStorage.setItem("nsk2_match_no", String(matchNo));
+
     const pool = await DB.getPool(poolId);
     let row = await DB.getPoolTeamMatchConfig(poolId, lagNo, matchNo);
-    if (!row && String(matchNo) !== "1") row = await DB.getPoolTeamMatchConfig(poolId, lagNo, 1);
+    if (!row && String(matchNo) !== "1") {
+      row = await DB.getPoolTeamMatchConfig(poolId, lagNo, 1);
+    }
 
     const players = await DB.listPlayers();
     const coaches = await DB.listCoaches();
@@ -1433,7 +1474,10 @@ window.NSK2App = (() => {
     setActiveShiftTeamButton(lagNo);
     setActiveShiftMatchButton(matchNo);
 
-    const rows = await DB.listShiftSchema(poolId, lagNo, matchNo);
+    let rows = await DB.listShiftSchema(poolId, lagNo, matchNo);
+    if ((!rows || !rows.length) && String(matchNo) !== "1") {
+      rows = await DB.listShiftSchema(poolId, lagNo, 1);
+    }
     const wrap = byId("shiftTableWrap");
     if (!wrap) return;
 
@@ -1533,7 +1577,10 @@ window.NSK2App = (() => {
   }
 
   async function renderCoachMatchView(poolId, lagNo, matchNo) {
-    const rows = await DB.listShiftSchema(poolId, lagNo, matchNo);
+    let rows = await DB.listShiftSchema(poolId, lagNo, matchNo);
+    if ((!rows || !rows.length) && String(matchNo) !== "1") {
+      rows = await DB.listShiftSchema(poolId, lagNo, 1);
+    }
     const players = await DB.listPlayers();
     const playerMap = {};
     players.forEach(p => { playerMap[String(p.id)] = p.full_name; });
@@ -1617,8 +1664,12 @@ window.NSK2App = (() => {
       nextBtn.addEventListener("click", async () => {
         const rows = await DB.listShiftSchema(poolId, lagNo, matchNo);
         if (!rows.length) return;
-        const currentShiftNo = matchCurrentShiftIndex + 1;
-        await DB.setShiftDone(poolId, lagNo, matchNo, currentShiftNo, true);
+
+        const currentShift = rows[matchCurrentShiftIndex];
+        if (currentShift?.shift_no) {
+          await DB.setShiftDone(poolId, lagNo, matchNo, currentShift.shift_no, true);
+        }
+
         matchCurrentShiftIndex = Math.min(rows.length - 1, matchCurrentShiftIndex + 1);
         await renderCoachMatchView(poolId, lagNo, matchNo);
       });
