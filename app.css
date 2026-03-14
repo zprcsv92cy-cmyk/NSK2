@@ -123,3 +123,157 @@ code{
 p{
   line-height:1.5;
 }
+
+/* =========================
+   V717 COACH MODE / START POOL
+   ========================= */
+
+.start-pool-btn{
+  width:100%;
+  min-height:64px;
+  padding:18px 20px;
+  border-radius:18px;
+  font-size:22px;
+  font-weight:900;
+  background:linear-gradient(180deg,#e11d3d,#9f0d20);
+  color:#fff;
+  border:1px solid rgba(255,255,255,.14);
+}
+
+.lag-overview-btn{
+  width:100%;
+  text-align:left;
+  padding:18px;
+}
+
+.lag-overview-title{
+  font-size:24px;
+  font-weight:900;
+}
+
+.lag-overview-coaches{
+  margin-top:8px;
+  font-size:15px;
+  color:rgba(255,255,255,.82);
+}
+
+.matchvy-info-row{
+  margin-top:6px;
+  font-size:18px;
+}
+
+.coach-mode-card{
+  padding:24px;
+}
+
+.coach-mode-header{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 220px;
+  gap:18px;
+  align-items:stretch;
+  margin-bottom:18px;
+}
+
+.coach-big-title{
+  font-size:34px;
+  font-weight:900;
+  line-height:1.05;
+  margin-bottom:10px;
+}
+
+.coach-match-info{
+  color:var(--muted);
+  font-size:18px;
+  line-height:1.5;
+}
+
+.coach-timer-panel{
+  border:1px solid var(--line);
+  border-radius:22px;
+  background:rgba(0,0,0,.22);
+  padding:18px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+}
+
+.coach-byte-meta{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+  margin-bottom:18px;
+}
+
+.coach-byte-meta-box{
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:rgba(255,255,255,.06);
+  padding:14px 16px;
+  font-size:18px;
+  font-weight:800;
+}
+
+.coach-panels-big{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:18px;
+  margin-bottom:20px;
+}
+
+.coach-panel-current,
+.coach-panel-nextbox{
+  min-height:280px;
+  border:1px solid var(--line);
+  border-radius:24px;
+  padding:22px;
+  background:rgba(255,255,255,.06);
+}
+
+.coach-panel-label-big{
+  font-size:18px;
+  font-weight:900;
+  margin-bottom:14px;
+  letter-spacing:.03em;
+}
+
+.coach-panel-main-big,
+.coach-panel-next-big{
+  font-size:40px;
+  line-height:1.28;
+  font-weight:900;
+}
+
+.coach-nav-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+}
+
+.coach-nav-btn{
+  min-height:64px;
+  font-size:20px;
+  font-weight:900;
+  border-radius:18px;
+}
+
+@media (max-width:900px){
+  .coach-mode-header{
+    grid-template-columns:1fr;
+  }
+
+  .coach-byte-meta,
+  .coach-panels-big,
+  .coach-nav-row{
+    grid-template-columns:1fr;
+  }
+
+  .coach-big-title{
+    font-size:28px;
+  }
+
+  .coach-panel-main-big,
+  .coach-panel-next-big{
+    font-size:30px;
+  }
+}
