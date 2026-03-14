@@ -553,6 +553,7 @@ window.NSK2App = (() => {
       box.innerHTML = html;
       attachLineupHandlers();
       syncGoalieAgainstPlayers();
+      syncSelectedPlayersAcrossLineup();
     } catch (err) {
       setText("appError", err.message || String(err));
     }
@@ -578,6 +579,7 @@ window.NSK2App = (() => {
 
     updateCoachEnabledState();
     syncGoalieAgainstPlayers();
+    syncSelectedPlayersAcrossLineup();
   }
 
   function queueAutoSaveLineup() {
@@ -588,7 +590,7 @@ window.NSK2App = (() => {
       } catch (err) {
         setText("appError", err.message || String(err));
       }
-    }, 500);
+    }, 150);
   }
 
   function updateCoachEnabledState() {
@@ -612,12 +614,75 @@ window.NSK2App = (() => {
     }
   }
 
+  function syncSelectedPlayersAcrossLineup() {
+    const goalieId = byId("lineupGoalie")?.value || "";
+    const count = parseInt(byId("lineupPlayerCount")?.value || "1", 10);
+
+    const selectedIds = new Set();
+    if (goalieId) selectedIds.add(String(goalieId));
+
+    for (let i = 1; i <= count; i++) {
+      const v = byId(`lineupPlayer${i}`)?.value || "";
+      if (v) selectedIds.add(String(v));
+    }
+
+    for (let i = 1; i <= count; i++) {
+      const sel = byId(`lineupPlayer${i}`);
+      if (!sel) continue;
+
+      const currentValue = sel.value;
+
+      Array.from(sel.options).forEach((opt) => {
+        if (!opt.value) {
+          opt.hidden = false;
+          opt.disabled = false;
+          return;
+        }
+
+        const isOwnValue = String(opt.value) === String(currentValue);
+        const isTaken = selectedIds.has(String(opt.value)) && !isOwnValue;
+
+        opt.hidden = isTaken;
+        opt.disabled = isTaken;
+      });
+    }
+
+    const goalieSel = byId("lineupGoalie");
+    if (goalieSel) {
+      const currentGoalie = goalieSel.value;
+
+      Array.from(goalieSel.options).forEach((opt) => {
+        if (!opt.value) {
+          opt.hidden = false;
+          opt.disabled = false;
+          return;
+        }
+
+        let usedAsPlayer = false;
+        for (let i = 1; i <= count; i++) {
+          const v = byId(`lineupPlayer${i}`)?.value || "";
+          if (String(v) === String(opt.value)) {
+            usedAsPlayer = true;
+            break;
+          }
+        }
+
+        const isOwnValue = String(opt.value) === String(currentGoalie);
+        const isTaken = usedAsPlayer && !isOwnValue;
+
+        opt.hidden = isTaken;
+        opt.disabled = isTaken;
+      });
+    }
+  }
+
   function attachLineupHandlers() {
     const goalie = byId("lineupGoalie");
     if (goalie && !goalie.dataset.bound) {
       goalie.dataset.bound = "1";
       goalie.addEventListener("change", async () => {
         syncGoalieAgainstPlayers();
+        syncSelectedPlayersAcrossLineup();
         updateCoachEnabledState();
         await applyAutoCoachFromCurrentSelection();
         queueAutoSaveLineup();
@@ -630,6 +695,7 @@ window.NSK2App = (() => {
         el.dataset.bound = "1";
         el.addEventListener("change", async () => {
           syncGoalieAgainstPlayers();
+          syncSelectedPlayersAcrossLineup();
           updateCoachEnabledState();
           await applyAutoCoachFromCurrentSelection();
           queueAutoSaveLineup();
@@ -666,6 +732,7 @@ window.NSK2App = (() => {
       countSel.dataset.bound = "1";
       countSel.addEventListener("change", () => {
         updateVisiblePlayers();
+        syncSelectedPlayersAcrossLineup();
         queueAutoSaveLineup();
       });
     }
@@ -678,16 +745,13 @@ window.NSK2App = (() => {
     for (let i = 1; i <= count; i++) {
       const sel = byId(`lineupPlayer${i}`);
       if (!sel) continue;
-      const currentValue = sel.value;
-      Array.from(sel.options).forEach(opt => {
-        if (opt.value && opt.value === goalieId) {
-          opt.remove();
-        }
-      });
-      if (currentValue === goalieId) {
+
+      if (sel.value && String(sel.value) === String(goalieId)) {
         sel.value = "";
       }
     }
+
+    syncSelectedPlayersAcrossLineup();
   }
 
   async function applyAutoCoach(playerIds) {
@@ -824,6 +888,7 @@ window.NSK2App = (() => {
       }
 
       updateCoachEnabledState();
+      syncSelectedPlayersAcrossLineup();
       return;
     }
 
@@ -902,6 +967,7 @@ window.NSK2App = (() => {
       }
 
       syncGoalieAgainstPlayers();
+      syncSelectedPlayersAcrossLineup();
       await applyAutoCoachFromCurrentSelection();
       updateCoachEnabledState();
 
@@ -1318,7 +1384,7 @@ window.NSK2App = (() => {
     setText("shiftOpponent", row?.opponent || "—");
     setText("shiftPlan", row?.plan || "—");
 
-    const goalieName = row?.goalie_player_id ? (playerMap[String(row.goalie_player_id)] || "—") : "—";
+    const goalieName = row?.goalie_player_id ? shortName(playerMap[String(row.goalie_player_id)] || "—") : "—";
     setText("shiftGoalieName", goalieName);
 
     let coachNames = "—";
@@ -1327,7 +1393,7 @@ window.NSK2App = (() => {
       const ids = lineup
         .filter(x => x.person_type === "coach")
         .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-        .map(x => coachMap[String(x.person_id)] || "—")
+        .map(x => shortName(coachMap[String(x.person_id)] || "—"))
         .filter(Boolean);
       if (ids.length) coachNames = ids.join(", ");
     }
