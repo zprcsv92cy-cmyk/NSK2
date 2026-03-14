@@ -3,40 +3,79 @@ window.Auth = (() => {
   let ready = false;
   let currentSession = null;
 
-  const adminEmail = "peter_hasselberg@hotmail.com";
+  const ADMIN_EMAIL = "peter_hasselberg@hotmail.com";
+  const ROOT_PATHS = ["/NSK2/", "/NSK2/index.html"];
 
   function byId(id) {
     return document.getElementById(id);
-  }
-
-  function setStatus(msg = "", err = false) {
-    const el = byId("authStatus") || byId("loginMsg") || byId("appError");
-    if (!el) return;
-    el.textContent = msg;
-    el.classList.toggle("error", err);
-  }
-
-  function ensureConfig() {
-    const url = window.APP_CONFIG?.SUPABASE_URL;
-    const key = window.APP_CONFIG?.SUPABASE_KEY;
-
-    if (!url || !key) {
-      throw new Error("Supabase config saknas");
-    }
-
-    return { url, key };
-  }
-
-  function goToStartPage() {
-    window.location.href = "https://zprcsv92cy-cmyk.github.io/NSK2/startsida/";
   }
 
   function normalizeEmail(value) {
     return String(value || "").trim().toLowerCase();
   }
 
+  function setStatus(message = "", isError = false) {
+    const el = byId("authStatus") || byId("loginMsg") || byId("appError");
+    if (!el) return;
+    el.textContent = message || "";
+    el.classList.toggle("error", !!isError);
+  }
+
+  function isRootLoginPage() {
+    return ROOT_PATHS.includes(window.location.pathname);
+  }
+
+  function hasLoginUi() {
+    return !!byId("loginView");
+  }
+
+  function goToStartPage() {
+    window.location.href = "https://zprcsv92cy-cmyk.github.io/NSK2/startsida/";
+  }
+
+  function showLogin() {
+    const loginView = byId("loginView");
+    const appView = byId("appView");
+    if (appView) appView.style.display = "none";
+    if (loginView) loginView.style.display = "flex";
+  }
+
+  function showApp() {
+    if (isRootLoginPage()) {
+      goToStartPage();
+      return;
+    }
+    const loginView = byId("loginView");
+    const appView = byId("appView");
+    if (loginView) loginView.style.display = "none";
+    if (appView) appView.style.display = "block";
+  }
+
+  function ensureConfig() {
+    const url = window.APP_CONFIG?.SUPABASE_URL;
+    const key = window.APP_CONFIG?.SUPABASE_KEY;
+
+    if (!url || !key) throw new Error("Supabase config saknas");
+    if (!window.supabase?.createClient) throw new Error("Supabase-biblioteket saknas");
+
+    return { url, key };
+  }
+
+  async function ensureClient() {
+    if (supabase) return supabase;
+    const { url, key } = ensureConfig();
+    supabase = window.supabase.createClient(url, key, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    });
+    return supabase;
+  }
+
   async function login(email, password) {
-    if (!supabase) await init();
+    const client = await ensureClient();
 
     const safeEmail = normalizeEmail(email);
     const safePassword = String(password || "");
@@ -48,7 +87,7 @@ window.Auth = (() => {
 
     setStatus("Loggar in...");
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await client.auth.signInWithPassword({
       email: safeEmail,
       password: safePassword
     });
@@ -60,29 +99,51 @@ window.Auth = (() => {
 
     currentSession = data?.session || null;
 
-    const signedInEmail = normalizeEmail(currentSession?.user?.email);
-    const allowedEmail = normalizeEmail(adminEmail);
-
-    if (signedInEmail !== allowedEmail) {
-      await supabase.auth.signOut();
+    if (normalizeEmail(currentSession?.user?.email) !== normalizeEmail(ADMIN_EMAIL)) {
+      await client.auth.signOut();
       currentSession = null;
       setStatus("Ej behörig användare", true);
       return;
     }
 
     setStatus("Inloggad");
-
-    setTimeout(() => {
-      goToStartPage();
-    }, 100);
+    setTimeout(goToStartPage, 80);
   }
 
   async function logout() {
-    if (!supabase) await init();
-
-    await supabase.auth.signOut();
+    const client = await ensureClient();
+    await client.auth.signOut();
     currentSession = null;
     window.location.href = "https://zprcsv92cy-cmyk.github.io/NSK2/";
+  }
+
+  async function checkSession() {
+    const client = await ensureClient();
+    const { data, error } = await client.auth.getSession();
+
+    if (error) {
+      setStatus(error.message || "Kunde inte läsa session", true);
+      return;
+    }
+
+    currentSession = data?.session || null;
+
+    if (!currentSession) {
+      if (isRootLoginPage() && hasLoginUi()) showLogin();
+      return;
+    }
+
+    if (normalizeEmail(currentSession?.user?.email) !== normalizeEmail(ADMIN_EMAIL)) {
+      await client.auth.signOut();
+      currentSession = null;
+      if (isRootLoginPage() && hasLoginUi()) {
+        setStatus("Ej behörig användare", true);
+        showLogin();
+      }
+      return;
+    }
+
+    if (isRootLoginPage()) showApp();
   }
 
   function bindUi() {
@@ -117,54 +178,28 @@ window.Auth = (() => {
     }
   }
 
-  async function checkSession() {
-    const { data, error } = await supabase.auth.getSession();
-
-    if (error) {
-      setStatus(error.message || "Kunde inte läsa session", true);
-      return;
-    }
-
-    currentSession = data?.session || null;
-
-    if (currentSession) {
-      const signedInEmail = normalizeEmail(currentSession?.user?.email);
-      const allowedEmail = normalizeEmail(adminEmail);
-
-      if (signedInEmail !== allowedEmail) {
-        await supabase.auth.signOut();
-        currentSession = null;
-        setStatus("Ej behörig användare", true);
-        return;
-      }
-
-      goToStartPage();
-    }
-  }
-
   async function init() {
     if (ready) return supabase;
-
-    const { url, key } = ensureConfig();
-
-    supabase = window.supabase.createClient(url, key, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true
-      }
-    });
-
+    await ensureClient();
     bindUi();
     await checkSession();
-
     ready = true;
     return supabase;
+  }
+
+  function getClient() {
+    return supabase;
+  }
+
+  function getSession() {
+    return currentSession;
   }
 
   return {
     init,
     login,
-    logout
+    logout,
+    getClient,
+    getSession
   };
 })();
