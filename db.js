@@ -35,10 +35,6 @@ window.DB = (() => {
     localStorage.setItem(KEY, JSON.stringify({ ...defaults(), ...(data || {}) }));
   }
 
-  function clone(v) {
-    return JSON.parse(JSON.stringify(v));
-  }
-
   function emitTruppen(type) {
     window.dispatchEvent(new CustomEvent("nsk:truppen", { detail: { type } }));
   }
@@ -83,7 +79,10 @@ window.DB = (() => {
   }
 
   function normalizeName(name) {
-    return String(name || "").trim();
+    return String(name || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
   }
 
   async function listPlayers() {
@@ -96,6 +95,7 @@ window.DB = (() => {
           .select("id, full_name")
           .eq("team_id", teamId)
           .order("full_name", { ascending: true });
+
         if (!error && Array.isArray(data)) {
           const local = read();
           local.players = data;
@@ -104,11 +104,11 @@ window.DB = (() => {
         }
       } catch {}
     }
-    return read().players;
+    return read().players || [];
   }
 
   async function addPlayer(name) {
-    const full_name = normalizeName(name);
+    const full_name = String(name || "").trim();
     if (!full_name) throw new Error("Spelarnamn saknas.");
 
     const client = await getClient();
@@ -119,7 +119,9 @@ window.DB = (() => {
         .insert({ team_id: teamId, full_name })
         .select("id, full_name")
         .single();
+
       if (error) throw error;
+
       const local = read();
       local.players.push(data);
       write(local);
@@ -136,7 +138,7 @@ window.DB = (() => {
   }
 
   async function updatePlayer(id, name) {
-    const full_name = normalizeName(name);
+    const full_name = String(name || "").trim();
     if (!full_name) throw new Error("Spelarnamn saknas.");
 
     const client = await getClient();
@@ -147,7 +149,9 @@ window.DB = (() => {
         .eq("id", id)
         .select("id, full_name")
         .single();
+
       if (error) throw error;
+
       const local = read();
       const idx = local.players.findIndex(p => String(p.id) === String(id));
       if (idx >= 0) local.players[idx] = data;
@@ -171,6 +175,7 @@ window.DB = (() => {
       const { error } = await client.from("nsk_players").delete().eq("id", id);
       if (error) throw error;
     }
+
     const local = read();
     local.players = local.players.filter(p => String(p.id) !== String(id));
     write(local);
@@ -188,6 +193,7 @@ window.DB = (() => {
           .select("id, full_name")
           .eq("team_id", teamId)
           .order("full_name", { ascending: true });
+
         if (!error && Array.isArray(data)) {
           const local = read();
           local.coaches = data;
@@ -196,11 +202,11 @@ window.DB = (() => {
         }
       } catch {}
     }
-    return read().coaches;
+    return read().coaches || [];
   }
 
   async function addCoach(name) {
-    const full_name = normalizeName(name);
+    const full_name = String(name || "").trim();
     if (!full_name) throw new Error("Tränarnamn saknas.");
 
     const client = await getClient();
@@ -211,7 +217,9 @@ window.DB = (() => {
         .insert({ team_id: teamId, full_name })
         .select("id, full_name")
         .single();
+
       if (error) throw error;
+
       const local = read();
       local.coaches.push(data);
       write(local);
@@ -228,7 +236,7 @@ window.DB = (() => {
   }
 
   async function updateCoach(id, name) {
-    const full_name = normalizeName(name);
+    const full_name = String(name || "").trim();
     if (!full_name) throw new Error("Tränarnamn saknas.");
 
     const client = await getClient();
@@ -239,7 +247,9 @@ window.DB = (() => {
         .eq("id", id)
         .select("id, full_name")
         .single();
+
       if (error) throw error;
+
       const local = read();
       const idx = local.coaches.findIndex(c => String(c.id) === String(id));
       if (idx >= 0) local.coaches[idx] = data;
@@ -263,6 +273,7 @@ window.DB = (() => {
       const { error } = await client.from("nsk_coaches").delete().eq("id", id);
       if (error) throw error;
     }
+
     const local = read();
     local.coaches = local.coaches.filter(c => String(c.id) !== String(id));
     write(local);
@@ -271,7 +282,7 @@ window.DB = (() => {
   }
 
   async function listPools() {
-    return read().pools;
+    return read().pools || [];
   }
 
   async function getPool(id) {
@@ -321,12 +332,14 @@ window.DB = (() => {
       String(r.lag_no) === String(payload.lag_no) &&
       String(r.match_no) === String(payload.match_no)
     );
+
     if (!row) {
       row = { id: uid(), ...payload };
       local.pool_team_match_configs.push(row);
     } else {
       Object.assign(row, payload);
     }
+
     write(local);
     return row;
   }
@@ -340,8 +353,10 @@ window.DB = (() => {
   async function saveLineup(matchConfigId, playerIds, coachIds) {
     const local = read();
     local.lineups = local.lineups.filter(l => String(l.match_config_id) !== String(matchConfigId));
+
     let sort = 1;
-    playerIds.forEach((p) => {
+
+    (playerIds || []).forEach((p) => {
       local.lineups.push({
         id: uid(),
         match_config_id: matchConfigId,
@@ -350,7 +365,8 @@ window.DB = (() => {
         sort_order: sort++
       });
     });
-    coachIds.forEach((c) => {
+
+    (coachIds || []).forEach((c) => {
       local.lineups.push({
         id: uid(),
         match_config_id: matchConfigId,
@@ -359,6 +375,7 @@ window.DB = (() => {
         sort_order: sort++
       });
     });
+
     write(local);
     return true;
   }
@@ -366,7 +383,10 @@ window.DB = (() => {
   async function listUsedPlayersInPool(poolId, currentLagNo) {
     const rows = await listPoolTeamMatchConfigs(poolId);
     const local = read();
-    const ids = rows.filter(r => String(r.lag_no) !== String(currentLagNo)).map(r => String(r.id));
+    const ids = rows
+      .filter(r => String(r.lag_no) !== String(currentLagNo))
+      .map(r => String(r.id));
+
     return local.lineups
       .filter(l => l.person_type === "player" && ids.includes(String(l.match_config_id)))
       .map(l => l.person_id);
@@ -374,10 +394,16 @@ window.DB = (() => {
 
   async function saveShiftSchema(poolId, lagNo, matchNo, shifts) {
     const local = read();
+
     local.shift_schemas = local.shift_schemas.filter(s =>
-      !(String(s.pool_id) === String(poolId) && String(s.lag_no) === String(lagNo) && String(s.match_no) === String(matchNo))
+      !(
+        String(s.pool_id) === String(poolId) &&
+        String(s.lag_no) === String(lagNo) &&
+        String(s.match_no) === String(matchNo)
+      )
     );
-    shifts.forEach((s, i) => {
+
+    (shifts || []).forEach((s, i) => {
       local.shift_schemas.push({
         id: uid(),
         pool_id: poolId,
@@ -390,6 +416,7 @@ window.DB = (() => {
         done: false
       });
     });
+
     write(local);
   }
 
@@ -406,7 +433,11 @@ window.DB = (() => {
   async function deleteShiftSchema(poolId, lagNo, matchNo) {
     const local = read();
     local.shift_schemas = local.shift_schemas.filter(s =>
-      !(String(s.pool_id) === String(poolId) && String(s.lag_no) === String(lagNo) && String(s.match_no) === String(matchNo))
+      !(
+        String(s.pool_id) === String(poolId) &&
+        String(s.lag_no) === String(lagNo) &&
+        String(s.match_no) === String(matchNo)
+      )
     );
     write(local);
   }
@@ -432,6 +463,7 @@ window.DB = (() => {
           .from("nsk_goalie_stats")
           .select("id, goalie_name, match_id")
           .eq("team_id", teamId);
+
         if (!error && Array.isArray(data)) {
           const local = read();
           local.goalie_stats = data;
@@ -440,11 +472,12 @@ window.DB = (() => {
         }
       } catch {}
     }
-    return read().goalie_stats;
+    return read().goalie_stats || [];
   }
 
   async function listPlayerCoachMap() {
     const client = await getClient();
+
     try {
       if (client) {
         const teamId = await getTeamId();
@@ -456,70 +489,135 @@ window.DB = (() => {
             .order("player_name", { ascending: true });
 
           if (!error && Array.isArray(data)) {
+            const normalized = data.map((r) => ({
+              ...r,
+              player_name: normalizeName(r.player_name),
+              coach_name: normalizeName(r.coach_name)
+            }));
+
             const local = read();
-            local.player_coach_map = data;
+            local.player_coach_map = normalized;
             write(local);
-            return data;
+            return normalized;
           }
         }
       }
     } catch {}
 
-    return read().player_coach_map;
+    return (read().player_coach_map || []).map((r) => ({
+      ...r,
+      player_name: normalizeName(r.player_name),
+      coach_name: normalizeName(r.coach_name)
+    }));
   }
 
   async function savePlayerCoachMap(playerName, coachName) {
     const safePlayer = normalizeName(playerName);
     const safeCoach = normalizeName(coachName);
-    if (!safePlayer || !safeCoach) throw new Error("Spelare eller tränare saknas.");
+
+    if (!safePlayer || !safeCoach) {
+      throw new Error("Spelare eller tränare saknas.");
+    }
 
     const client = await getClient();
 
     if (client) {
       const teamId = await getTeamId();
+
       const existing = await client
         .from("nsk_player_coach_map")
-        .select("id")
+        .select("id, player_name")
         .eq("team_id", teamId)
-        .eq("player_name", safePlayer)
         .maybeSingle();
 
-      if (!existing.error && existing.data?.id) {
+      let matchId = null;
+
+      if (!existing.error && Array.isArray(existing.data)) {
+        const found = existing.data.find(r => normalizeName(r.player_name) === safePlayer);
+        if (found?.id) matchId = found.id;
+      }
+
+      if (!matchId) {
+        const allRows = await client
+          .from("nsk_player_coach_map")
+          .select("id, player_name")
+          .eq("team_id", teamId);
+
+        if (!allRows.error && Array.isArray(allRows.data)) {
+          const found = allRows.data.find(r => normalizeName(r.player_name) === safePlayer);
+          if (found?.id) matchId = found.id;
+        }
+      }
+
+      if (matchId) {
         const { data, error } = await client
           .from("nsk_player_coach_map")
-          .update({ coach_name: safeCoach })
-          .eq("id", existing.data.id)
+          .update({
+            player_name: safePlayer,
+            coach_name: safeCoach
+          })
+          .eq("id", matchId)
           .select("id, player_name, coach_name")
           .single();
+
         if (error) throw error;
+
+        const normalized = {
+          ...data,
+          player_name: normalizeName(data.player_name),
+          coach_name: normalizeName(data.coach_name)
+        };
+
         const local = read();
-        const idx = local.player_coach_map.findIndex(r => String(r.id) === String(data.id));
-        if (idx >= 0) local.player_coach_map[idx] = data;
-        else local.player_coach_map.push(data);
+        const idx = local.player_coach_map.findIndex(r => String(r.id) === String(normalized.id));
+        if (idx >= 0) local.player_coach_map[idx] = normalized;
+        else local.player_coach_map.push(normalized);
         write(local);
-        return data;
+        return normalized;
       }
 
       const { data, error } = await client
         .from("nsk_player_coach_map")
-        .insert({ team_id: teamId, player_name: safePlayer, coach_name: safeCoach })
+        .insert({
+          team_id: teamId,
+          player_name: safePlayer,
+          coach_name: safeCoach
+        })
         .select("id, player_name, coach_name")
         .single();
+
       if (error) throw error;
-        const local = read();
-        local.player_coach_map.push(data);
-        write(local);
-        return data;
+
+      const normalized = {
+        ...data,
+        player_name: normalizeName(data.player_name),
+        coach_name: normalizeName(data.coach_name)
+      };
+
+      const local = read();
+      local.player_coach_map.push(normalized);
+      write(local);
+      return normalized;
     }
 
     const local = read();
-    const existingLocal = local.player_coach_map.find(r => r.player_name === safePlayer);
+    const existingLocal = local.player_coach_map.find(
+      r => normalizeName(r.player_name) === safePlayer
+    );
+
     if (existingLocal) {
+      existingLocal.player_name = safePlayer;
       existingLocal.coach_name = safeCoach;
       write(local);
       return existingLocal;
     }
-    const row = { id: uid(), player_name: safePlayer, coach_name: safeCoach };
+
+    const row = {
+      id: uid(),
+      player_name: safePlayer,
+      coach_name: safeCoach
+    };
+
     local.player_coach_map.push(row);
     write(local);
     return row;
@@ -528,9 +626,15 @@ window.DB = (() => {
   async function getPlayersOnField(poolId, lagNo, matchNo) {
     const players = await listPlayers();
     const row = await getPoolTeamMatchConfig(poolId, lagNo, matchNo);
-    const fallback = String(matchNo) !== "1" ? await getPoolTeamMatchConfig(poolId, lagNo, 1) : null;
+    const fallback = String(matchNo) !== "1"
+      ? await getPoolTeamMatchConfig(poolId, lagNo, 1)
+      : null;
+
     const source = row || fallback;
-    const ids = Array.isArray(source?.players_on_field) ? source.players_on_field.map(String) : [];
+    const ids = Array.isArray(source?.players_on_field)
+      ? source.players_on_field.map(String)
+      : [];
+
     if (!ids.length) return players;
     return players.filter(p => ids.includes(String(p.id)));
   }
@@ -540,6 +644,7 @@ window.DB = (() => {
       if (typeof callback === "function") callback(event.detail?.type || "");
     };
     window.addEventListener("nsk:truppen", handler);
+
     return {
       unsubscribe() {
         window.removeEventListener("nsk:truppen", handler);
