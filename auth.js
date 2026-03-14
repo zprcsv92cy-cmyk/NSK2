@@ -1,158 +1,170 @@
 window.Auth = (() => {
+  let supabase = null;
+  let ready = false;
+  let currentSession = null;
 
-let supabase = null;
-let ready = false;
-let currentSession = null;
+  const adminEmail = "peter_hasselberg@hotmail.com";
 
-const adminEmail = "peter_hasselberg@hotmail.com";
-
-function byId(id){
-  return document.getElementById(id);
-}
-
-function setStatus(msg="",err=false){
-  const el = byId("authStatus") || byId("loginMsg") || byId("appError");
-  if(!el) return;
-  el.textContent = msg;
-  el.classList.toggle("error",err);
-}
-
-function ensureConfig(){
-
-  const url = window.APP_CONFIG?.SUPABASE_URL;
-  const key = window.APP_CONFIG?.SUPABASE_KEY;
-
-  if(!url || !key){
-    throw new Error("Supabase config saknas");
+  function byId(id) {
+    return document.getElementById(id);
   }
 
-  return {url,key};
-}
-
-async function login(email,password){
-
-  if(!supabase) await init();
-
-  const safeEmail = String(email || "").trim();
-  const safePassword = String(password || "");
-
-  if(!safeEmail || !safePassword){
-    setStatus("Fyll i email och lösenord",true);
-    return;
+  function setStatus(msg = "", err = false) {
+    const el = byId("authStatus") || byId("loginMsg") || byId("appError");
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.toggle("error", err);
   }
 
-  setStatus("Loggar in...");
+  function ensureConfig() {
+    const url = window.APP_CONFIG?.SUPABASE_URL;
+    const key = window.APP_CONFIG?.SUPABASE_KEY;
 
-  const {data,error} =
-  await supabase.auth.signInWithPassword({
-    email:safeEmail,
-    password:safePassword
-  });
+    if (!url || !key) {
+      throw new Error("Supabase config saknas");
+    }
 
-  if(error){
-    setStatus(error.message,true);
-    return;
+    return { url, key };
   }
 
-  currentSession = data.session;
-
-  if(currentSession.user.email !== adminEmail){
-    await supabase.auth.signOut();
-    setStatus("Ej behörig användare",true);
-    return;
+  function goToStartPage() {
+    window.location.href = "https://zprcsv92cy-cmyk.github.io/NSK2/startsida/";
   }
 
-  setStatus("Inloggad");
-
-  window.location.replace("./startsida/");
-}
-
-async function logout(){
-
-  if(!supabase) await init();
-
-  await supabase.auth.signOut();
-
-  window.location.href="./";
-}
-
-function bindUi(){
-
-  const loginBtn = byId("loginBtn");
-  const emailInput = byId("emailInput");
-  const passwordInput = byId("passwordInput");
-
-  if(loginBtn){
-    loginBtn.onclick = ()=>{
-      login(
-        emailInput?.value,
-        passwordInput?.value
-      );
-    };
+  function normalizeEmail(value) {
+    return String(value || "").trim().toLowerCase();
   }
 
-  if(passwordInput){
-    passwordInput.addEventListener("keydown",e=>{
-      if(e.key==="Enter"){
-        login(
-          emailInput?.value,
-          passwordInput?.value
-        );
-      }
-    });
-  }
+  async function login(email, password) {
+    if (!supabase) await init();
 
-}
+    const safeEmail = normalizeEmail(email);
+    const safePassword = String(password || "");
 
-async function checkSession(){
-
-  const {data} = await supabase.auth.getSession();
-
-  currentSession = data?.session;
-
-  if(currentSession){
-
-    if(currentSession.user.email !== adminEmail){
-      await supabase.auth.signOut();
+    if (!safeEmail || !safePassword) {
+      setStatus("Fyll i email och lösenord", true);
       return;
     }
 
-    window.location.replace("./startsida/");
+    setStatus("Loggar in...");
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: safeEmail,
+      password: safePassword
+    });
+
+    if (error) {
+      setStatus(error.message || "Login misslyckades", true);
+      return;
+    }
+
+    currentSession = data?.session || null;
+
+    const signedInEmail = normalizeEmail(currentSession?.user?.email);
+    const allowedEmail = normalizeEmail(adminEmail);
+
+    if (signedInEmail !== allowedEmail) {
+      await supabase.auth.signOut();
+      currentSession = null;
+      setStatus("Ej behörig användare", true);
+      return;
+    }
+
+    setStatus("Inloggad");
+
+    setTimeout(() => {
+      goToStartPage();
+    }, 100);
   }
 
-}
+  async function logout() {
+    if (!supabase) await init();
 
-async function init(){
+    await supabase.auth.signOut();
+    currentSession = null;
+    window.location.href = "https://zprcsv92cy-cmyk.github.io/NSK2/";
+  }
 
-  if(ready) return supabase;
+  function bindUi() {
+    const loginBtn = byId("loginBtn");
+    const emailInput = byId("emailInput");
+    const passwordInput = byId("passwordInput");
+    const refreshBtn = byId("refreshBtn");
 
-  const {url,key} = ensureConfig();
-
-  supabase = window.supabase.createClient(
-    url,
-    key,
-    {
-      auth:{
-        persistSession:true,
-        autoRefreshToken:true,
-        detectSessionInUrl:true
-      }
+    if (loginBtn && !loginBtn.dataset.boundAuth) {
+      loginBtn.dataset.boundAuth = "1";
+      loginBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        await login(emailInput?.value, passwordInput?.value);
+      });
     }
-  );
 
-  bindUi();
+    if (passwordInput && !passwordInput.dataset.boundAuth) {
+      passwordInput.dataset.boundAuth = "1";
+      passwordInput.addEventListener("keydown", async (e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        await login(emailInput?.value, passwordInput?.value);
+      });
+    }
 
-  await checkSession();
+    if (refreshBtn && !refreshBtn.dataset.boundAuth) {
+      refreshBtn.dataset.boundAuth = "1";
+      refreshBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        await checkSession();
+      });
+    }
+  }
 
-  ready=true;
+  async function checkSession() {
+    const { data, error } = await supabase.auth.getSession();
 
-  return supabase;
-}
+    if (error) {
+      setStatus(error.message || "Kunde inte läsa session", true);
+      return;
+    }
 
-return{
-  init,
-  login,
-  logout
-};
+    currentSession = data?.session || null;
 
+    if (currentSession) {
+      const signedInEmail = normalizeEmail(currentSession?.user?.email);
+      const allowedEmail = normalizeEmail(adminEmail);
+
+      if (signedInEmail !== allowedEmail) {
+        await supabase.auth.signOut();
+        currentSession = null;
+        setStatus("Ej behörig användare", true);
+        return;
+      }
+
+      goToStartPage();
+    }
+  }
+
+  async function init() {
+    if (ready) return supabase;
+
+    const { url, key } = ensureConfig();
+
+    supabase = window.supabase.createClient(url, key, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    });
+
+    bindUi();
+    await checkSession();
+
+    ready = true;
+    return supabase;
+  }
+
+  return {
+    init,
+    login,
+    logout
+  };
 })();
