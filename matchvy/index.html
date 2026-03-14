@@ -6,7 +6,7 @@
   <title>Matchvy</title>
   <meta name="theme-color" content="#b11226">
 
-  <script src="../version.js?v=716"></script>
+  <script src="../version.js?v=717"></script>
   <script>
     document.write('<link rel="manifest" href="../manifest.webmanifest?v=' + window.NSK_VERSION + '">');
     document.write('<link rel="stylesheet" href="../app.css?v=' + window.NSK_VERSION + '">');
@@ -24,44 +24,39 @@
       <a href="../lag/">Lag</a>
     </nav>
 
-    <section class="card coach-live-card">
-      <div class="matchvy-topline">
-        <div class="matchvy-pool" id="matchPoolName">Poolspel: —</div>
-        <div class="matchvy-team" id="matchTeamName">Lag: —</div>
-      </div>
-
-      <h1 class="matchvy-main-title">Matchvy</h1>
-      <div class="matchvy-subtitle" id="matchShiftHeading">Pågående byte 1</div>
-
-      <div class="matchvy-meta" id="matchInfoLine">Motståndare: — • Plan: — • Start: —</div>
-
-      <div class="matchvy-panels">
-        <div class="matchvy-panel current-panel">
-          <div class="matchvy-panel-label">PÅGÅENDE BYTE</div>
-          <div class="matchvy-shift-no" id="currentShiftNo">Byte 1</div>
-          <div class="matchvy-time" id="currentShiftTime">Byte kl —</div>
-          <div id="currentPlayers" class="matchvy-player-list">—</div>
+    <section class="card coach-screen-card coach-mode-card">
+      <div class="coach-mode-header">
+        <div class="coach-match-meta">
+          <div id="shiftLabel" class="coach-big-title">Inget schema</div>
+          <div id="matchInfo" class="coach-match-info"></div>
         </div>
-
-        <div class="matchvy-panel next-panel">
-          <div class="matchvy-panel-label">NÄSTA BYTE</div>
-          <div class="matchvy-shift-no" id="nextShiftNo">Byte 2</div>
-          <div class="matchvy-time" id="nextShiftTime">Byte kl —</div>
-          <div id="nextPlayers" class="matchvy-player-list">—</div>
+        <div class="coach-timer-panel">
+          <div class="coach-panel-label">BYTE OM</div>
+          <div id="matchTimer" class="coach-timer">00:00</div>
         </div>
       </div>
 
-      <div class="matchvy-timer-block">
-        <div class="matchvy-panel-label">NÄSTA BYTE OM</div>
-        <div id="matchTimer" class="matchvy-timer">01:30</div>
+      <div class="coach-byte-meta">
+        <div id="currentShiftMeta" class="coach-byte-meta-box">Pågående byte: —</div>
+        <div id="nextShiftMeta" class="coach-byte-meta-box">Nästa byte: —</div>
       </div>
 
-      <div class="matchvy-nav-row">
-        <button id="prevShiftBtn" type="button" class="row-btn ghost-wide">Föregående byte</button>
-        <button id="nextShiftBtn" type="button" class="row-btn primary-wide">Nästa byte</button>
+      <div class="coach-panels coach-panels-big">
+        <div class="coach-panel coach-panel-current">
+          <div class="coach-panel-label coach-panel-label-big">PÅGÅENDE BYTE</div>
+          <div id="currentPlayers" class="coach-panel-main coach-panel-main-big">—</div>
+        </div>
+
+        <div class="coach-panel coach-panel-nextbox">
+          <div class="coach-panel-label coach-panel-label-big">NÄSTA BYTE</div>
+          <div id="nextPlayers" class="coach-panel-next coach-panel-next-big">—</div>
+        </div>
       </div>
 
-      <div id="matchMsg" class="small"></div>
+      <div class="btnrow coach-nav-row">
+        <button id="prevShiftBtn" class="row-btn coach-nav-btn ghost" type="button">Föregående byte</button>
+        <button id="nextShiftBtn" class="row-btn coach-nav-btn" type="button">Nästa byte</button>
+      </div>
     </section>
 
     <div id="appError" class="small"></div>
