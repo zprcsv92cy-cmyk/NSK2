@@ -160,5 +160,24 @@
       }
     });
   </script>
+
+    <script>
+document.addEventListener("DOMContentLoaded", async () => {
+
+  const url = window.APP_CONFIG?.SUPABASE_URL;
+  const key = window.APP_CONFIG?.SUPABASE_KEY;
+
+  if (!url || !key || !window.supabase) return;
+
+  const sb = window.supabase.createClient(url, key);
+
+  const { data } = await sb.auth.getSession();
+
+  if (data?.session) {
+    window.location.replace("./startsida/");
+  }
+
+});
+</script>
 </body>
 </html>
