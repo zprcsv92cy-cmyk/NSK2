@@ -176,7 +176,7 @@ window.Auth = (() => {
     currentSession = data?.session || null;
 
     if (currentSession) {
-      const adminEmail = "din@email.se";
+      const adminEmail = "peter_hasselberg@hotmail.com";
 
       if (currentSession.user?.email !== adminEmail) {
         await supabase.auth.signOut();
