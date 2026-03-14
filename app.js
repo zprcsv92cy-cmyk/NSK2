@@ -61,6 +61,13 @@ window.NSK2App = (() => {
     return lastInitial ? `${first} ${lastInitial}` : first;
   }
 
+  function normalizeName(value) {
+    return String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+  }
+
   const saveTimers = {};
   let truppenRealtime = null;
   let globalClicksBound = false;
@@ -689,26 +696,39 @@ window.NSK2App = (() => {
     const mappings = await DB.listPlayerCoachMap();
 
     const playerMap = {};
-    players.forEach(p => { playerMap[String(p.id)] = p.full_name; });
+    players.forEach((p) => {
+      playerMap[String(p.id)] = p.full_name;
+    });
 
     const coachMap = {};
-    coaches.forEach(c => { coachMap[c.full_name] = String(c.id); });
+    coaches.forEach((c) => {
+      coachMap[normalizeName(c.full_name)] = String(c.id);
+    });
 
     const playerCoachMap = {};
-    mappings.forEach(m => { playerCoachMap[m.player_name] = m.coach_name; });
+    mappings.forEach((m) => {
+      const playerKey = normalizeName(m.player_name);
+      const coachKey = normalizeName(m.coach_name);
+      if (playerKey && coachKey) {
+        playerCoachMap[playerKey] = coachKey;
+      }
+    });
 
     const autoCoachIds = new Set();
-    (playerIds || []).forEach(pid => {
-      const playerName = playerMap[String(pid)];
+
+    (playerIds || []).forEach((pid) => {
+      const playerName = normalizeName(playerMap[String(pid)]);
       const coachName = playerCoachMap[playerName];
-      if (coachName && coachMap[coachName]) autoCoachIds.add(coachMap[coachName]);
+      if (coachName && coachMap[coachName]) {
+        autoCoachIds.add(String(coachMap[coachName]));
+      }
     });
 
     const coachSelect = byId("lineupCoach");
     if (!coachSelect) return;
 
-    Array.from(coachSelect.options).forEach(opt => {
-      if (autoCoachIds.has(String(opt.value))) opt.selected = true;
+    Array.from(coachSelect.options).forEach((opt) => {
+      opt.selected = autoCoachIds.has(String(opt.value));
     });
   }
 
