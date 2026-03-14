@@ -1,116 +1,205 @@
 window.Auth = (() => {
-  if (!window.APP_CONFIG) throw new Error("APP_CONFIG saknas. Ladda config.js före auth.js.");
+  let supabase = null;
+  let ready = false;
+  let currentSession = null;
 
-  const SUPABASE_URL = window.APP_CONFIG.SUPABASE_URL;
-  const SUPABASE_KEY = window.APP_CONFIG.SUPABASE_KEY;
+  const ADMIN_EMAIL = "peter_hasselberg@hotmail.com";
+  const ROOT_PATHS = ["/NSK2/", "/NSK2/index.html"];
 
-  let client = null, session = null, initPromise = null;
-
-  function msg(text, color = "") {
-    const el = document.getElementById("loginMsg");
-    if (el) {
-      el.textContent = text || "";
-      el.style.color = color;
-    }
+  function byId(id) {
+    return document.getElementById(id);
   }
 
-  function setStatus() {
-    const el = document.getElementById("authStatus");
-    if (el) el.textContent = session ? "Inloggad" : "Ej inloggad";
+  function normalizeEmail(value) {
+    return String(value || "").trim().toLowerCase();
   }
 
-  function showApp() {
-    document.getElementById("loginView")?.classList.remove("active");
-    document.getElementById("appView")?.classList.add("active");
-    setStatus();
+  function setStatus(message = "", isError = false) {
+    const el = byId("authStatus") || byId("loginMsg") || byId("appError");
+    if (!el) return;
+    el.textContent = message || "";
+    el.classList.toggle("error", !!isError);
+  }
+
+  function isRootLoginPage() {
+    return ROOT_PATHS.includes(window.location.pathname);
+  }
+
+  function hasLoginUi() {
+    return !!byId("loginView");
+  }
+
+  function goToStartPage() {
+    window.location.href = "https://zprcsv92cy-cmyk.github.io/NSK2/startsida/";
   }
 
   function showLogin() {
-    document.getElementById("appView")?.classList.remove("active");
-    document.getElementById("loginView")?.classList.add("active");
-    setStatus();
+    const loginView = byId("loginView");
+    const appView = byId("appView");
+    if (appView) appView.style.display = "none";
+    if (loginView) loginView.style.display = "flex";
   }
 
-  async function ensure() {
-    if (client) return client;
-    client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  function showApp() {
+    if (isRootLoginPage()) {
+      goToStartPage();
+      return;
+    }
+    const loginView = byId("loginView");
+    const appView = byId("appView");
+    if (loginView) loginView.style.display = "none";
+    if (appView) appView.style.display = "block";
+  }
+
+  function ensureConfig() {
+    const url = window.APP_CONFIG?.SUPABASE_URL;
+    const key = window.APP_CONFIG?.SUPABASE_KEY;
+
+    if (!url || !key) throw new Error("Supabase config saknas");
+    if (!window.supabase?.createClient) throw new Error("Supabase-biblioteket saknas");
+
+    return { url, key };
+  }
+
+  async function ensureClient() {
+    if (supabase) return supabase;
+    const { url, key } = ensureConfig();
+    supabase = window.supabase.createClient(url, key, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true
       }
     });
-    return client;
+    return supabase;
   }
 
-  async function exchangeFromUrl() {
-    const hash = window.location.hash || "";
-    const search = window.location.search || "";
-    const looksLikeAuthReturn = hash.includes("access_token") || hash.includes("refresh_token") || search.includes("code=");
-    if (!looksLikeAuthReturn) return;
+  async function login(email, password) {
+    const client = await ensureClient();
 
-    try {
-      await ensure();
-      if (search.includes("code=")) {
-        await client.auth.exchangeCodeForSession(window.location.href);
-      } else {
-        await client.auth.getSession();
+    const safeEmail = normalizeEmail(email);
+    const safePassword = String(password || "");
+
+    if (!safeEmail || !safePassword) {
+      setStatus("Fyll i email och lösenord", true);
+      return;
+    }
+
+    setStatus("Loggar in...");
+
+    const { data, error } = await client.auth.signInWithPassword({
+      email: safeEmail,
+      password: safePassword
+    });
+
+    if (error) {
+      setStatus(error.message || "Login misslyckades", true);
+      return;
+    }
+
+    currentSession = data?.session || null;
+
+    if (normalizeEmail(currentSession?.user?.email) !== normalizeEmail(ADMIN_EMAIL)) {
+      await client.auth.signOut();
+      currentSession = null;
+      setStatus("Ej behörig användare", true);
+      return;
+    }
+
+    setStatus("Inloggad");
+    setTimeout(goToStartPage, 80);
+  }
+
+  async function logout() {
+    const client = await ensureClient();
+    await client.auth.signOut();
+    currentSession = null;
+    window.location.href = "https://zprcsv92cy-cmyk.github.io/NSK2/";
+  }
+
+  async function checkSession() {
+    const client = await ensureClient();
+    const { data, error } = await client.auth.getSession();
+
+    if (error) {
+      setStatus(error.message || "Kunde inte läsa session", true);
+      return;
+    }
+
+    currentSession = data?.session || null;
+
+    if (!currentSession) {
+      if (isRootLoginPage() && hasLoginUi()) showLogin();
+      return;
+    }
+
+    if (normalizeEmail(currentSession?.user?.email) !== normalizeEmail(ADMIN_EMAIL)) {
+      await client.auth.signOut();
+      currentSession = null;
+      if (isRootLoginPage() && hasLoginUi()) {
+        setStatus("Ej behörig användare", true);
+        showLogin();
       }
-      history.replaceState({}, document.title, window.location.pathname);
-    } catch (e) {
-      msg(e.message || String(e), "#ff6b6b");
+      return;
+    }
+
+    if (isRootLoginPage()) showApp();
+  }
+
+  function bindUi() {
+    const loginBtn = byId("loginBtn");
+    const emailInput = byId("emailInput");
+    const passwordInput = byId("passwordInput");
+    const refreshBtn = byId("refreshBtn");
+
+    if (loginBtn && !loginBtn.dataset.boundAuth) {
+      loginBtn.dataset.boundAuth = "1";
+      loginBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        await login(emailInput?.value, passwordInput?.value);
+      });
+    }
+
+    if (passwordInput && !passwordInput.dataset.boundAuth) {
+      passwordInput.dataset.boundAuth = "1";
+      passwordInput.addEventListener("keydown", async (e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        await login(emailInput?.value, passwordInput?.value);
+      });
+    }
+
+    if (refreshBtn && !refreshBtn.dataset.boundAuth) {
+      refreshBtn.dataset.boundAuth = "1";
+      refreshBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        await checkSession();
+      });
     }
   }
 
   async function init() {
-    if (initPromise) return initPromise;
-    initPromise = (async () => {
-      try {
-        await ensure();
-        await exchangeFromUrl();
-
-        client.auth.onAuthStateChange((_e, s) => {
-          session = s || null;
-          session ? showApp() : showLogin();
-        });
-
-        const { data, error } = await client.auth.getSession();
-        if (error) throw error;
-        session = data?.session || null;
-        session ? showApp() : showLogin();
-      } catch (e) {
-        msg(e.message || String(e), "#ff6b6b");
-        showLogin();
-      }
-    })();
-    return initPromise;
+    if (ready) return supabase;
+    await ensureClient();
+    bindUi();
+    await checkSession();
+    ready = true;
+    return supabase;
   }
 
-  async function login(email) {
-    try {
-      if (!String(email || "").trim()) return msg("Skriv e-post.", "#ff6b6b");
-      await init();
-      const redirectTo = window.location.origin + window.location.pathname;
-      const { error } = await client.auth.signInWithOtp({
-        email: String(email).trim(),
-        options: { emailRedirectTo: redirectTo }
-      });
-      if (error) throw error;
-      msg("Magic link skickad. Kolla inkorg och skräppost.", "#35d07f");
-    } catch (e) {
-      msg(e.message || String(e), "#ff6b6b");
-    }
+  function getClient() {
+    return supabase;
   }
 
-  async function refresh() {
-    await init();
-    const { data } = await client.auth.getSession();
-    session = data?.session || null;
-    session ? showApp() : showLogin();
+  function getSession() {
+    return currentSession;
   }
 
-  function getClient() { return client; }
-  function getSession() { return session; }
-
-  return { init, login, refresh, getClient, getSession };
+  return {
+    init,
+    login,
+    logout,
+    getClient,
+    getSession
+  };
 })();
