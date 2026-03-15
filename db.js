@@ -626,3 +626,37 @@ window.DB = (() => {
     subscribeTruppen
   };
 })();
+
+window.DB = {
+  listPools,
+  getPool,
+  addPool,
+  updatePool,
+  deletePool,
+
+  listPlayers,
+  addPlayer,
+  updatePlayer,
+  deletePlayer,
+
+  listCoaches,
+  addCoach,
+  updateCoach,
+  deleteCoach,
+
+  savePoolTeamMatchConfig,
+  getPoolTeamMatchConfig,
+  listPoolTeamMatchConfigs,
+
+  getLineup,
+  saveLineup,
+
+  saveShiftSchema,
+  listShiftSchema,
+  deleteShiftSchema,
+  setShiftDone,
+
+  listGoalieStats,
+
+  subscribeTruppen
+};
