@@ -73,27 +73,11 @@ window.NSK2App = (() => {
       .replace(/\s+/g, " ");
   }
 
-  function toSeconds(mmss) {
-    const parts = String(mmss || "0:00").split(":");
-    const mm = parseInt(parts[0] || "0", 10) || 0;
-    const ss = parseInt(parts[1] || "0", 10) || 0;
-    return (mm * 60) + ss;
-  }
-
-  function formatSeconds(total) {
-    const safe = Math.max(0, parseInt(total || 0, 10) || 0);
-    const mm = String(Math.floor(safe / 60)).padStart(2, "0");
-    const ss = String(safe % 60).padStart(2, "0");
-    return `${mm}:${ss}`;
-  }
-
   const saveTimers = {};
   let truppenRealtime = null;
   let globalClicksBound = false;
   let laguppstallningBound = false;
   let matchCurrentShiftIndex = 0;
-  let matchTimerSecondsLeft = 0;
-  let matchTimerInterval = null;
 
   async function init() {
     await checkAppVersion();
@@ -151,7 +135,6 @@ window.NSK2App = (() => {
 
         if (t.dataset.startPoolId) {
           sessionStorage.setItem("nsk2_pool_id", t.dataset.startPoolId || "");
-          sessionStorage.removeItem("nsk2_lag_nr");
           sessionStorage.setItem("nsk2_match_no", "1");
           window.location.href = "../lag/";
           return;
@@ -162,6 +145,14 @@ window.NSK2App = (() => {
           sessionStorage.setItem("nsk2_lag_nr", t.dataset.activeLag || "1");
           sessionStorage.setItem("nsk2_match_no", "1");
           window.location.href = "../matchvy/";
+          return;
+        }
+
+        if (t.dataset.shiftMatchCard) {
+          const sel = byId("shiftMatch");
+          if (sel) sel.value = String(t.dataset.shiftMatchCard);
+          setActiveShiftMatchButton(String(t.dataset.shiftMatchCard));
+          await renderShiftSchema();
           return;
         }
 
@@ -1126,10 +1117,15 @@ window.NSK2App = (() => {
       await DB.saveLineup(matchRow.id, selectedPlayers, coachIds);
       await regenerateShiftSchemaFor(poolId, lagNo, matchNo);
 
-      const onBytesschemaPage = !!byId("shiftTableWrap");
-      const activeShiftMatch = byId("shiftMatch")?.value || "";
-      if (onBytesschemaPage && String(activeShiftMatch) === String(matchNo)) {
-        await renderShiftSchema();
+      const onNewBytesschemaPage = !!byId("shiftAllMatchesWrap");
+      const onOldBytesschemaPage = !!byId("shiftTableWrap");
+      if (onNewBytesschemaPage) {
+        await renderAllShiftSchemasForLag();
+      } else if (onOldBytesschemaPage) {
+        const activeShiftMatch = byId("shiftMatch")?.value || "";
+        if (String(activeShiftMatch) === String(matchNo)) {
+          await renderShiftSchema();
+        }
       }
 
       if (!silent) setText("lineupMsg", "Laguppställning sparad.");
@@ -1140,9 +1136,8 @@ window.NSK2App = (() => {
 
   async function initBytesschemaPage() {
     const teamBox = byId("shiftTeamButtons");
-    const matchBox = byId("shiftMatchButtons");
-    const matchSelect = byId("shiftMatch");
-    if (!teamBox || !matchBox || !matchSelect) return;
+    const allWrap = byId("shiftAllMatchesWrap");
+    if (!teamBox || !allWrap) return;
 
     try {
       const poolId = sessionStorage.getItem("nsk2_pool_id");
@@ -1153,17 +1148,14 @@ window.NSK2App = (() => {
 
       const pool = await DB.getPool(poolId);
       const teams = parseInt(pool?.teams || "2", 10) || 2;
-      const matches = parseInt(pool?.matches || "4", 10) || 4;
+      const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
 
       renderShiftTeamButtons(teams);
-      renderShiftMatchButtons(matches);
-      renderShiftMatchOptions(matches);
-
-      const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
       setActiveShiftTeamButton(lagNo);
-      setActiveShiftMatchButton(matchSelect.value || "1");
+      setText("bytesschemaTitle", "Bytesschema");
+      setText("shiftHeaderMain", `Lag ${lagNo}`);
 
-      await renderShiftSchema();
+      await renderAllShiftSchemasForLag();
     } catch (err) {
       setText("appError", err.message || String(err));
     }
@@ -1183,7 +1175,8 @@ window.NSK2App = (() => {
       btn.addEventListener("click", async () => {
         sessionStorage.setItem("nsk2_lag_nr", String(i));
         setActiveShiftTeamButton(String(i));
-        await renderShiftSchema();
+        setText("shiftHeaderMain", `Lag ${i}`);
+        await renderAllShiftSchemasForLag();
       });
       box.appendChild(btn);
     }
@@ -1196,52 +1189,13 @@ window.NSK2App = (() => {
     });
   }
 
-  function renderShiftMatchButtons(matches) {
-    const box = byId("shiftMatchButtons");
-    if (!box) return;
-    box.innerHTML = "";
-
-    for (let i = 1; i <= matches; i++) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "team-btn match-btn";
-      btn.textContent = `Match ${i}`;
-      btn.dataset.shiftMatch = String(i);
-      btn.addEventListener("click", async () => {
-        const sel = byId("shiftMatch");
-        if (sel) sel.value = String(i);
-        setActiveShiftMatchButton(String(i));
-        await renderShiftSchema();
-      });
-      box.appendChild(btn);
-    }
-  }
-
-  function renderShiftMatchOptions(matches) {
-    const sel = byId("shiftMatch");
-    if (!sel) return;
-    sel.innerHTML = "";
-    for (let i = 1; i <= matches; i++) {
-      const opt = document.createElement("option");
-      opt.value = String(i);
-      opt.textContent = `Match ${i}`;
-      sel.appendChild(opt);
-    }
-  }
-
-  function setActiveShiftMatchButton(matchNo) {
-    document.querySelectorAll("[data-shift-match]").forEach(btn => {
-      if (btn.dataset.shiftMatch === String(matchNo)) btn.classList.add("active-team-btn");
-      else btn.classList.remove("active-team-btn");
-    });
-  }
-
-  async function toggleShiftDone(shiftNo) {
+  async function toggleShiftDone(shiftNo, matchNoOverride = "") {
     const poolId = sessionStorage.getItem("nsk2_pool_id");
     const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
-    const matchNo = byId("shiftMatch")?.value || "1";
+    const el = document.querySelector(`[data-shift-toggle="${shiftNo}"][data-shift-match="${matchNoOverride}"]`) ||
+               document.querySelector(`[data-shift-toggle="${shiftNo}"]`);
+    const matchNo = matchNoOverride || el?.dataset.shiftMatch || byId("shiftMatch")?.value || "1";
 
-    const el = document.querySelector(`[data-shift-toggle="${shiftNo}"]`);
     if (!el || !poolId) return;
 
     const nextDone = !el.classList.contains("done");
@@ -1406,7 +1360,106 @@ window.NSK2App = (() => {
     return shifts;
   }
 
-  async function getCoachNamesForLag(poolId, lagNo) {
+  async function renderAllShiftSchemasForLag() {
+    const wrap = byId("shiftAllMatchesWrap");
+    if (!wrap) return;
+
+    const poolId = sessionStorage.getItem("nsk2_pool_id");
+    const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
+    if (!poolId) return;
+
+    const pool = await DB.getPool(poolId);
+    const matches = parseInt(pool?.matches || "4", 10) || 4;
+
+    const players = await DB.listPlayers();
+    const coaches = await DB.listCoaches();
+    const playerMap = {};
+    const coachMap = {};
+
+    players.forEach(p => { playerMap[String(p.id)] = p.full_name; });
+    coaches.forEach(c => { coachMap[String(c.id)] = c.full_name; });
+
+    let html = "";
+
+    for (let matchNo = 1; matchNo <= matches; matchNo++) {
+      let row = await DB.getPoolTeamMatchConfig(poolId, lagNo, matchNo);
+      if (!row && matchNo !== 1) {
+        row = await DB.getPoolTeamMatchConfig(poolId, lagNo, 1);
+      }
+
+      let rows = await DB.listShiftSchema(poolId, lagNo, matchNo);
+      if (!rows.length) {
+        await regenerateShiftSchemaFor(poolId, lagNo, matchNo);
+        rows = await DB.listShiftSchema(poolId, lagNo, matchNo);
+      }
+
+      let goalieName = "—";
+      let coachNames = "—";
+
+      if (row?.goalie_player_id) {
+        goalieName = shortName(playerMap[String(row.goalie_player_id)] || "—");
+      }
+
+      if (row?.id) {
+        const lineup = await DB.getLineup(row.id);
+        const coachList = lineup
+          .filter(x => x.person_type === "coach")
+          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+          .map(x => shortName(coachMap[String(x.person_id)] || "—"))
+          .filter(Boolean);
+        if (coachList.length) coachNames = coachList.join(", ");
+      }
+
+      const table = rows.length ? `
+        <table class="shift-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>#</th>
+              <th>Tid kvar</th>
+              <th>På plan</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((r, i) => {
+              const shiftNo = i + 1;
+              const names = (Array.isArray(r.players_json) ? r.players_json : [])
+                .map(id => shortName(playerMap[String(id)] || "—"))
+                .join("<br>");
+              const done = r.done ? "done" : "";
+              return `
+                <tr>
+                  <td class="check-cell"><span class="shift-check ${done}" data-shift-toggle="${shiftNo}" data-shift-match="${matchNo}"></span></td>
+                  <td>${shiftNo}</td>
+                  <td>${esc(r.time_left || "—")}</td>
+                  <td class="shift-players">${names || "—"}</td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      ` : `<div class="small">Inget bytesschema ännu för Match ${matchNo}.</div>`;
+
+      html += `
+        <section class="match-schema-block">
+          <h2>Match ${matchNo}</h2>
+          <div class="match-schema-details">
+            <div class="small"><strong>Start:</strong> ${esc(row?.start_time || "—")}</div>
+            <div class="small"><strong>Datum:</strong> ${esc(pool?.pool_date || "—")}</div>
+            <div class="small"><strong>Motståndare:</strong> ${esc(row?.opponent || "—")}</div>
+            <div class="small"><strong>Plan:</strong> ${esc(row?.plan || "—")}</div>
+            <div class="small"><strong>Tränare:</strong> ${esc(coachNames)}</div>
+            <div class="small"><strong>Målvakt:</strong> ${esc(goalieName)}</div>
+          </div>
+          ${table}
+        </section>
+      `;
+    }
+
+    wrap.innerHTML = html;
+  }
+
+  async function getCoachNamesForLag(poolId, lagNo) {  async function getCoachNamesForLag(poolId, lagNo) {
     const rows = await DB.listPoolTeamMatchConfigs(poolId);
     const coaches = await DB.listCoaches();
     const coachMap = {};
@@ -1422,7 +1475,7 @@ window.NSK2App = (() => {
     const names = lineup
       .filter(x => x.person_type === "coach")
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-      .map(x => coachMap[String(x.person_id)] || "")
+      .map(x => shortName(coachMap[String(x.person_id)] || ""))
       .filter(Boolean);
 
     return names.length ? names.join(", ") : "—";
@@ -1456,7 +1509,6 @@ window.NSK2App = (() => {
           <div class="lag-overview-title">Lag ${lagNo}</div>
           <div class="lag-overview-coaches">Tränare: ${esc(coachNames)}</div>
         `;
-
         box.appendChild(btn);
       }
 
@@ -1476,7 +1528,6 @@ window.NSK2App = (() => {
       setText("shiftLabel", "Inget schema");
       setText("currentPlayers", "—");
       setText("nextPlayers", "—");
-      setText("matchTimer", "00:00");
       setText("currentShiftMeta", "Pågående byte: —");
       setText("nextShiftMeta", "Nästa byte: —");
       setHtml("matchInfo", "");
@@ -1517,15 +1568,6 @@ window.NSK2App = (() => {
 
     setHtml("currentPlayers", currentNames || "—");
     setHtml("nextPlayers", nextNames || "—");
-
-    matchTimerSecondsLeft = toSeconds(currentClock);
-    setText("matchTimer", formatSeconds(matchTimerSecondsLeft));
-
-    if (matchTimerInterval) clearInterval(matchTimerInterval);
-    matchTimerInterval = setInterval(() => {
-      matchTimerSecondsLeft = Math.max(0, matchTimerSecondsLeft - 1);
-      setText("matchTimer", formatSeconds(matchTimerSecondsLeft));
-    }, 1000);
   }
 
   async function initMatchvyPage() {
@@ -1560,6 +1602,9 @@ window.NSK2App = (() => {
       nextBtn.dataset.boundMatchvy = "1";
       nextBtn.addEventListener("click", async () => {
         const rows = await DB.listShiftSchema(poolId, lagNo, matchNo);
+        if (!rows.length) return;
+        const currentShiftNo = matchCurrentShiftIndex + 1;
+        await DB.setShiftDone(poolId, lagNo, matchNo, currentShiftNo, true);
         matchCurrentShiftIndex = Math.min(rows.length - 1, matchCurrentShiftIndex + 1);
         await renderCoachMatchView(poolId, lagNo, matchNo);
       });
