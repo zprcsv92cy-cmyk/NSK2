@@ -13,7 +13,9 @@
   </script>
 </head>
 <body>
+
   <div class="wrap">
+
     <nav class="mainmenu">
       <a href="../startsida/">Startsida</a>
       <a href="../truppen/" class="active">Truppen</a>
@@ -24,53 +26,107 @@
       <a href="../lag/">Lag</a>
     </nav>
 
-    <section class="hero-card">
-      <img src="../icon-192.png" alt="NSK" class="hero-logo">
-      <div>
-        <h1 class="hero-title">NSK Lag</h1>
-        <div class="hero-sub">Truppen • Spelare • Tränare • Molnsynk</div>
+    <section class="home-hero">
+      <div class="home-hero-logo-box">
+        <img src="../icon-192.png" alt="NSK" class="home-hero-logo">
+      </div>
+
+      <div class="home-hero-text">
+        <h1>Truppen</h1>
+        <div class="home-hero-sub">
+          Spelare, tränare och import av backup
+        </div>
       </div>
     </section>
 
-    <section class="card truppen-card">
-      <div class="section-head">
-        <h2>Spelare</h2>
-        <div id="playersMsg" class="small"></div>
+
+    <section class="card">
+
+      <div class="btnrow">
+        <button id="importBackupBtn" type="button" class="row-btn">
+          Importera backup
+        </button>
+
+        <input
+          id="importBackupFile"
+          type="file"
+          accept=".json,application/json"
+          hidden
+        >
       </div>
 
-      <div class="truppen-add-row">
-        <input id="playerInput" class="name-input" placeholder="Förnamn Efternamn">
-        <button id="addPlayerBtn" class="big-add">Lägg till</button>
-      </div>
+      <div id="truppenMsg" class="small"></div>
 
-      <div id="playersList" class="person-list"></div>
-      <div class="muted-note">Tryck Spara för att uppdatera. Dra handtaget för att sortera.</div>
     </section>
 
-    <section class="card truppen-card">
-      <div class="section-head">
-        <h2>Tränare</h2>
-        <div id="coachesMsg" class="small"></div>
+
+
+    <section class="card">
+
+      <h2>Spelare</h2>
+
+      <div class="btnrow">
+        <input
+          id="playerInput"
+          type="text"
+          placeholder="Namn på spelare"
+        >
+
+        <button
+          id="addPlayerBtn"
+          type="button"
+          class="row-btn"
+        >
+          Lägg till spelare
+        </button>
       </div>
 
-      <div class="truppen-add-row">
-        <input id="coachInput" class="name-input" placeholder="Förnamn Efternamn">
-        <button id="addCoachBtn" class="big-add">Lägg till</button>
-      </div>
+      <div id="playersList"></div>
 
-      <div id="coachesList" class="person-list"></div>
-      <div class="muted-note">Tryck Spara för att uppdatera. Dra handtaget för att sortera.</div>
     </section>
+
+
+
+    <section class="card">
+
+      <h2>Tränare</h2>
+
+      <div class="btnrow">
+
+        <input
+          id="coachInput"
+          type="text"
+          placeholder="Namn på tränare"
+        >
+
+        <button
+          id="addCoachBtn"
+          type="button"
+          class="row-btn"
+        >
+          Lägg till tränare
+        </button>
+
+      </div>
+
+      <div id="coachesList"></div>
+
+    </section>
+
 
     <div id="appError" class="small"></div>
 
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<script>
-  document.write('<script src="../config.js?v=' + window.NSK_VERSION + '"><\/script>');
-  document.write('<script src="../auth.js?v=' + window.NSK_VERSION + '"><\/script>');
-  document.write('<script src="../db.js?v=' + window.NSK_VERSION + '"><\/script>');
-  document.write('<script src="../app.js?v=' + window.NSK_VERSION + '"><\/script>');
-</script>
   </div>
+
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+  <script>
+    document.write('<script src="../config.js?v=' + window.NSK_VERSION + '"><\/script>');
+    document.write('<script src="../auth.js?v=' + window.NSK_VERSION + '"><\/script>');
+    document.write('<script src="../db.js?v=' + window.NSK_VERSION + '"><\/script>');
+    document.write('<script src="../app.js?v=' + window.NSK_VERSION + '"><\/script>');
+  </script>
+
 </body>
 </html>
