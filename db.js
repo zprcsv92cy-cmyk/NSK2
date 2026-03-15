@@ -2,21 +2,23 @@ window.DB = (() => {
   const TEAM_NAME = "NSK Team 18";
   const TEAM_SEASON = "2026";
 
-  async function getClient() {
-    if (window.Auth?.init) await window.Auth.init();
-    const client = window.Auth?.getClient?.();
-    if (!client) throw new Error("Supabase-klient saknas.");
-    return client;
-  }
-
   function normalizeName(name) {
     return String(name || "").trim();
   }
 
-  async function getTeamId() {
-    const client = await getClient();
+  async function getClient() {
+    try {
+      if (window.Auth?.init) await window.Auth.init();
+      const client = window.Auth?.getClient?.();
+      if (!client) throw new Error("Supabase-klient saknas.");
+      return client;
+    } catch (err) {
+      throw new Error(err?.message || "Supabase-klient saknas.");
+    }
+  }
 
-    const exact = await client
+  async function findExactTeam(client) {
+    const { data, error } = await client
       .from("nsk_teams")
       .select("id, name, season, created_at")
       .eq("name", TEAM_NAME)
@@ -24,42 +26,38 @@ window.DB = (() => {
       .order("created_at", { ascending: true })
       .limit(1);
 
-    if (!exact.error && Array.isArray(exact.data) && exact.data.length) {
-      return exact.data[0].id;
-    }
-
-    async function getTeamId() {
-  const client = await getClient();
-
-  const exact = await client
-    .from("nsk_teams")
-    .select("id, name, season, created_at")
-    .eq("name", "NSK Team 18")
-    .eq("season", "2026")
-    .order("created_at", { ascending: true })
-    .limit(1);
-
-  if (!exact.error && Array.isArray(exact.data) && exact.data.length) {
-    return exact.data[0].id;
+    if (error) throw error;
+    return Array.isArray(data) && data.length ? data[0] : null;
   }
 
-  const anyTeam = await client
-    .from("nsk_teams")
-    .select("id, name, season, created_at")
-    .order("created_at", { ascending: true })
-    .limit(1);
+  async function findAnyTeam(client) {
+    const { data, error } = await client
+      .from("nsk_teams")
+      .select("id, name, season, created_at")
+      .order("created_at", { ascending: true })
+      .limit(1);
 
-  if (!anyTeam.error && Array.isArray(anyTeam.data) && anyTeam.data.length) {
-    return anyTeam.data[0].id;
+    if (error) throw error;
+    return Array.isArray(data) && data.length ? data[0] : null;
   }
 
-  throw new Error("Inget team finns i databasen. Lägg först in NSK Team 18 i Supabase.");
-}
-  async function ensureNoDuplicateByName(table, teamId, fullName) {
+  async function getTeamId() {
+    const client = await getClient();
+
+    const exact = await findExactTeam(client);
+    if (exact?.id) return exact.id;
+
+    const anyTeam = await findAnyTeam(client);
+    if (anyTeam?.id) return anyTeam.id;
+
+    throw new Error("Inget team finns i databasen. Lägg först in NSK Team 18 i Supabase.");
+  }
+
+  async function ensureUniqueByName(table, teamId, fullName) {
     const client = await getClient();
     const { data, error } = await client
       .from(table)
-      .select("id, full_name")
+      .select("id, full_name, team_id")
       .eq("team_id", teamId)
       .eq("full_name", fullName)
       .limit(1);
@@ -89,7 +87,7 @@ window.DB = (() => {
     const client = await getClient();
     const teamId = await getTeamId();
 
-    const existing = await ensureNoDuplicateByName("nsk_players", teamId, full_name);
+    const existing = await ensureUniqueByName("nsk_players", teamId, full_name);
     if (existing) return existing;
 
     const { data, error } = await client
@@ -146,7 +144,7 @@ window.DB = (() => {
     const client = await getClient();
     const teamId = await getTeamId();
 
-    const existing = await ensureNoDuplicateByName("nsk_coaches", teamId, full_name);
+    const existing = await ensureUniqueByName("nsk_coaches", teamId, full_name);
     if (existing) return existing;
 
     const { data, error } = await client
@@ -286,7 +284,7 @@ window.DB = (() => {
 
     if (error) throw error;
 
-    return (data || []).map(r => ({
+    return (data || []).map((r) => ({
       ...r,
       players_on_field: Array.isArray(r.players_on_field) ? r.players_on_field.map(String) : []
     }));
@@ -372,7 +370,7 @@ window.DB = (() => {
     const source = row || fallback;
     const ids = Array.isArray(source?.players_on_field) ? source.players_on_field.map(String) : [];
     if (!ids.length) return players;
-    return players.filter(p => ids.includes(String(p.id)));
+    return players.filter((p) => ids.includes(String(p.id)));
   }
 
   async function getLineup(matchConfigId) {
@@ -401,7 +399,7 @@ window.DB = (() => {
     const rows = [];
     let sort = 1;
 
-    (playerIds || []).forEach(p => {
+    (playerIds || []).forEach((p) => {
       rows.push({
         pool_id: poolId,
         match_config_id: matchConfigId,
@@ -411,7 +409,7 @@ window.DB = (() => {
       });
     });
 
-    (coachIds || []).forEach(c => {
+    (coachIds || []).forEach((c) => {
       rows.push({
         pool_id: poolId,
         match_config_id: matchConfigId,
@@ -435,8 +433,8 @@ window.DB = (() => {
   async function listUsedPlayersInPool(poolId, currentLagNo) {
     const rows = await listPoolTeamMatchConfigs(poolId);
     const otherIds = rows
-      .filter(r => String(r.lag_no) !== String(currentLagNo))
-      .map(r => String(r.id));
+      .filter((r) => String(r.lag_no) !== String(currentLagNo))
+      .map((r) => String(r.id));
 
     if (!otherIds.length) return [];
 
@@ -448,7 +446,7 @@ window.DB = (() => {
       .eq("person_type", "player");
 
     if (error) throw error;
-    return (data || []).map(r => r.person_id);
+    return (data || []).map((r) => r.person_id);
   }
 
   async function listShiftSchema(poolId, lagNo, matchNo) {
@@ -626,37 +624,3 @@ window.DB = (() => {
     subscribeTruppen
   };
 })();
-
-window.DB = {
-  listPools,
-  getPool,
-  addPool,
-  updatePool,
-  deletePool,
-
-  listPlayers,
-  addPlayer,
-  updatePlayer,
-  deletePlayer,
-
-  listCoaches,
-  addCoach,
-  updateCoach,
-  deleteCoach,
-
-  savePoolTeamMatchConfig,
-  getPoolTeamMatchConfig,
-  listPoolTeamMatchConfigs,
-
-  getLineup,
-  saveLineup,
-
-  saveShiftSchema,
-  listShiftSchema,
-  deleteShiftSchema,
-  setShiftDone,
-
-  listGoalieStats,
-
-  subscribeTruppen
-};
