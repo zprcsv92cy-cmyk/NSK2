@@ -1,509 +1,584 @@
 window.DB = (() => {
-  const KEY = "nsk_app_data";
   const TEAM_NAME = "NSK Team 18";
   const TEAM_SEASON = "2026";
 
-  function uid() {
-    return Math.random().toString(36).slice(2) + Date.now().toString(36);
-  }
-
-  function defaults() {
-    return {
-      pools: [],
-      players: [],
-      coaches: [],
-      pool_team_match_configs: [],
-      lineups: [],
-      shift_schemas: [],
-      goalie_stats: [],
-      player_coach_map: []
-    };
-  }
-
-  function read() {
-    try {
-      const raw = JSON.parse(localStorage.getItem(KEY));
-      if (!raw || typeof raw !== "object") return defaults();
-      return { ...defaults(), ...raw };
-    } catch {
-      return defaults();
-    }
-  }
-
-  function write(data) {
-    localStorage.setItem(KEY, JSON.stringify(data));
-  }
-
   async function getClient() {
     if (window.Auth?.init) await window.Auth.init();
-    return window.Auth?.getClient?.() || null;
+    const client = window.Auth?.getClient?.();
+    if (!client) throw new Error("Supabase-klient saknas.");
+    return client;
+  }
+
+  function normalizeName(name) {
+    return String(name || "").trim();
   }
 
   async function getTeamId() {
     const client = await getClient();
-    if (!client) return null;
 
     const exact = await client
       .from("nsk_teams")
-      .select("id,name,season")
+      .select("id, name, season, created_at")
       .eq("name", TEAM_NAME)
       .eq("season", TEAM_SEASON)
-      .limit(1)
-      .maybeSingle();
+      .order("created_at", { ascending: true })
+      .limit(1);
 
-    if (!exact.error && exact.data?.id) return exact.data.id;
-
-    const byName = await client
-      .from("nsk_teams")
-      .select("id,name,season")
-      .eq("name", TEAM_NAME)
-      .limit(1)
-      .maybeSingle();
-
-    if (!byName.error && byName.data?.id) return byName.data.id;
+    if (!exact.error && Array.isArray(exact.data) && exact.data.length) {
+      return exact.data[0].id;
+    }
 
     const anyTeam = await client
       .from("nsk_teams")
-      .select("id,name,season")
-      .limit(1)
-      .maybeSingle();
+      .select("id, name, season, created_at")
+      .order("created_at", { ascending: true })
+      .limit(1);
 
-    if (!anyTeam.error && anyTeam.data?.id) return anyTeam.data.id;
+    if (!anyTeam.error && Array.isArray(anyTeam.data) && anyTeam.data.length) {
+      return anyTeam.data[0].id;
+    }
 
-    const inserted = await client
-      .from("nsk_teams")
-      .insert({ name: TEAM_NAME, season: TEAM_SEASON })
-      .select("id")
-      .single();
-
-    if (inserted.error) throw inserted.error;
-    return inserted.data.id;
+    throw new Error("Inget team finns i databasen. Lägg först in NSK Team 18 i Supabase.");
   }
 
-  // ---------- POOLS ----------
+  async function ensureNoDuplicateByName(table, teamId, fullName) {
+    const client = await getClient();
+    const { data, error } = await client
+      .from(table)
+      .select("id, full_name")
+      .eq("team_id", teamId)
+      .eq("full_name", fullName)
+      .limit(1);
 
-  async function listPools() {
-    return read().pools;
+    if (error) throw error;
+    return Array.isArray(data) && data.length ? data[0] : null;
   }
-
-  async function getPool(id) {
-    return read().pools.find(p => String(p.id) === String(id)) || null;
-  }
-
-  async function addPool(payload) {
-    const data = read();
-    const pool = { ...payload, id: uid() };
-    data.pools.unshift(pool);
-    write(data);
-    return pool;
-  }
-
-  async function updatePool(id, payload) {
-    const data = read();
-    const i = data.pools.findIndex(p => String(p.id) === String(id));
-    if (i < 0) throw new Error("Pool hittades inte");
-    data.pools[i] = { ...data.pools[i], ...payload };
-    write(data);
-    return data.pools[i];
-  }
-
-  async function deletePool(id) {
-    const data = read();
-    data.pools = data.pools.filter(p => String(p.id) !== String(id));
-    write(data);
-    return true;
-  }
-
-  // ---------- PLAYERS ----------
 
   async function listPlayers() {
     const client = await getClient();
+    const teamId = await getTeamId();
 
-    try {
-      if (client) {
-        const teamId = await getTeamId();
-        if (teamId) {
-          const { data, error } = await client
-            .from("nsk_players")
-            .select("id, full_name")
-            .eq("team_id", teamId)
-            .order("full_name", { ascending: true });
+    const { data, error } = await client
+      .from("nsk_players")
+      .select("id, full_name, team_id")
+      .eq("team_id", teamId)
+      .order("full_name", { ascending: true });
 
-          if (!error && Array.isArray(data)) {
-            const local = read();
-            local.players = data;
-            write(local);
-            return data;
-          }
-        }
-      }
-    } catch {}
-
-    return read().players;
+    if (error) throw error;
+    return data || [];
   }
 
   async function addPlayer(name) {
-    const full_name = String(name || "").trim();
+    const full_name = normalizeName(name);
     if (!full_name) throw new Error("Spelarnamn saknas.");
 
     const client = await getClient();
+    const teamId = await getTeamId();
 
-    if (client) {
-      const teamId = await getTeamId();
-      const { data, error } = await client
-        .from("nsk_players")
-        .insert({ team_id: teamId, full_name })
-        .select("id, full_name")
-        .single();
+    const existing = await ensureNoDuplicateByName("nsk_players", teamId, full_name);
+    if (existing) return existing;
 
-      if (error) throw error;
+    const { data, error } = await client
+      .from("nsk_players")
+      .insert({ team_id: teamId, full_name })
+      .select("id, full_name, team_id")
+      .single();
 
-      const local = read();
-      local.players = [...local.players.filter(p => String(p.id) !== String(data.id)), data];
-      write(local);
-      return data;
-    }
-
-    const data = read();
-    const row = { id: uid(), full_name };
-    data.players.push(row);
-    write(data);
-    return row;
+    if (error) throw error;
+    return data;
   }
 
   async function updatePlayer(id, name) {
-    const full_name = String(name || "").trim();
+    const full_name = normalizeName(name);
+    if (!full_name) throw new Error("Spelarnamn saknas.");
+
     const client = await getClient();
+    const { data, error } = await client
+      .from("nsk_players")
+      .update({ full_name })
+      .eq("id", id)
+      .select("id, full_name, team_id")
+      .single();
 
-    if (client) {
-      const { data, error } = await client
-        .from("nsk_players")
-        .update({ full_name })
-        .eq("id", id)
-        .select("id, full_name")
-        .single();
-
-      if (error) throw error;
-
-      const local = read();
-      const idx = local.players.findIndex(p => String(p.id) === String(id));
-      if (idx >= 0) local.players[idx] = data;
-      else local.players.push(data);
-      write(local);
-      return data;
-    }
-
-    const data = read();
-    const row = data.players.find(p => String(p.id) === String(id));
-    if (row) row.full_name = full_name;
-    write(data);
-    return row;
+    if (error) throw error;
+    return data;
   }
 
   async function deletePlayer(id) {
     const client = await getClient();
-
-    if (client) {
-      const { error } = await client.from("nsk_players").delete().eq("id", id);
-      if (error) throw error;
-    }
-
-    const data = read();
-    data.players = data.players.filter(p => String(p.id) !== String(id));
-    write(data);
+    const { error } = await client.from("nsk_players").delete().eq("id", id);
+    if (error) throw error;
     return true;
   }
 
-  // ---------- COACHES ----------
-
   async function listCoaches() {
     const client = await getClient();
+    const teamId = await getTeamId();
 
-    try {
-      if (client) {
-        const teamId = await getTeamId();
-        if (teamId) {
-          const { data, error } = await client
-            .from("nsk_coaches")
-            .select("id, full_name")
-            .eq("team_id", teamId)
-            .order("full_name", { ascending: true });
+    const { data, error } = await client
+      .from("nsk_coaches")
+      .select("id, full_name, team_id")
+      .eq("team_id", teamId)
+      .order("full_name", { ascending: true });
 
-          if (!error && Array.isArray(data)) {
-            const local = read();
-            local.coaches = data;
-            write(local);
-            return data;
-          }
-        }
-      }
-    } catch {}
-
-    return read().coaches;
+    if (error) throw error;
+    return data || [];
   }
 
   async function addCoach(name) {
-    const full_name = String(name || "").trim();
+    const full_name = normalizeName(name);
     if (!full_name) throw new Error("Tränarnamn saknas.");
 
     const client = await getClient();
+    const teamId = await getTeamId();
 
-    if (client) {
-      const teamId = await getTeamId();
-      const { data, error } = await client
-        .from("nsk_coaches")
-        .insert({ team_id: teamId, full_name })
-        .select("id, full_name")
-        .single();
+    const existing = await ensureNoDuplicateByName("nsk_coaches", teamId, full_name);
+    if (existing) return existing;
 
-      if (error) throw error;
+    const { data, error } = await client
+      .from("nsk_coaches")
+      .insert({ team_id: teamId, full_name })
+      .select("id, full_name, team_id")
+      .single();
 
-      const local = read();
-      local.coaches = [...local.coaches.filter(c => String(c.id) !== String(data.id)), data];
-      write(local);
-      return data;
-    }
-
-    const data = read();
-    const row = { id: uid(), full_name };
-    data.coaches.push(row);
-    write(data);
-    return row;
+    if (error) throw error;
+    return data;
   }
 
   async function updateCoach(id, name) {
-    const full_name = String(name || "").trim();
+    const full_name = normalizeName(name);
+    if (!full_name) throw new Error("Tränarnamn saknas.");
+
     const client = await getClient();
+    const { data, error } = await client
+      .from("nsk_coaches")
+      .update({ full_name })
+      .eq("id", id)
+      .select("id, full_name, team_id")
+      .single();
 
-    if (client) {
-      const { data, error } = await client
-        .from("nsk_coaches")
-        .update({ full_name })
-        .eq("id", id)
-        .select("id, full_name")
-        .single();
-
-      if (error) throw error;
-
-      const local = read();
-      const idx = local.coaches.findIndex(c => String(c.id) === String(id));
-      if (idx >= 0) local.coaches[idx] = data;
-      else local.coaches.push(data);
-      write(local);
-      return data;
-    }
-
-    const data = read();
-    const row = data.coaches.find(c => String(c.id) === String(id));
-    if (row) row.full_name = full_name;
-    write(data);
-    return row;
+    if (error) throw error;
+    return data;
   }
 
   async function deleteCoach(id) {
     const client = await getClient();
-
-    if (client) {
-      const { error } = await client.from("nsk_coaches").delete().eq("id", id);
-      if (error) throw error;
-    }
-
-    const data = read();
-    data.coaches = data.coaches.filter(c => String(c.id) !== String(id));
-    write(data);
+    const { error } = await client.from("nsk_coaches").delete().eq("id", id);
+    if (error) throw error;
     return true;
   }
 
-  // ---------- MATCH CONFIG / FÖRUTSÄTTNINGAR ----------
+  async function listPools() {
+    const client = await getClient();
+    const teamId = await getTeamId();
 
-  async function getPoolTeamMatchConfig(poolId, lagNo, matchNo) {
-    const data = read();
-    return data.pool_team_match_configs.find(r =>
-      String(r.pool_id) === String(poolId) &&
-      String(r.lag_no) === String(lagNo) &&
-      String(r.match_no) === String(matchNo)
-    ) || null;
+    const { data, error } = await client
+      .from("nsk_pools")
+      .select("id, team_id, title, place, pool_date, status, teams, matches, players_on_field, periods, period_time, sub_time")
+      .eq("team_id", teamId)
+      .order("pool_date", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function getPool(id) {
+    const client = await getClient();
+    const { data, error } = await client
+      .from("nsk_pools")
+      .select("id, team_id, title, place, pool_date, status, teams, matches, players_on_field, periods, period_time, sub_time")
+      .eq("id", id)
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async function addPool(payload) {
+    const client = await getClient();
+    const teamId = await getTeamId();
+
+    const row = {
+      team_id: teamId,
+      title: payload.title || "Poolspel",
+      place: payload.place || "",
+      pool_date: payload.pool_date || null,
+      status: payload.status || "Aktiv",
+      teams: Number(payload.teams || 2),
+      matches: Number(payload.matches || 4),
+      players_on_field: Number(payload.players_on_field || 3),
+      periods: Number(payload.periods || 1),
+      period_time: Number(payload.period_time || 15),
+      sub_time: Number(payload.sub_time || 90)
+    };
+
+    const { data, error } = await client
+      .from("nsk_pools")
+      .insert(row)
+      .select("id, team_id, title, place, pool_date, status, teams, matches, players_on_field, periods, period_time, sub_time")
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async function updatePool(id, payload) {
+    const client = await getClient();
+
+    const row = {
+      title: payload.title || "Poolspel",
+      place: payload.place || "",
+      pool_date: payload.pool_date || null,
+      status: payload.status || "Aktiv",
+      teams: Number(payload.teams || 2),
+      matches: Number(payload.matches || 4),
+      players_on_field: Number(payload.players_on_field || 3),
+      periods: Number(payload.periods || 1),
+      period_time: Number(payload.period_time || 15),
+      sub_time: Number(payload.sub_time || 90)
+    };
+
+    const { data, error } = await client
+      .from("nsk_pools")
+      .update(row)
+      .eq("id", id)
+      .select("id, team_id, title, place, pool_date, status, teams, matches, players_on_field, periods, period_time, sub_time")
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async function deletePool(id) {
+    const client = await getClient();
+
+    await client.from("nsk_shift_schemas").delete().eq("pool_id", id);
+    await client.from("nsk_lineups").delete().eq("pool_id", id);
+    await client.from("nsk_pool_team_match_configs").delete().eq("pool_id", id);
+
+    const { error } = await client.from("nsk_pools").delete().eq("id", id);
+    if (error) throw error;
+    return true;
   }
 
   async function listPoolTeamMatchConfigs(poolId) {
-    const data = read();
-    return data.pool_team_match_configs.filter(r => String(r.pool_id) === String(poolId));
+    const client = await getClient();
+    const { data, error } = await client
+      .from("nsk_pool_team_match_configs")
+      .select("id, pool_id, lag_no, match_no, start_time, opponent, plan, player_count, goalie_player_id, players_on_field")
+      .eq("pool_id", poolId)
+      .order("lag_no", { ascending: true })
+      .order("match_no", { ascending: true });
+
+    if (error) throw error;
+
+    return (data || []).map(r => ({
+      ...r,
+      players_on_field: Array.isArray(r.players_on_field) ? r.players_on_field.map(String) : []
+    }));
+  }
+
+  async function getPoolTeamMatchConfig(poolId, lagNo, matchNo) {
+    const client = await getClient();
+    const { data, error } = await client
+      .from("nsk_pool_team_match_configs")
+      .select("id, pool_id, lag_no, match_no, start_time, opponent, plan, player_count, goalie_player_id, players_on_field")
+      .eq("pool_id", poolId)
+      .eq("lag_no", Number(lagNo))
+      .eq("match_no", Number(matchNo))
+      .maybeSingle();
+
+    if (error) throw error;
+
+    return data
+      ? {
+          ...data,
+          players_on_field: Array.isArray(data.players_on_field) ? data.players_on_field.map(String) : []
+        }
+      : null;
   }
 
   async function savePoolTeamMatchConfig(payload) {
-    const data = read();
+    const client = await getClient();
 
     const safePayload = {
-      ...payload,
-      players_on_field: Array.isArray(payload.players_on_field)
-        ? payload.players_on_field.map(String)
-        : []
+      pool_id: payload.pool_id,
+      lag_no: Number(payload.lag_no),
+      match_no: Number(payload.match_no),
+      start_time: payload.start_time || null,
+      opponent: payload.opponent || "",
+      plan: payload.plan || "Plan 1",
+      player_count: Number(payload.player_count || 0),
+      goalie_player_id: payload.goalie_player_id || null,
+      players_on_field: Array.isArray(payload.players_on_field) ? payload.players_on_field.map(String) : []
     };
 
-    let row = data.pool_team_match_configs.find(r =>
-      String(r.pool_id) === String(safePayload.pool_id) &&
-      String(r.lag_no) === String(safePayload.lag_no) &&
-      String(r.match_no) === String(safePayload.match_no)
-    );
+    const existing = await client
+      .from("nsk_pool_team_match_configs")
+      .select("id")
+      .eq("pool_id", safePayload.pool_id)
+      .eq("lag_no", safePayload.lag_no)
+      .eq("match_no", safePayload.match_no)
+      .maybeSingle();
 
-    if (!row) {
-      row = { id: uid(), ...safePayload };
-      data.pool_team_match_configs.push(row);
-    } else {
-      Object.assign(row, safePayload);
+    if (!existing.error && existing.data?.id) {
+      const { data, error } = await client
+        .from("nsk_pool_team_match_configs")
+        .update(safePayload)
+        .eq("id", existing.data.id)
+        .select("id, pool_id, lag_no, match_no, start_time, opponent, plan, player_count, goalie_player_id, players_on_field")
+        .single();
+
+      if (error) throw error;
+
+      return {
+        ...data,
+        players_on_field: Array.isArray(data.players_on_field) ? data.players_on_field.map(String) : []
+      };
     }
 
-    write(data);
-    return row;
+    const { data, error } = await client
+      .from("nsk_pool_team_match_configs")
+      .insert(safePayload)
+      .select("id, pool_id, lag_no, match_no, start_time, opponent, plan, player_count, goalie_player_id, players_on_field")
+      .single();
+
+    if (error) throw error;
+
+    return {
+      ...data,
+      players_on_field: Array.isArray(data.players_on_field) ? data.players_on_field.map(String) : []
+    };
   }
 
   async function getPlayersOnField(poolId, lagNo, matchNo) {
-    const config = await getPoolTeamMatchConfig(poolId, lagNo, matchNo);
-    if (!config) return [];
-
-    const ids = Array.isArray(config.players_on_field)
-      ? config.players_on_field.map(String)
-      : [];
-
-    if (!ids.length) return [];
-
     const players = await listPlayers();
+    const row = await getPoolTeamMatchConfig(poolId, lagNo, matchNo);
+    const fallback = String(matchNo) !== "1" ? await getPoolTeamMatchConfig(poolId, lagNo, 1) : null;
+    const source = row || fallback;
+    const ids = Array.isArray(source?.players_on_field) ? source.players_on_field.map(String) : [];
+    if (!ids.length) return players;
     return players.filter(p => ids.includes(String(p.id)));
   }
 
-  // ---------- LINEUP ----------
-
   async function getLineup(matchConfigId) {
-    const data = read();
-    return data.lineups
-      .filter(l => String(l.match_config_id) === String(matchConfigId))
-      .sort((a, b) => a.sort_order - b.sort_order);
+    const client = await getClient();
+    const { data, error } = await client
+      .from("nsk_lineups")
+      .select("id, pool_id, match_config_id, person_type, person_id, sort_order")
+      .eq("match_config_id", matchConfigId)
+      .order("sort_order", { ascending: true });
+
+    if (error) throw error;
+    return data || [];
   }
 
   async function saveLineup(matchConfigId, playerIds, coachIds) {
-    const data = read();
+    const client = await getClient();
 
-    data.lineups = data.lineups.filter(l => String(l.match_config_id) !== String(matchConfigId));
+    const cfg = await client
+      .from("nsk_pool_team_match_configs")
+      .select("pool_id")
+      .eq("id", matchConfigId)
+      .maybeSingle();
 
+    const poolId = cfg.data?.pool_id || null;
+
+    const rows = [];
     let sort = 1;
 
     (playerIds || []).forEach(p => {
-      data.lineups.push({
-        id: uid(),
+      rows.push({
+        pool_id: poolId,
         match_config_id: matchConfigId,
         person_type: "player",
-        person_id: p,
+        person_id: String(p),
         sort_order: sort++
       });
     });
 
     (coachIds || []).forEach(c => {
-      data.lineups.push({
-        id: uid(),
+      rows.push({
+        pool_id: poolId,
         match_config_id: matchConfigId,
         person_type: "coach",
-        person_id: c,
+        person_id: String(c),
         sort_order: sort++
       });
     });
 
-    write(data);
+    const del = await client.from("nsk_lineups").delete().eq("match_config_id", matchConfigId);
+    if (del.error) throw del.error;
+
+    if (rows.length) {
+      const ins = await client.from("nsk_lineups").insert(rows);
+      if (ins.error) throw ins.error;
+    }
+
     return true;
   }
 
   async function listUsedPlayersInPool(poolId, currentLagNo) {
     const rows = await listPoolTeamMatchConfigs(poolId);
-    const data = read();
-
-    const ids = rows
+    const otherIds = rows
       .filter(r => String(r.lag_no) !== String(currentLagNo))
       .map(r => String(r.id));
 
-    return data.lineups
-      .filter(l => l.person_type === "player" && ids.includes(String(l.match_config_id)))
-      .map(l => l.person_id);
-  }
+    if (!otherIds.length) return [];
 
-  // ---------- SHIFT SCHEMA ----------
+    const client = await getClient();
+    const { data, error } = await client
+      .from("nsk_lineups")
+      .select("person_id, person_type, match_config_id")
+      .in("match_config_id", otherIds)
+      .eq("person_type", "player");
 
-  async function saveShiftSchema(poolId, lagNo, matchNo, shifts) {
-    const data = read();
-
-    data.shift_schemas = data.shift_schemas.filter(s =>
-      !(
-        String(s.pool_id) === String(poolId) &&
-        String(s.lag_no) === String(lagNo) &&
-        String(s.match_no) === String(matchNo)
-      )
-    );
-
-    (shifts || []).forEach((s, i) => {
-      data.shift_schemas.push({
-        id: uid(),
-        pool_id: poolId,
-        lag_no: lagNo,
-        match_no: matchNo,
-        shift_no: i + 1,
-        period_no: s.period_no,
-        time_left: s.time_left,
-        players_json: s.players,
-        done: false
-      });
-    });
-
-    write(data);
-    return true;
+    if (error) throw error;
+    return (data || []).map(r => r.person_id);
   }
 
   async function listShiftSchema(poolId, lagNo, matchNo) {
-    const data = read();
-    return data.shift_schemas
-      .filter(s =>
-        String(s.pool_id) === String(poolId) &&
-        String(s.lag_no) === String(lagNo) &&
-        String(s.match_no) === String(matchNo)
-      )
-      .sort((a, b) => a.shift_no - b.shift_no);
+    const client = await getClient();
+    const { data, error } = await client
+      .from("nsk_shift_schemas")
+      .select("id, pool_id, lag_no, match_no, shift_no, period_no, time_left, players_json, done")
+      .eq("pool_id", poolId)
+      .eq("lag_no", Number(lagNo))
+      .eq("match_no", Number(matchNo))
+      .order("shift_no", { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function saveShiftSchema(poolId, lagNo, matchNo, shifts) {
+    const client = await getClient();
+
+    const del = await client
+      .from("nsk_shift_schemas")
+      .delete()
+      .eq("pool_id", poolId)
+      .eq("lag_no", Number(lagNo))
+      .eq("match_no", Number(matchNo));
+
+    if (del.error) throw del.error;
+
+    const rows = (shifts || []).map((s, i) => ({
+      pool_id: poolId,
+      lag_no: Number(lagNo),
+      match_no: Number(matchNo),
+      shift_no: i + 1,
+      period_no: Number(s.period_no || 1),
+      time_left: s.time_left || "00:00",
+      players_json: Array.isArray(s.players) ? s.players.map(String) : [],
+      done: false
+    }));
+
+    if (rows.length) {
+      const ins = await client.from("nsk_shift_schemas").insert(rows);
+      if (ins.error) throw ins.error;
+    }
+
+    return true;
   }
 
   async function deleteShiftSchema(poolId, lagNo, matchNo) {
-    const data = read();
-    data.shift_schemas = data.shift_schemas.filter(s =>
-      !(
-        String(s.pool_id) === String(poolId) &&
-        String(s.lag_no) === String(lagNo) &&
-        String(s.match_no) === String(matchNo)
-      )
-    );
-    write(data);
+    const client = await getClient();
+    const { error } = await client
+      .from("nsk_shift_schemas")
+      .delete()
+      .eq("pool_id", poolId)
+      .eq("lag_no", Number(lagNo))
+      .eq("match_no", Number(matchNo));
+
+    if (error) throw error;
     return true;
   }
 
   async function setShiftDone(poolId, lagNo, matchNo, shiftNo, done) {
-    const data = read();
-    const row = data.shift_schemas.find(s =>
-      String(s.pool_id) === String(poolId) &&
-      String(s.lag_no) === String(lagNo) &&
-      String(s.match_no) === String(matchNo) &&
-      String(s.shift_no) === String(shiftNo)
-    );
-    if (row) row.done = done;
-    write(data);
+    const client = await getClient();
+    const { error } = await client
+      .from("nsk_shift_schemas")
+      .update({ done: !!done })
+      .eq("pool_id", poolId)
+      .eq("lag_no", Number(lagNo))
+      .eq("match_no", Number(matchNo))
+      .eq("shift_no", Number(shiftNo));
+
+    if (error) throw error;
     return true;
   }
 
-  // ---------- ÖVRIGT ----------
-
   async function listGoalieStats() {
-    return read().goalie_stats;
+    const client = await getClient();
+    const teamId = await getTeamId();
+
+    const { data, error } = await client
+      .from("nsk_goalie_stats")
+      .select("id, goalie_name, match_id")
+      .eq("team_id", teamId);
+
+    if (error) throw error;
+    return data || [];
   }
 
   async function listPlayerCoachMap() {
-    return read().player_coach_map;
+    const client = await getClient();
+    const teamId = await getTeamId();
+
+    const { data, error } = await client
+      .from("nsk_player_coach_map")
+      .select("id, player_name, coach_name")
+      .eq("team_id", teamId)
+      .order("player_name", { ascending: true });
+
+    if (error) throw error;
+    return data || [];
   }
 
-  async function subscribeTruppen() {
-    return { unsubscribe() {} };
+  async function savePlayerCoachMap(playerName, coachName) {
+    const client = await getClient();
+    const teamId = await getTeamId();
+    const safePlayer = normalizeName(playerName);
+    const safeCoach = normalizeName(coachName);
+
+    if (!safePlayer || !safeCoach) {
+      throw new Error("Spelare eller tränare saknas.");
+    }
+
+    const existing = await client
+      .from("nsk_player_coach_map")
+      .select("id")
+      .eq("team_id", teamId)
+      .eq("player_name", safePlayer)
+      .maybeSingle();
+
+    if (!existing.error && existing.data?.id) {
+      const { data, error } = await client
+        .from("nsk_player_coach_map")
+        .update({ coach_name: safeCoach })
+        .eq("id", existing.data.id)
+        .select("id, player_name, coach_name")
+        .single();
+
+      if (error) throw error;
+      return data;
+    }
+
+    const { data, error } = await client
+      .from("nsk_player_coach_map")
+      .insert({ team_id: teamId, player_name: safePlayer, coach_name: safeCoach })
+      .select("id, player_name, coach_name")
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async function subscribeTruppen(_callback) {
+    return {
+      unsubscribe() {}
+    };
   }
 
   return {
@@ -533,6 +608,7 @@ window.DB = (() => {
     setShiftDone,
     listGoalieStats,
     listPlayerCoachMap,
+    savePlayerCoachMap,
     subscribeTruppen
   };
 })();
