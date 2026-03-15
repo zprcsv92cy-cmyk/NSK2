@@ -1,13 +1,3 @@
-if (!window.DB) {
-  console.error("DB.js är inte laddad");
-  document.addEventListener("DOMContentLoaded", () => {
-    const el = document.getElementById("appError");
-    if (el) {
-      el.textContent = "Databasen kunde inte laddas (db.js saknas).";
-    }
-  });
-}
-
 async function checkAppVersion() {
   try {
     const pathParts = location.pathname.split("/").filter(Boolean);
@@ -68,11 +58,9 @@ window.NSK2App = (() => {
   function shortName(fullName) {
     const name = String(fullName || "").trim();
     if (!name || name === "—") return name || "";
-
     const parts = name.split(/\s+/);
     const first = parts[0] || "";
     const lastInitial = parts.length > 1 ? (parts[parts.length - 1][0] + ".") : "";
-
     return lastInitial ? `${first} ${lastInitial}` : first;
   }
 
@@ -83,10 +71,14 @@ window.NSK2App = (() => {
       .replace(/\s+/g, " ");
   }
 
+  function safeInt(value, fallback) {
+    const n = parseInt(value, 10);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
   const saveTimers = {};
   let truppenRealtime = null;
   let globalClicksBound = false;
-  let laguppstallningBound = false;
   let matchCurrentShiftIndex = 0;
 
   async function init() {
@@ -183,6 +175,21 @@ window.NSK2App = (() => {
           return;
         }
 
+        if (t.dataset.lagTeam) {
+          sessionStorage.setItem("nsk2_lag_nr", String(t.dataset.lagTeam));
+          setActiveLagButton(String(t.dataset.lagTeam));
+          await fillLaguppstallningFormFromSelection();
+          return;
+        }
+
+        if (t.dataset.matchNo) {
+          const sel = byId("lineupMatch");
+          if (sel) sel.value = String(t.dataset.matchNo);
+          setActiveMatchButton(String(t.dataset.matchNo));
+          await fillLaguppstallningFormFromSelection();
+          return;
+        }
+
         if (t.dataset.deletePlayer) {
           await deletePlayer(t.dataset.deletePlayer);
           return;
@@ -203,7 +210,7 @@ window.NSK2App = (() => {
           return;
         }
       } catch (err) {
-        setText("appError", err.message || String(err));
+        setText("appError", err?.message || String(err));
       }
     });
 
@@ -231,7 +238,7 @@ window.NSK2App = (() => {
           await flushInlineCoachSave(t.dataset.inlineCoach, t.value);
         }
       } catch (err) {
-        setText("appError", err.message || String(err));
+        setText("appError", err?.message || String(err));
       }
     }, true);
   }
@@ -249,7 +256,7 @@ window.NSK2App = (() => {
       }
 
       box.innerHTML = pools.map((p) => {
-        const teams = parseInt(p.teams || "2", 10) || 2;
+        const teams = safeInt(p.teams || "2", 2);
 
         const lagButtons = Array.from({ length: teams }, (_, i) => {
           const lagNo = i + 1;
@@ -280,8 +287,8 @@ window.NSK2App = (() => {
             </div>
 
             <div class="row-actions pool-actions">
-              <button class="row-btn" data-edit-pool="${p.id}">Redigera</button>
-              <button class="row-btn danger" data-delete-pool="${p.id}">Ta bort</button>
+              <button class="row-btn" type="button" data-edit-pool="${p.id}">Redigera</button>
+              <button class="row-btn danger" type="button" data-delete-pool="${p.id}">Ta bort</button>
             </div>
 
             <div class="pool-lineup-block">
@@ -304,7 +311,7 @@ window.NSK2App = (() => {
         `;
       }).join("");
     } catch (err) {
-      setText("appError", err.message || String(err));
+      setText("appError", err?.message || String(err));
     }
   }
 
@@ -332,7 +339,7 @@ window.NSK2App = (() => {
         if (byId("periodTime")) byId("periodTime").value = String(pool.period_time || 15);
         if (byId("subTime")) byId("subTime").value = String(pool.sub_time || 90);
       } catch (err) {
-        setText("appError", err.message || String(err));
+        setText("appError", err?.message || String(err));
       }
     }
 
@@ -342,7 +349,7 @@ window.NSK2App = (() => {
   }
 
   function renderLaguppstallningButtons() {
-    const teams = parseInt(byId("teams")?.value || "2", 10);
+    const teams = safeInt(byId("teams")?.value || "2", 2);
     const box = byId("lagButtons");
     if (!box) return;
 
@@ -369,18 +376,19 @@ window.NSK2App = (() => {
         place: byId("poolPlace")?.value?.trim() || "",
         pool_date: byId("poolDate")?.value || null,
         status: "Aktiv",
-        teams: parseInt(byId("teams")?.value || "2", 10),
-        matches: parseInt(byId("matches")?.value || "4", 10),
-        players_on_field: parseInt(byId("players")?.value || "3", 10),
-        periods: parseInt(byId("periods")?.value || "1", 10),
-        period_time: parseInt(byId("periodTime")?.value || "15", 10),
-        sub_time: parseInt(byId("subTime")?.value || "90", 10)
+        teams: safeInt(byId("teams")?.value || "2", 2),
+        matches: safeInt(byId("matches")?.value || "4", 4),
+        players_on_field: safeInt(byId("players")?.value || "3", 3),
+        periods: safeInt(byId("periods")?.value || "1", 1),
+        period_time: safeInt(byId("periodTime")?.value || "15", 15),
+        sub_time: safeInt(byId("subTime")?.value || "90", 90)
       };
 
       const editId = sessionStorage.getItem("nsk2_edit_pool_id");
       if (editId) {
         await DB.updatePool(editId, payload);
         sessionStorage.removeItem("nsk2_edit_pool_id");
+        sessionStorage.setItem("nsk2_pool_id", editId);
       } else {
         const pool = await DB.addPool(payload);
         sessionStorage.setItem("nsk2_pool_id", pool.id);
@@ -389,15 +397,1080 @@ window.NSK2App = (() => {
       setText("poolMsg", "Poolspel sparat");
       window.location.href = "../startsida/";
     } catch (err) {
-      setText("appError", err.message || String(err));
+      setText("appError", err?.message || String(err));
     }
   }
 
-  async function initLaguppstallningPage() {}
-  async function initBytesschemaPage() {}
-  async function initGoalieStatsPage() {}
-  async function initLagPage() {}
-  async function initMatchvyPage() {}
+  function renderLaguppstallningTeamButtons(teams) {
+    const box = byId("laguppstallningTeamButtons");
+    if (!box) return;
+    box.innerHTML = "";
+
+    for (let i = 1; i <= teams; i++) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "team-btn lag-team-btn";
+      btn.textContent = `Lag ${i}`;
+      btn.dataset.lagTeam = String(i);
+      box.appendChild(btn);
+    }
+  }
+
+  function renderLaguppstallningMatchOptions(matches) {
+    const sel = byId("lineupMatch");
+    if (!sel) return;
+    sel.innerHTML = "";
+    for (let i = 1; i <= matches; i++) {
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      opt.textContent = `Match ${i}`;
+      sel.appendChild(opt);
+    }
+  }
+
+  function renderMatchButtons(matches) {
+    const box = byId("matchButtons");
+    const hiddenSelect = byId("lineupMatch");
+    if (!box || !hiddenSelect) return;
+
+    box.innerHTML = "";
+    for (let i = 1; i <= matches; i++) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "team-btn match-btn";
+      btn.textContent = `Match ${i}`;
+      btn.dataset.matchNo = String(i);
+      box.appendChild(btn);
+    }
+  }
+
+  function setActiveLagButton(lagNo) {
+    document.querySelectorAll(".lag-team-btn").forEach((btn) => {
+      if (btn.dataset.lagTeam === String(lagNo)) btn.classList.add("active-team-btn");
+      else btn.classList.remove("active-team-btn");
+    });
+  }
+
+  function setActiveMatchButton(matchNo) {
+    document.querySelectorAll(".match-btn").forEach((btn) => {
+      if (btn.dataset.matchNo === String(matchNo)) btn.classList.add("active-team-btn");
+      else btn.classList.remove("active-team-btn");
+    });
+  }
+
+  function renderPlayerCountOptions(defaultCount) {
+    const sel = byId("lineupPlayerCount");
+    if (!sel) return;
+
+    const current = safeInt(defaultCount || sel.value || "3", 3);
+    sel.innerHTML = "";
+    for (let i = 1; i <= 25; i++) {
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      opt.textContent = String(i);
+      if (i === current) opt.selected = true;
+      sel.appendChild(opt);
+    }
+  }
+
+  async function renderCoachOptions() {
+    const coachSelect = byId("lineupCoach");
+    if (!coachSelect) return;
+
+    const coaches = typeof DB?.listCoaches === "function"
+      ? await DB.listCoaches()
+      : [];
+
+    coachSelect.innerHTML = "";
+
+    if (!coaches.length) {
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = "Inga tränare";
+      coachSelect.appendChild(opt);
+      coachSelect.disabled = true;
+      return;
+    }
+
+    coachSelect.disabled = false;
+    coaches.forEach((c) => {
+      const opt = document.createElement("option");
+      opt.value = String(c.id);
+      opt.textContent = c.full_name;
+      coachSelect.appendChild(opt);
+    });
+  }
+
+  async function getUsedPlayersInSameMatch(poolId, currentLagNo, matchNo) {
+    const used = new Set();
+    if (!poolId || typeof DB?.listPoolTeamMatchConfigs !== "function") return used;
+
+    const rows = await DB.listPoolTeamMatchConfigs(poolId);
+
+    for (const row of rows) {
+      const sameMatch = String(row.match_no) === String(matchNo);
+      const otherLag = String(row.lag_no) !== String(currentLagNo);
+      if (!sameMatch || !otherLag) continue;
+
+      if (row.goalie_player_id) used.add(String(row.goalie_player_id));
+
+      if (row.id && typeof DB?.getLineup === "function") {
+        const lineup = await DB.getLineup(row.id);
+        lineup
+          .filter((x) => x.person_type === "player")
+          .forEach((x) => used.add(String(x.person_id)));
+      }
+    }
+
+    return used;
+  }
+
+  async function renderLineupSelectors() {
+    const box = byId("lineupSelectors");
+    if (!box) return;
+
+    try {
+      const poolId = sessionStorage.getItem("nsk2_pool_id");
+      const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
+      const currentMatchNo = byId("lineupMatch")?.value || "1";
+
+      const players = typeof DB?.getPlayersOnField === "function"
+        ? await DB.getPlayersOnField(poolId, lagNo, currentMatchNo)
+        : (typeof DB?.listPlayers === "function" ? await DB.listPlayers() : []);
+
+      const usedSameMatchSet = poolId ? await getUsedPlayersInSameMatch(poolId, lagNo, currentMatchNo) : new Set();
+
+      let matchRow = poolId && typeof DB?.getPoolTeamMatchConfig === "function"
+        ? await DB.getPoolTeamMatchConfig(poolId, lagNo, currentMatchNo)
+        : null;
+
+      if (!matchRow && poolId && String(currentMatchNo) !== "1" && typeof DB?.getPoolTeamMatchConfig === "function") {
+        matchRow = await DB.getPoolTeamMatchConfig(poolId, lagNo, 1);
+      }
+
+      let lineup = [];
+      if (matchRow?.id && typeof DB?.getLineup === "function") {
+        lineup = await DB.getLineup(matchRow.id);
+      }
+
+      const ownSet = new Set();
+      if (matchRow?.goalie_player_id) ownSet.add(String(matchRow.goalie_player_id));
+      (lineup || [])
+        .filter((x) => x.person_type === "player")
+        .forEach((x) => ownSet.add(String(x.person_id)));
+
+      const allowedPlayers = (players || []).filter((p) => {
+        const pid = String(p.id);
+        return !usedSameMatchSet.has(pid) || ownSet.has(pid);
+      });
+
+      const playerOptions = ['<option value="">Välj spelare</option>']
+        .concat(allowedPlayers.map((p) => `<option value="${p.id}">${esc(p.full_name)}</option>`))
+        .join("");
+
+      let html = `
+        <div class="goalie-row">
+          <div class="goalie-col">
+            <label for="lineupGoalie">Målvakt</label>
+            <select id="lineupGoalie">${playerOptions}</select>
+          </div>
+          <div class="goalie-col goalie-random-col">
+            <label>&nbsp;</label>
+            <button type="button" class="row-btn" data-random-goalie="1">Slumpa</button>
+          </div>
+        </div>
+      `;
+
+      for (let i = 1; i <= 25; i++) {
+        html += `
+          <label for="lineupPlayer${i}" data-player-label="${i}">Spelare ${i}</label>
+          <select id="lineupPlayer${i}" data-player-select="${i}">${playerOptions}</select>
+        `;
+      }
+
+      box.innerHTML = html;
+
+      const goalieEl = byId("lineupGoalie");
+      if (goalieEl) goalieEl.value = matchRow?.goalie_player_id || "";
+
+      if (Array.isArray(lineup) && lineup.length) {
+        const playerIds = lineup
+          .filter((x) => x.person_type === "player")
+          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+          .map((x) => String(x.person_id));
+
+        const coachIds = lineup
+          .filter((x) => x.person_type === "coach")
+          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+          .map((x) => String(x.person_id));
+
+        for (let i = 1; i <= 25; i++) {
+          const el = byId(`lineupPlayer${i}`);
+          if (el) el.value = playerIds[i - 1] || "";
+        }
+
+        const coachSelect = byId("lineupCoach");
+        if (coachSelect) {
+          Array.from(coachSelect.options).forEach((opt) => {
+            opt.selected = coachIds.includes(String(opt.value));
+          });
+        }
+      }
+
+      attachLineupHandlers();
+      updateVisiblePlayers();
+      syncGoalieAgainstPlayers();
+      syncSelectedPlayersAcrossLineup();
+      updateCoachEnabledState();
+    } catch (err) {
+      setText("appError", err?.message || String(err));
+    }
+  }
+
+  function updateVisiblePlayers() {
+    const countSel = byId("lineupPlayerCount");
+    const count = safeInt(countSel?.value || "3", 3);
+
+    for (let i = 1; i <= 25; i++) {
+      const label = document.querySelector(`[data-player-label="${i}"]`);
+      const field = byId(`lineupPlayer${i}`);
+      if (!field) continue;
+
+      const show = i <= count;
+      field.style.display = show ? "" : "none";
+      if (label) label.style.display = show ? "" : "none";
+
+      if (!show) field.value = "";
+    }
+
+    updateCoachEnabledState();
+    syncGoalieAgainstPlayers();
+    syncSelectedPlayersAcrossLineup();
+  }
+
+  function queueAutoSaveLineup() {
+    clearTimeout(window.__nskLineupSaveTimer);
+    window.__nskLineupSaveTimer = setTimeout(async () => {
+      try {
+        await saveLaguppstallningMatchConfig(true);
+      } catch (err) {
+        setText("appError", err?.message || String(err));
+      }
+    }, 180);
+  }
+
+  function updateCoachEnabledState() {
+    const coachSelect = byId("lineupCoach");
+    if (!coachSelect) return;
+
+    const goalie = byId("lineupGoalie")?.value || "";
+    const count = safeInt(byId("lineupPlayerCount")?.value || "3", 3);
+
+    let selectedPlayers = 0;
+    for (let i = 1; i <= count; i++) {
+      const v = byId(`lineupPlayer${i}`)?.value || "";
+      if (v) selectedPlayers++;
+    }
+
+    const enabled = !!goalie && selectedPlayers === count;
+    coachSelect.disabled = !enabled;
+
+    if (!enabled) {
+      Array.from(coachSelect.options).forEach((opt) => {
+        opt.selected = false;
+      });
+    }
+  }
+
+  function syncSelectedPlayersAcrossLineup() {
+    const goalieId = byId("lineupGoalie")?.value || "";
+    const count = safeInt(byId("lineupPlayerCount")?.value || "3", 3);
+
+    const selectedIds = new Set();
+    if (goalieId) selectedIds.add(String(goalieId));
+
+    for (let i = 1; i <= count; i++) {
+      const v = byId(`lineupPlayer${i}`)?.value || "";
+      if (v) selectedIds.add(String(v));
+    }
+
+    for (let i = 1; i <= count; i++) {
+      const sel = byId(`lineupPlayer${i}`);
+      if (!sel) continue;
+
+      const currentValue = sel.value;
+      Array.from(sel.options).forEach((opt) => {
+        if (!opt.value) {
+          opt.hidden = false;
+          opt.disabled = false;
+          return;
+        }
+
+        const isOwnValue = String(opt.value) === String(currentValue);
+        const isTaken = selectedIds.has(String(opt.value)) && !isOwnValue;
+        opt.hidden = isTaken;
+        opt.disabled = isTaken;
+      });
+    }
+
+    const goalieSel = byId("lineupGoalie");
+    if (goalieSel) {
+      const currentGoalie = goalieSel.value;
+      Array.from(goalieSel.options).forEach((opt) => {
+        if (!opt.value) {
+          opt.hidden = false;
+          opt.disabled = false;
+          return;
+        }
+
+        let usedAsPlayer = false;
+        for (let i = 1; i <= count; i++) {
+          const v = byId(`lineupPlayer${i}`)?.value || "";
+          if (String(v) === String(opt.value)) {
+            usedAsPlayer = true;
+            break;
+          }
+        }
+
+        const isOwnValue = String(opt.value) === String(currentGoalie);
+        const isTaken = usedAsPlayer && !isOwnValue;
+        opt.hidden = isTaken;
+        opt.disabled = isTaken;
+      });
+    }
+  }
+
+  function attachLineupHandlers() {
+    const goalie = byId("lineupGoalie");
+    if (goalie && !goalie.dataset.bound) {
+      goalie.dataset.bound = "1";
+      goalie.addEventListener("change", async () => {
+        syncGoalieAgainstPlayers();
+        syncSelectedPlayersAcrossLineup();
+        updateCoachEnabledState();
+        await applyAutoCoachFromCurrentSelection();
+        queueAutoSaveLineup();
+      });
+    }
+
+    for (let i = 1; i <= 25; i++) {
+      const el = byId(`lineupPlayer${i}`);
+      if (el && !el.dataset.bound) {
+        el.dataset.bound = "1";
+        el.addEventListener("change", async () => {
+          syncGoalieAgainstPlayers();
+          syncSelectedPlayersAcrossLineup();
+          updateCoachEnabledState();
+          await applyAutoCoachFromCurrentSelection();
+          queueAutoSaveLineup();
+        });
+      }
+    }
+
+    const coachSelect = byId("lineupCoach");
+    if (coachSelect && !coachSelect.dataset.bound) {
+      coachSelect.dataset.bound = "1";
+      coachSelect.addEventListener("change", () => queueAutoSaveLineup());
+    }
+
+    const startTime = byId("lineupStartTime");
+    if (startTime && !startTime.dataset.bound) {
+      startTime.dataset.bound = "1";
+      startTime.addEventListener("change", () => queueAutoSaveLineup());
+    }
+
+    const opponent = byId("lineupOpponent");
+    if (opponent && !opponent.dataset.bound) {
+      opponent.dataset.bound = "1";
+      opponent.addEventListener("input", () => queueAutoSaveLineup());
+    }
+
+    const plan = byId("lineupPlan");
+    if (plan && !plan.dataset.bound) {
+      plan.dataset.bound = "1";
+      plan.addEventListener("change", () => queueAutoSaveLineup());
+    }
+
+    const countSel = byId("lineupPlayerCount");
+    if (countSel && !countSel.dataset.bound) {
+      countSel.dataset.bound = "1";
+      countSel.addEventListener("change", () => {
+        updateVisiblePlayers();
+        syncSelectedPlayersAcrossLineup();
+        queueAutoSaveLineup();
+      });
+    }
+  }
+
+  function syncGoalieAgainstPlayers() {
+    const goalieId = byId("lineupGoalie")?.value || "";
+    const count = safeInt(byId("lineupPlayerCount")?.value || "3", 3);
+
+    for (let i = 1; i <= count; i++) {
+      const sel = byId(`lineupPlayer${i}`);
+      if (!sel) continue;
+      if (sel.value && String(sel.value) === String(goalieId)) {
+        sel.value = "";
+      }
+    }
+
+    syncSelectedPlayersAcrossLineup();
+  }
+
+  async function applyAutoCoach(playerIds) {
+    if (typeof DB?.listPlayers !== "function" || typeof DB?.listCoaches !== "function" || typeof DB?.listPlayerCoachMap !== "function") {
+      return;
+    }
+
+    const players = await DB.listPlayers();
+    const coaches = await DB.listCoaches();
+    const mappings = await DB.listPlayerCoachMap();
+
+    const playerMap = {};
+    players.forEach((p) => { playerMap[String(p.id)] = p.full_name; });
+
+    const coachMap = {};
+    coaches.forEach((c) => { coachMap[normalizeCoachMapName(c.full_name)] = String(c.id); });
+
+    const playerCoachMap = {};
+    (mappings || []).forEach((m) => {
+      const playerKey = normalizeCoachMapName(m.player_name);
+      const coachKey = normalizeCoachMapName(m.coach_name);
+      if (playerKey && coachKey) playerCoachMap[playerKey] = coachKey;
+    });
+
+    const autoCoachIds = new Set();
+    (playerIds || []).forEach((pid) => {
+      const playerName = normalizeCoachMapName(playerMap[String(pid)]);
+      const coachName = playerCoachMap[playerName];
+      if (coachName && coachMap[coachName]) {
+        autoCoachIds.add(coachMap[coachName]);
+      }
+    });
+
+    const coachSelect = byId("lineupCoach");
+    if (!coachSelect) return;
+
+    Array.from(coachSelect.options).forEach((opt) => {
+      opt.selected = autoCoachIds.has(String(opt.value));
+    });
+  }
+
+  async function applyAutoCoachFromCurrentSelection() {
+    const count = safeInt(byId("lineupPlayerCount")?.value || "3", 3);
+    const ids = [];
+
+    const goalie = byId("lineupGoalie")?.value || "";
+    if (goalie) ids.push(goalie);
+
+    for (let i = 1; i <= count; i++) {
+      const v = byId(`lineupPlayer${i}`)?.value || "";
+      if (v) ids.push(v);
+    }
+
+    await applyAutoCoach(ids);
+    updateCoachEnabledState();
+  }
+
+  async function randomizeGoalie() {
+    if (typeof DB?.listPlayers !== "function" || typeof DB?.listGoalieStats !== "function") return;
+
+    const count = safeInt(byId("lineupPlayerCount")?.value || "3", 3);
+    const selectedPlayerIds = [];
+
+    for (let i = 1; i <= count; i++) {
+      const v = byId(`lineupPlayer${i}`)?.value || "";
+      if (v) selectedPlayerIds.push(String(v));
+    }
+
+    const players = await DB.listPlayers();
+    const goalieStats = await DB.listGoalieStats();
+
+    const statCount = {};
+    players.forEach((p) => { statCount[p.full_name] = 0; });
+    goalieStats.forEach((g) => {
+      const n = String(g.goalie_name || "");
+      statCount[n] = (statCount[n] || 0) + 1;
+    });
+
+    const candidates = players.filter((p) => !selectedPlayerIds.includes(String(p.id)));
+    if (!candidates.length) {
+      setText("lineupMsg", "Ingen spelare finns kvar att slumpa som målvakt.");
+      return;
+    }
+
+    let min = Infinity;
+    candidates.forEach((p) => {
+      const c = statCount[p.full_name] ?? 0;
+      if (c < min) min = c;
+    });
+
+    const lowest = candidates.filter((p) => (statCount[p.full_name] ?? 0) === min);
+    const chosen = lowest.length === 1 ? lowest[0] : lowest[Math.floor(Math.random() * lowest.length)];
+
+    const goalieSel = byId("lineupGoalie");
+    if (goalieSel) goalieSel.value = String(chosen.id);
+
+    syncGoalieAgainstPlayers();
+    await applyAutoCoachFromCurrentSelection();
+    queueAutoSaveLineup();
+    setText("lineupMsg", `Målvakt slumpad: ${chosen.full_name}`);
+  }
+
+  async function fillLaguppstallningFormFromSelection() {
+    const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
+    const matchNo = byId("lineupMatch")?.value || "1";
+    const poolId = sessionStorage.getItem("nsk2_pool_id") || "";
+
+    const title = byId("laguppstallningTitle");
+    if (title) title.textContent = `Lag ${lagNo} • Match ${matchNo}`;
+
+    const fromCreate = sessionStorage.getItem("nsk2_lineup_from_create") === "1";
+    if (fromCreate) {
+      sessionStorage.removeItem("nsk2_lineup_from_create");
+
+      if (byId("lineupStartTime")) byId("lineupStartTime").value = "";
+      if (byId("lineupOpponent")) byId("lineupOpponent").value = "";
+      if (byId("lineupPlan")) byId("lineupPlan").value = "Plan 1";
+      if (byId("lineupGoalie")) byId("lineupGoalie").value = "";
+
+      const coachSelect = byId("lineupCoach");
+      if (coachSelect) {
+        Array.from(coachSelect.options).forEach((opt) => { opt.selected = false; });
+      }
+
+      for (let i = 1; i <= 25; i++) {
+        const el = byId(`lineupPlayer${i}`);
+        if (el) el.value = "";
+      }
+
+      updateCoachEnabledState();
+      syncSelectedPlayersAcrossLineup();
+      return;
+    }
+
+    if (!poolId) return;
+
+    try {
+      const rowCurrent = typeof DB?.getPoolTeamMatchConfig === "function"
+        ? await DB.getPoolTeamMatchConfig(poolId, lagNo, matchNo)
+        : null;
+      const row1 = (String(matchNo) !== "1" && typeof DB?.getPoolTeamMatchConfig === "function")
+        ? await DB.getPoolTeamMatchConfig(poolId, lagNo, 1)
+        : null;
+
+      const sourceRow = rowCurrent || row1;
+
+      await renderCoachOptions();
+      await renderLineupSelectors();
+
+      if (byId("lineupStartTime")) byId("lineupStartTime").value = rowCurrent?.start_time || "";
+      if (byId("lineupOpponent")) byId("lineupOpponent").value = rowCurrent?.opponent || "";
+      if (byId("lineupPlan")) byId("lineupPlan").value = rowCurrent?.plan || "Plan 1";
+      if (byId("lineupPlayerCount")) {
+        byId("lineupPlayerCount").value = String(
+          rowCurrent?.player_count || sourceRow?.player_count || byId("lineupPlayerCount")?.value || "3"
+        );
+      }
+
+      updateVisiblePlayers();
+      setActiveMatchButton(matchNo);
+
+      if (byId("lineupGoalie")) {
+        byId("lineupGoalie").value = rowCurrent?.goalie_player_id || sourceRow?.goalie_player_id || "";
+      }
+
+      let lineup = [];
+      if (rowCurrent?.id && typeof DB?.getLineup === "function") {
+        lineup = await DB.getLineup(rowCurrent.id);
+      }
+
+      if ((!lineup || !lineup.length) && row1?.id && typeof DB?.getLineup === "function") {
+        lineup = await DB.getLineup(row1.id);
+      }
+
+      if (lineup?.length) {
+        const playerIds = lineup
+          .filter((x) => x.person_type === "player")
+          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+          .map((x) => String(x.person_id));
+
+        const coachIds = lineup
+          .filter((x) => x.person_type === "coach")
+          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+          .map((x) => String(x.person_id));
+
+        const coachSelect = byId("lineupCoach");
+        if (coachSelect) {
+          Array.from(coachSelect.options).forEach((opt) => {
+            opt.selected = coachIds.includes(String(opt.value));
+          });
+        }
+
+        for (let i = 1; i <= 25; i++) {
+          const el = byId(`lineupPlayer${i}`);
+          if (el) el.value = playerIds[i - 1] || "";
+        }
+      } else {
+        const coachSelect = byId("lineupCoach");
+        if (coachSelect) {
+          Array.from(coachSelect.options).forEach((opt) => {
+            opt.selected = false;
+          });
+        }
+
+        for (let i = 1; i <= 25; i++) {
+          const el = byId(`lineupPlayer${i}`);
+          if (el) el.value = "";
+        }
+      }
+
+      syncGoalieAgainstPlayers();
+      syncSelectedPlayersAcrossLineup();
+      await applyAutoCoachFromCurrentSelection();
+      updateCoachEnabledState();
+
+      if (!rowCurrent && String(matchNo) !== "1") {
+        queueAutoSaveLineup();
+      }
+    } catch (err) {
+      setText("appError", err?.message || String(err));
+    }
+  }
+
+  async function validateUniquePlayersPerMatch(poolId, lagNo, matchNo, goalieId, playerIds) {
+    if (typeof DB?.listPoolTeamMatchConfigs !== "function") return "";
+
+    const rows = await DB.listPoolTeamMatchConfigs(poolId);
+
+    for (const row of rows) {
+      const sameMatch = String(row.match_no) === String(matchNo);
+      const otherLag = String(row.lag_no) !== String(lagNo);
+      if (!sameMatch || !otherLag) continue;
+
+      const taken = new Set();
+      if (row.goalie_player_id) taken.add(String(row.goalie_player_id));
+
+      const lineup = row.id && typeof DB?.getLineup === "function" ? await DB.getLineup(row.id) : [];
+      lineup
+        .filter((x) => x.person_type === "player")
+        .forEach((x) => taken.add(String(x.person_id)));
+
+      if (goalieId && taken.has(String(goalieId))) {
+        return "Vald målvakt används redan i ett annat lag i samma match.";
+      }
+
+      for (const pid of playerIds) {
+        if (taken.has(String(pid))) {
+          return "En vald spelare används redan i ett annat lag i samma match.";
+        }
+      }
+    }
+
+    return "";
+  }
+
+  async function saveLaguppstallningMatchConfig(silent = false) {
+    const poolId = sessionStorage.getItem("nsk2_pool_id") || "";
+    const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
+    const matchNo = byId("lineupMatch")?.value || "1";
+
+    if (!poolId) {
+      if (!silent) setText("appError", "Saknar valt poolspel.");
+      return;
+    }
+
+    const goalie = byId("lineupGoalie")?.value || "";
+    const playerCount = safeInt(byId("lineupPlayerCount")?.value || "3", 3);
+    const selectedPlayers = [];
+
+    for (let i = 1; i <= playerCount; i++) {
+      const val = byId(`lineupPlayer${i}`)?.value || "";
+      if (!val) continue;
+
+      if (goalie && val === goalie) {
+        if (!silent) setText("lineupMsg", "Målvakt kan inte vara samma som spelare.");
+        return;
+      }
+
+      if (selectedPlayers.includes(val)) {
+        if (!silent) setText("lineupMsg", "En spelare kan bara väljas en gång.");
+        return;
+      }
+
+      selectedPlayers.push(val);
+    }
+
+    const poolConflict = await validateUniquePlayersPerMatch(poolId, lagNo, matchNo, goalie, selectedPlayers);
+    if (poolConflict) {
+      if (!silent) setText("lineupMsg", poolConflict);
+      return;
+    }
+
+    try {
+      await applyAutoCoachFromCurrentSelection();
+
+      const coachSelect = byId("lineupCoach");
+      const coachIds = coachSelect
+        ? Array.from(coachSelect.selectedOptions).map((o) => o.value).filter(Boolean)
+        : [];
+
+      if (typeof DB?.savePoolTeamMatchConfig !== "function") {
+        throw new Error("DB.savePoolTeamMatchConfig saknas.");
+      }
+
+      const matchRow = await DB.savePoolTeamMatchConfig({
+        pool_id: poolId,
+        lag_no: safeInt(lagNo, 1),
+        match_no: safeInt(matchNo, 1),
+        start_time: byId("lineupStartTime")?.value || null,
+        opponent: byId("lineupOpponent")?.value?.trim() || "",
+        plan: byId("lineupPlan")?.value || "Plan 1",
+        player_count: playerCount,
+        goalie_player_id: goalie || null,
+        players_on_field: [goalie, ...selectedPlayers].filter(Boolean)
+      });
+
+      if (typeof DB?.saveLineup === "function") {
+        await DB.saveLineup(matchRow.id, selectedPlayers, coachIds);
+      }
+
+      await regenerateShiftSchemaFor(poolId, lagNo, matchNo);
+
+      const onBytesschemaPage = !!byId("shiftTableWrap");
+      const activeShiftMatch = byId("shiftMatch")?.value || "";
+      if (onBytesschemaPage && String(activeShiftMatch) === String(matchNo)) {
+        await renderShiftSchema();
+      }
+
+      if (!silent) setText("lineupMsg", "Laguppställning sparad.");
+    } catch (err) {
+      setText("appError", err?.message || String(err));
+    }
+  }
+
+  async function initLaguppstallningPage() {
+    const teamButtonsBox = byId("laguppstallningTeamButtons");
+    const matchSelect = byId("lineupMatch");
+    const lineupBox = byId("lineupSelectors");
+    const coachSelect = byId("lineupCoach");
+
+    if (!teamButtonsBox || !matchSelect || !lineupBox || !coachSelect) return;
+
+    try {
+      const poolId = sessionStorage.getItem("nsk2_pool_id");
+      let teams = 2;
+      let matches = 4;
+      let playersOnField = 3;
+
+      if (poolId && typeof DB?.getPool === "function") {
+        const pool = await DB.getPool(poolId);
+        teams = safeInt(pool?.teams || "2", 2);
+        matches = safeInt(pool?.matches || "4", 4);
+        playersOnField = safeInt(pool?.players_on_field || "3", 3);
+      }
+
+      renderLaguppstallningTeamButtons(teams);
+      renderLaguppstallningMatchOptions(matches);
+      renderMatchButtons(matches);
+      renderPlayerCountOptions(playersOnField);
+      await renderCoachOptions();
+      await renderLineupSelectors();
+
+      const savedLag = sessionStorage.getItem("nsk2_lag_nr") || "1";
+      setActiveLagButton(savedLag);
+      const currentMatch = byId("lineupMatch")?.value || "1";
+      setActiveMatchButton(currentMatch);
+
+      updateVisiblePlayers();
+      attachLineupHandlers();
+      updateCoachEnabledState();
+      await fillLaguppstallningFormFromSelection();
+
+      if (!matchSelect.dataset.bound) {
+        matchSelect.dataset.bound = "1";
+        matchSelect.addEventListener("change", async () => {
+          setActiveMatchButton(matchSelect.value || "1");
+          await fillLaguppstallningFormFromSelection();
+        });
+      }
+    } catch (err) {
+      setText("appError", err?.message || String(err));
+    }
+  }
+
+  async function initBytesschemaPage() {
+    const teamBox = byId("shiftTeamButtons");
+    const matchSelect = byId("shiftMatch");
+    if (!teamBox || !matchSelect) return;
+
+    try {
+      const poolId = sessionStorage.getItem("nsk2_pool_id");
+      if (!poolId) {
+        setText("shiftMsg", "Välj först ett poolspel från startsidan.");
+        return;
+      }
+
+      const pool = await DB.getPool(poolId);
+      const teams = safeInt(pool?.teams || "2", 2);
+      const matches = safeInt(pool?.matches || "4", 4);
+
+      renderShiftTeamButtons(teams);
+      renderShiftMatchOptions(matches);
+      renderShiftMatchList(matches);
+
+      const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
+      setActiveShiftTeamButton(lagNo);
+      setActiveShiftMatchButton(matchSelect.value || "1");
+
+      if (!matchSelect.dataset.bound) {
+        matchSelect.dataset.bound = "1";
+        matchSelect.addEventListener("change", async () => {
+          setActiveShiftMatchButton(matchSelect.value || "1");
+          await renderShiftSchema();
+        });
+      }
+
+      await renderShiftSchema();
+    } catch (err) {
+      setText("appError", err?.message || String(err));
+    }
+  }
+
+  async function renderShiftSchema() {
+    const poolId = sessionStorage.getItem("nsk2_pool_id");
+    const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
+    const matchNo = byId("shiftMatch")?.value || "1";
+    if (!poolId) return;
+
+    const pool = await DB.getPool(poolId);
+    let row = await DB.getPoolTeamMatchConfig(poolId, lagNo, matchNo);
+    if (!row && String(matchNo) !== "1") row = await DB.getPoolTeamMatchConfig(poolId, lagNo, 1);
+
+    const players = await DB.listPlayers();
+    const coaches = await DB.listCoaches();
+    const playerMap = {};
+    const coachMap = {};
+    players.forEach((p) => { playerMap[String(p.id)] = p.full_name; });
+    coaches.forEach((c) => { coachMap[String(c.id)] = c.full_name; });
+
+    const title = `Match ${matchNo} • Lag ${lagNo}`;
+    setText("bytesschemaTitle", title);
+    setText("shiftHeaderMain", title);
+    setText("shiftStart", row?.start_time || "—");
+    setText("shiftDate", pool?.pool_date || "—");
+    setText("shiftOpponent", row?.opponent || "—");
+    setText("shiftPlan", row?.plan || "—");
+
+    const goalieName = row?.goalie_player_id ? shortName(playerMap[String(row.goalie_player_id)] || "—") : "—";
+    setText("shiftGoalieName", goalieName);
+
+    let coachNames = "—";
+    if (row?.id) {
+      const lineup = await DB.getLineup(row.id);
+      const ids = lineup
+        .filter((x) => x.person_type === "coach")
+        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+        .map((x) => shortName(coachMap[String(x.person_id)] || "—"))
+        .filter(Boolean);
+      if (ids.length) coachNames = ids.join(", ");
+    }
+    setText("shiftCoachNames", coachNames);
+
+    setActiveShiftTeamButton(lagNo);
+    setActiveShiftMatchButton(matchNo);
+
+    const rows = await DB.listShiftSchema(poolId, lagNo, matchNo);
+    const wrap = byId("shiftTableWrap");
+    if (!wrap) return;
+
+    if (!rows.length) {
+      wrap.innerHTML = '<div class="small">Inget bytesschema ännu. Spara laguppställning först.</div>';
+      return;
+    }
+
+    wrap.innerHTML = `
+      <table class="shift-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>#</th>
+            <th>Tid kvar</th>
+            <th>På plan</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((r, i) => {
+            const shiftNo = i + 1;
+            const names = (Array.isArray(r.players_json) ? r.players_json : [])
+              .map((id) => shortName(playerMap[String(id)] || "—"))
+              .join("<br>");
+            const done = r.done ? "done" : "";
+            return `
+              <tr>
+                <td class="check-cell"><span class="shift-check ${done}" data-shift-toggle="${shiftNo}"></span></td>
+                <td>${shiftNo}</td>
+                <td>${esc(r.time_left)}</td>
+                <td class="shift-players">${names || "—"}</td>
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  async function getCoachNamesForLag(poolId, lagNo) {
+    const rows = await DB.listPoolTeamMatchConfigs(poolId);
+    const coaches = await DB.listCoaches();
+    const coachMap = {};
+    coaches.forEach((c) => { coachMap[String(c.id)] = c.full_name; });
+
+    const firstRow =
+      rows.find((r) => String(r.lag_no) === String(lagNo) && String(r.match_no) === "1") ||
+      rows.find((r) => String(r.lag_no) === String(lagNo));
+
+    if (!firstRow?.id) return "—";
+
+    const lineup = await DB.getLineup(firstRow.id);
+    const names = lineup
+      .filter((x) => x.person_type === "coach")
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+      .map((x) => shortName(coachMap[String(x.person_id)] || ""))
+      .filter(Boolean);
+
+    return names.length ? names.join(", ") : "—";
+  }
+
+  async function initLagPage() {
+    const box = byId("teamButtons");
+    if (!box) return;
+
+    const poolId = sessionStorage.getItem("nsk2_pool_id");
+    if (!poolId) {
+      box.innerHTML = '<div class="small">Välj först ett poolspel från startsidan.</div>';
+      return;
+    }
+
+    try {
+      const pool = await DB.getPool(poolId);
+      const teams = safeInt(pool?.teams || "2", 2);
+
+      box.innerHTML = "";
+
+      for (let lagNo = 1; lagNo <= teams; lagNo++) {
+        const coachNames = await getCoachNamesForLag(poolId, lagNo);
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "team-btn lag-overview-btn";
+        btn.dataset.activeLag = String(lagNo);
+        btn.dataset.activePool = String(poolId);
+        btn.innerHTML = `
+          <div class="lag-overview-title">Lag ${lagNo}</div>
+          <div class="lag-overview-coaches">Tränare: ${esc(coachNames)}</div>
+        `;
+        box.appendChild(btn);
+      }
+
+      setText("activeTeam", `${pool.place || "Poolspel"} • ${pool.pool_date || ""}`);
+    } catch (err) {
+      setText("appError", err?.message || String(err));
+    }
+  }
+
+  async function renderCoachMatchView(poolId, lagNo, matchNo) {
+    const rows = await DB.listShiftSchema(poolId, lagNo, matchNo);
+    const players = await DB.listPlayers();
+    const playerMap = {};
+    players.forEach((p) => { playerMap[String(p.id)] = p.full_name; });
+
+    if (!rows.length) {
+      setText("shiftLabel", "Inget schema");
+      setText("currentPlayers", "—");
+      setText("nextPlayers", "—");
+      setText("currentShiftMeta", "Pågående byte: —");
+      setText("nextShiftMeta", "Nästa byte: —");
+      setHtml("matchInfo", "");
+      return;
+    }
+
+    if (matchCurrentShiftIndex < 0) matchCurrentShiftIndex = 0;
+    if (matchCurrentShiftIndex > rows.length - 1) matchCurrentShiftIndex = rows.length - 1;
+
+    const current = rows[matchCurrentShiftIndex] || null;
+    const next = rows[matchCurrentShiftIndex + 1] || null;
+
+    const row =
+      await DB.getPoolTeamMatchConfig(poolId, lagNo, matchNo) ||
+      await DB.getPoolTeamMatchConfig(poolId, lagNo, 1);
+
+    const currentClock = current?.time_left || "—";
+    const nextClock = next?.time_left || "—";
+    const totalShifts = rows.length;
+
+    setText("shiftLabel", `Lag ${lagNo} • Match ${matchNo}`);
+    setText("currentShiftMeta", `Pågående byte: ${matchCurrentShiftIndex + 1} av ${totalShifts} • Klockslag ${currentClock}`);
+    setText("nextShiftMeta", `Nästa byte: ${next ? (matchCurrentShiftIndex + 2) : "—"} av ${totalShifts} • Klockslag ${nextClock}`);
+
+    setHtml("matchInfo", `
+      <div class="matchvy-info-row">Motståndare: <strong>${esc(row?.opponent || "—")}</strong></div>
+      <div class="matchvy-info-row">Plan: <strong>${esc(row?.plan || "Plan 1")}</strong></div>
+      <div class="matchvy-info-row">Start: <strong>${esc(row?.start_time || "—")}</strong></div>
+    `);
+
+    const currentNames = (Array.isArray(current?.players_json) ? current.players_json : [])
+      .map((id) => shortName(playerMap[String(id)] || "—"))
+      .join("<br>");
+
+    const nextNames = (Array.isArray(next?.players_json) ? next.players_json : [])
+      .map((id) => shortName(playerMap[String(id)] || "—"))
+      .join("<br>");
+
+    setHtml("currentPlayers", currentNames || "—");
+    setHtml("nextPlayers", nextNames || "—");
+  }
+
+  async function initMatchvyPage() {
+    const currentEl = byId("currentPlayers");
+    const nextEl = byId("nextPlayers");
+    if (!currentEl || !nextEl) return;
+
+    const poolId = sessionStorage.getItem("nsk2_pool_id");
+    const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
+    const matchNo = sessionStorage.getItem("nsk2_match_no") || "1";
+
+    if (!poolId) {
+      setText("appError", "Välj först ett poolspel.");
+      return;
+    }
+
+    matchCurrentShiftIndex = 0;
+    await renderCoachMatchView(poolId, lagNo, matchNo);
+
+    const prevBtn = byId("prevShiftBtn");
+    const nextBtn = byId("nextShiftBtn");
+
+    if (prevBtn && !prevBtn.dataset.boundMatchvy) {
+      prevBtn.dataset.boundMatchvy = "1";
+      prevBtn.addEventListener("click", async () => {
+        matchCurrentShiftIndex = Math.max(0, matchCurrentShiftIndex - 1);
+        await renderCoachMatchView(poolId, lagNo, matchNo);
+      });
+    }
+
+    if (nextBtn && !nextBtn.dataset.boundMatchvy) {
+      nextBtn.dataset.boundMatchvy = "1";
+      nextBtn.addEventListener("click", async () => {
+        const rows = await DB.listShiftSchema(poolId, lagNo, matchNo);
+        if (!rows.length) return;
+        const currentShiftNo = matchCurrentShiftIndex + 1;
+        await DB.setShiftDone(poolId, lagNo, matchNo, currentShiftNo, true);
+        matchCurrentShiftIndex = Math.min(rows.length - 1, matchCurrentShiftIndex + 1);
+        await renderCoachMatchView(poolId, lagNo, matchNo);
+      });
+    }
+  }
 
   async function importPlayersAndCoachesFromJsonObject(data) {
     if (!data || typeof data !== "object") {
@@ -407,18 +1480,14 @@ window.NSK2App = (() => {
     const players = Array.isArray(data.players) ? data.players : [];
     const coaches = Array.isArray(data.coaches) ? data.coaches : [];
 
-    const existingPlayers = typeof DB?.listPlayers === "function"
-      ? await DB.listPlayers()
-      : [];
-    const existingCoaches = typeof DB?.listCoaches === "function"
-      ? await DB.listCoaches()
-      : [];
+    const existingPlayers = typeof DB?.listPlayers === "function" ? await DB.listPlayers() : [];
+    const existingCoaches = typeof DB?.listCoaches === "function" ? await DB.listCoaches() : [];
 
     const existingPlayerNames = new Set(
-      existingPlayers.map(p => String(p.full_name || "").trim().toLowerCase()).filter(Boolean)
+      existingPlayers.map((p) => String(p.full_name || "").trim().toLowerCase()).filter(Boolean)
     );
     const existingCoachNames = new Set(
-      existingCoaches.map(c => String(c.full_name || "").trim().toLowerCase()).filter(Boolean)
+      existingCoaches.map((c) => String(c.full_name || "").trim().toLowerCase()).filter(Boolean)
     );
 
     let addedPlayers = 0;
@@ -436,10 +1505,7 @@ window.NSK2App = (() => {
         continue;
       }
 
-      if (typeof DB?.addPlayer !== "function") {
-        throw new Error("DB.addPlayer saknas.");
-      }
-
+      if (typeof DB?.addPlayer !== "function") throw new Error("DB.addPlayer saknas.");
       await DB.addPlayer(safeName);
       existingPlayerNames.add(key);
       addedPlayers++;
@@ -455,10 +1521,7 @@ window.NSK2App = (() => {
         continue;
       }
 
-      if (typeof DB?.addCoach !== "function") {
-        throw new Error("DB.addCoach saknas.");
-      }
-
+      if (typeof DB?.addCoach !== "function") throw new Error("DB.addCoach saknas.");
       await DB.addCoach(safeName);
       existingCoachNames.add(key);
       addedCoaches++;
@@ -494,7 +1557,7 @@ window.NSK2App = (() => {
           <input class="inline-name-input" value="${esc(item.full_name)}" data-inline-${type}="${item.id}">
         </div>
         <div class="row-actions">
-          <button class="row-btn danger" data-delete-${type}="${item.id}">Ta bort</button>
+          <button class="row-btn danger" type="button" data-delete-${type}="${item.id}">Ta bort</button>
         </div>
       </div>
     `;
@@ -600,13 +1663,41 @@ window.NSK2App = (() => {
     }
   }
 
+  async function initGoalieStatsPage() {
+    const list = byId("goalieStatsList");
+    if (!list) return;
+
+    try {
+      const stats = typeof DB?.listGoalieStats === "function" ? await DB.listGoalieStats() : [];
+      const grouped = {};
+
+      stats.forEach((row) => {
+        const name = row.goalie_name || "Okänd";
+        if (!grouped[name]) grouped[name] = new Set();
+        grouped[name].add(row.match_id);
+      });
+
+      const rows = Object.entries(grouped)
+        .map(([name, set]) => ({ name, count: set.size }))
+        .sort((a, b) => b.count - a.count);
+
+      list.innerHTML = rows.map((r) => `
+        <div class="listrow">
+          <strong>${esc(r.name)}</strong> — ${r.count} matcher
+        </div>
+      `).join("");
+    } catch (err) {
+      setText("appError", err?.message || String(err));
+    }
+  }
+
   return { init };
 })();
 
 window.addEventListener("DOMContentLoaded", () => {
   window.NSK2App.init().catch((err) => {
     const el = document.getElementById("appError");
-    if (el) el.textContent = err.message || String(err);
+    if (el) el.textContent = err?.message || String(err);
     console.error(err);
   });
 });
