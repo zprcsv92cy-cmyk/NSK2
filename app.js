@@ -1,3 +1,13 @@
+if (!window.DB) {
+  console.error("DB.js är inte laddad");
+  document.addEventListener("DOMContentLoaded", () => {
+    const el = document.getElementById("appError");
+    if (el) {
+      el.textContent = "Databasen kunde inte laddas (db.js saknas).";
+    }
+  });
+}
+
 async function checkAppVersion() {
   try {
     const pathParts = location.pathname.split("/").filter(Boolean);
