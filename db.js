@@ -28,19 +28,33 @@ window.DB = (() => {
       return exact.data[0].id;
     }
 
-    const anyTeam = await client
-      .from("nsk_teams")
-      .select("id, name, season, created_at")
-      .order("created_at", { ascending: true })
-      .limit(1);
+    async function getTeamId() {
+  const client = await getClient();
 
-    if (!anyTeam.error && Array.isArray(anyTeam.data) && anyTeam.data.length) {
-      return anyTeam.data[0].id;
-    }
+  const exact = await client
+    .from("nsk_teams")
+    .select("id, name, season, created_at")
+    .eq("name", "NSK Team 18")
+    .eq("season", "2026")
+    .order("created_at", { ascending: true })
+    .limit(1);
 
-    throw new Error("Inget team finns i databasen. Lägg först in NSK Team 18 i Supabase.");
+  if (!exact.error && Array.isArray(exact.data) && exact.data.length) {
+    return exact.data[0].id;
   }
 
+  const anyTeam = await client
+    .from("nsk_teams")
+    .select("id, name, season, created_at")
+    .order("created_at", { ascending: true })
+    .limit(1);
+
+  if (!anyTeam.error && Array.isArray(anyTeam.data) && anyTeam.data.length) {
+    return anyTeam.data[0].id;
+  }
+
+  throw new Error("Inget team finns i databasen. Lägg först in NSK Team 18 i Supabase.");
+}
   async function ensureNoDuplicateByName(table, teamId, fullName) {
     const client = await getClient();
     const { data, error } = await client
