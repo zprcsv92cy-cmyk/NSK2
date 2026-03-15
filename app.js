@@ -82,29 +82,18 @@ window.NSK2App = (() => {
   async function init() {
     await checkAppVersion();
 
-    if (window.Auth?.init) {
-      try { await Auth.init(); } catch (err) { console.warn("Auth init failed", err); }
-    }
+    if (window.Auth?.init) await Auth.init();
 
     bindGlobalClicks();
 
-    async function safePageInit(fn) {
-      try {
-        await fn();
-      } catch (err) {
-        console.error(err);
-        setText("appError", err?.message || String(err));
-      }
-    }
-
-    await safePageInit(initStartsidaPage);
-    await safePageInit(initSkapaPoolspelPage);
-    await safePageInit(initLaguppstallningPage);
-    await safePageInit(initBytesschemaPage);
-    await safePageInit(initTruppenPage);
-    await safePageInit(initGoalieStatsPage);
-    await safePageInit(initLagPage);
-    await safePageInit(initMatchvyPage);
+    await initStartsidaPage();
+    await initSkapaPoolspelPage();
+    await initLaguppstallningPage();
+    await initBytesschemaPage();
+    await initTruppenPage();
+    await initGoalieStatsPage();
+    await initLagPage();
+    await initMatchvyPage();
   }
 
   function bindGlobalClicks() {
@@ -173,10 +162,6 @@ window.NSK2App = (() => {
         }
 
         if (t.dataset.deleteCoach) {
-          if (typeof DB?.deleteCoach !== "function") {
-            setText("appError", "deleteCoach saknas i db.js");
-            return;
-          }
           await deleteCoach(t.dataset.deleteCoach);
           return;
         }
@@ -308,7 +293,7 @@ window.NSK2App = (() => {
       if (byId("poolDate")) byId("poolDate").value = "";
     }
 
-    if (editId && typeof DB?.getPool === "function") {
+    if (editId) {
       try {
         const pool = await DB.getPool(editId);
         if (byId("poolPlace")) byId("poolPlace").value = pool.place || "";
@@ -366,15 +351,12 @@ window.NSK2App = (() => {
       };
 
       const editId = sessionStorage.getItem("nsk2_edit_pool_id");
-      if (editId && typeof DB?.updatePool === "function") {
+      if (editId) {
         await DB.updatePool(editId, payload);
         sessionStorage.removeItem("nsk2_edit_pool_id");
       } else {
-        if (typeof DB?.addPool !== "function") {
-          throw new Error("DB.addPool saknas i db.js");
-        }
         const pool = await DB.addPool(payload);
-        if (pool?.id) sessionStorage.setItem("nsk2_pool_id", pool.id);
+        sessionStorage.setItem("nsk2_pool_id", pool.id);
       }
 
       setText("poolMsg", "Poolspel sparat");
@@ -385,13 +367,6 @@ window.NSK2App = (() => {
   }
 
   async function initLaguppstallningPage() {
-    const __dbMissing = [];
-    if (typeof DB?.getPoolTeamMatchConfig !== "function") __dbMissing.push("getPoolTeamMatchConfig");
-    if (typeof DB?.savePoolTeamMatchConfig !== "function") __dbMissing.push("savePoolTeamMatchConfig");
-    if (typeof DB?.getLineup !== "function") __dbMissing.push("getLineup");
-    if (typeof DB?.saveLineup !== "function") __dbMissing.push("saveLineup");
-    if (__dbMissing.length) { const el = byId("appError"); if (el) el.textContent = "initLaguppstallningPage väntar på Supabase-stöd: " + __dbMissing.join(", "); return; }
-
     const teamButtonsBox = byId("laguppstallningTeamButtons");
     const matchSelect = byId("lineupMatch");
     const lineupBox = byId("lineupSelectors");
@@ -1155,11 +1130,6 @@ window.NSK2App = (() => {
   }
 
   async function initBytesschemaPage() {
-    const __dbMissing = [];
-    if (typeof DB?.listShiftSchema !== "function") __dbMissing.push("listShiftSchema");
-    if (typeof DB?.saveShiftSchema !== "function") __dbMissing.push("saveShiftSchema");
-    if (__dbMissing.length) { const el = byId("appError"); if (el) el.textContent = "initBytesschemaPage väntar på Supabase-stöd: " + __dbMissing.join(", "); return; }
-
     const teamBox = byId("shiftTeamButtons");
     const matchSelect = byId("shiftMatch");
     if (!teamBox || !matchSelect) return;
@@ -1526,11 +1496,6 @@ window.NSK2App = (() => {
   }
 
   async function initLagPage() {
-    const __dbMissing = [];
-    if (typeof DB?.listPoolTeamMatchConfigs !== "function") __dbMissing.push("listPoolTeamMatchConfigs");
-    if (typeof DB?.getLineup !== "function") __dbMissing.push("getLineup");
-    if (__dbMissing.length) { const el = byId("appError"); if (el) el.textContent = "initLagPage väntar på Supabase-stöd: " + __dbMissing.join(", "); return; }
-
     const box = byId("teamButtons");
     if (!box) return;
 
@@ -1620,10 +1585,6 @@ window.NSK2App = (() => {
   }
 
   async function initMatchvyPage() {
-    const __dbMissing = [];
-    if (typeof DB?.listShiftSchema !== "function") __dbMissing.push("listShiftSchema");
-    if (__dbMissing.length) { const el = byId("appError"); if (el) el.textContent = "initMatchvyPage väntar på Supabase-stöd: " + __dbMissing.join(", "); return; }
-
     const currentEl = byId("currentPlayers");
     const nextEl = byId("nextPlayers");
     if (!currentEl || !nextEl) return;
@@ -1661,6 +1622,95 @@ window.NSK2App = (() => {
         matchCurrentShiftIndex = Math.min(rows.length - 1, matchCurrentShiftIndex + 1);
         await renderCoachMatchView(poolId, lagNo, matchNo);
       });
+    }
+  }
+
+
+  async function importPlayersAndCoachesFromJsonObject(data) {
+    if (!data || typeof data !== "object") {
+      throw new Error("Ogiltig backupfil.");
+    }
+
+    const players = Array.isArray(data.players) ? data.players : [];
+    const coaches = Array.isArray(data.coaches) ? data.coaches : [];
+
+    const existingPlayers = typeof DB?.listPlayers === "function"
+      ? await DB.listPlayers()
+      : [];
+    const existingCoaches = typeof DB?.listCoaches === "function"
+      ? await DB.listCoaches()
+      : [];
+
+    const existingPlayerNames = new Set(
+      existingPlayers.map(p => String(p.full_name || "").trim().toLowerCase()).filter(Boolean)
+    );
+    const existingCoachNames = new Set(
+      existingCoaches.map(c => String(c.full_name || "").trim().toLowerCase()).filter(Boolean)
+    );
+
+    let addedPlayers = 0;
+    let addedCoaches = 0;
+    let skippedPlayers = 0;
+    let skippedCoaches = 0;
+
+    for (const name of players) {
+      const safeName = String(name || "").trim();
+      const key = safeName.toLowerCase();
+      if (!safeName) continue;
+
+      if (existingPlayerNames.has(key)) {
+        skippedPlayers++;
+        continue;
+      }
+
+      if (typeof DB?.addPlayer !== "function") {
+        throw new Error("DB.addPlayer saknas.");
+      }
+
+      await DB.addPlayer(safeName);
+      existingPlayerNames.add(key);
+      addedPlayers++;
+    }
+
+    for (const name of coaches) {
+      const safeName = String(name || "").trim();
+      const key = safeName.toLowerCase();
+      if (!safeName) continue;
+
+      if (existingCoachNames.has(key)) {
+        skippedCoaches++;
+        continue;
+      }
+
+      if (typeof DB?.addCoach !== "function") {
+        throw new Error("DB.addCoach saknas.");
+      }
+
+      await DB.addCoach(safeName);
+      existingCoachNames.add(key);
+      addedCoaches++;
+    }
+
+    if (typeof DB?.listPlayers === "function") await renderPlayers();
+    if (typeof DB?.listCoaches === "function") await renderCoaches();
+
+    setText(
+      "truppenMsg",
+      `Import klar. Spelare: +${addedPlayers} (${skippedPlayers} fanns redan). Tränare: +${addedCoaches} (${skippedCoaches} fanns redan).`
+    );
+  }
+
+  async function handleImportBackupFile(file) {
+    if (!file) return;
+
+    try {
+      setText("truppenMsg", "Importerar backup...");
+      const text = await file.text();
+      const data = JSON.parse(text);
+      await importPlayersAndCoachesFromJsonObject(data);
+    } catch (err) {
+      setText("truppenMsg", err?.message || String(err));
+      setText("appError", err?.message || String(err));
     }
   }
 
@@ -1753,12 +1803,21 @@ window.NSK2App = (() => {
     byId("addPlayerBtn")?.addEventListener("click", addPlayer);
     byId("addCoachBtn")?.addEventListener("click", addCoach);
 
-    if (typeof DB?.listPlayers === "function") {
-      await renderPlayers();
+    const importBtn = byId("importBackupBtn");
+    const importInput = byId("importBackupFile");
+
+    if (importBtn && importInput && !importBtn.dataset.bound) {
+      importBtn.dataset.bound = "1";
+      importBtn.addEventListener("click", () => importInput.click());
+      importInput.addEventListener("change", async (e) => {
+        const file = e.target?.files?.[0];
+        await handleImportBackupFile(file);
+        importInput.value = "";
+      });
     }
-    if (typeof DB?.listCoaches === "function") {
-      await renderCoaches();
-    }
+
+    await renderPlayers();
+    await renderCoaches();
 
     if (!truppenRealtime && typeof DB?.subscribeTruppen === "function") {
       truppenRealtime = await DB.subscribeTruppen(async (type) => {
@@ -1771,11 +1830,6 @@ window.NSK2App = (() => {
   async function initGoalieStatsPage() {
     const list = byId("goalieStatsList");
     if (!list) return;
-
-    if (typeof DB?.listGoalieStats !== "function") {
-      list.innerHTML = '<div class="listrow">Målvaktsstatistik är inte aktiverad ännu.</div>';
-      return;
-    }
 
     const stats = await DB.listGoalieStats();
     const grouped = {};
