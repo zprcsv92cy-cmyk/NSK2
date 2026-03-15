@@ -82,18 +82,29 @@ window.NSK2App = (() => {
   async function init() {
     await checkAppVersion();
 
-    if (window.Auth?.init) await Auth.init();
+    if (window.Auth?.init) {
+      try { await Auth.init(); } catch (err) { console.warn("Auth init failed", err); }
+    }
 
     bindGlobalClicks();
 
-    await initStartsidaPage();
-    await initSkapaPoolspelPage();
-    await initLaguppstallningPage();
-    await initBytesschemaPage();
-    await initTruppenPage();
-    await initGoalieStatsPage();
-    await initLagPage();
-    await initMatchvyPage();
+    async function safePageInit(fn) {
+      try {
+        await fn();
+      } catch (err) {
+        console.error(err);
+        setText("appError", err?.message || String(err));
+      }
+    }
+
+    await safePageInit(initStartsidaPage);
+    await safePageInit(initSkapaPoolspelPage);
+    await safePageInit(initLaguppstallningPage);
+    await safePageInit(initBytesschemaPage);
+    await safePageInit(initTruppenPage);
+    await safePageInit(initGoalieStatsPage);
+    await safePageInit(initLagPage);
+    await safePageInit(initMatchvyPage);
   }
 
   function bindGlobalClicks() {
@@ -162,6 +173,10 @@ window.NSK2App = (() => {
         }
 
         if (t.dataset.deleteCoach) {
+          if (typeof DB?.deleteCoach !== "function") {
+            setText("appError", "deleteCoach saknas i db.js");
+            return;
+          }
           await deleteCoach(t.dataset.deleteCoach);
           return;
         }
@@ -293,7 +308,7 @@ window.NSK2App = (() => {
       if (byId("poolDate")) byId("poolDate").value = "";
     }
 
-    if (editId) {
+    if (editId && typeof DB?.getPool === "function") {
       try {
         const pool = await DB.getPool(editId);
         if (byId("poolPlace")) byId("poolPlace").value = pool.place || "";
@@ -351,12 +366,15 @@ window.NSK2App = (() => {
       };
 
       const editId = sessionStorage.getItem("nsk2_edit_pool_id");
-      if (editId) {
+      if (editId && typeof DB?.updatePool === "function") {
         await DB.updatePool(editId, payload);
         sessionStorage.removeItem("nsk2_edit_pool_id");
       } else {
+        if (typeof DB?.addPool !== "function") {
+          throw new Error("DB.addPool saknas i db.js");
+        }
         const pool = await DB.addPool(payload);
-        sessionStorage.setItem("nsk2_pool_id", pool.id);
+        if (pool?.id) sessionStorage.setItem("nsk2_pool_id", pool.id);
       }
 
       setText("poolMsg", "Poolspel sparat");
@@ -367,6 +385,13 @@ window.NSK2App = (() => {
   }
 
   async function initLaguppstallningPage() {
+    const __dbMissing = [];
+    if (typeof DB?.getPoolTeamMatchConfig !== "function") __dbMissing.push("getPoolTeamMatchConfig");
+    if (typeof DB?.savePoolTeamMatchConfig !== "function") __dbMissing.push("savePoolTeamMatchConfig");
+    if (typeof DB?.getLineup !== "function") __dbMissing.push("getLineup");
+    if (typeof DB?.saveLineup !== "function") __dbMissing.push("saveLineup");
+    if (__dbMissing.length) { const el = byId("appError"); if (el) el.textContent = "initLaguppstallningPage väntar på Supabase-stöd: " + __dbMissing.join(", "); return; }
+
     const teamButtonsBox = byId("laguppstallningTeamButtons");
     const matchSelect = byId("lineupMatch");
     const lineupBox = byId("lineupSelectors");
@@ -1117,15 +1142,10 @@ window.NSK2App = (() => {
       await DB.saveLineup(matchRow.id, selectedPlayers, coachIds);
       await regenerateShiftSchemaFor(poolId, lagNo, matchNo);
 
-      const onNewBytesschemaPage = !!byId("shiftAllMatchesWrap");
-      const onOldBytesschemaPage = !!byId("shiftTableWrap");
-      if (onNewBytesschemaPage) {
-        await renderAllShiftSchemasForLag();
-      } else if (onOldBytesschemaPage) {
-        const activeShiftMatch = byId("shiftMatch")?.value || "";
-        if (String(activeShiftMatch) === String(matchNo)) {
-          await renderShiftSchema();
-        }
+      const onBytesschemaPage = !!byId("shiftTableWrap");
+      const activeShiftMatch = byId("shiftMatch")?.value || "";
+      if (onBytesschemaPage && String(activeShiftMatch) === String(matchNo)) {
+        await renderShiftSchema();
       }
 
       if (!silent) setText("lineupMsg", "Laguppställning sparad.");
@@ -1135,9 +1155,14 @@ window.NSK2App = (() => {
   }
 
   async function initBytesschemaPage() {
+    const __dbMissing = [];
+    if (typeof DB?.listShiftSchema !== "function") __dbMissing.push("listShiftSchema");
+    if (typeof DB?.saveShiftSchema !== "function") __dbMissing.push("saveShiftSchema");
+    if (__dbMissing.length) { const el = byId("appError"); if (el) el.textContent = "initBytesschemaPage väntar på Supabase-stöd: " + __dbMissing.join(", "); return; }
+
     const teamBox = byId("shiftTeamButtons");
-    const allWrap = byId("shiftAllMatchesWrap");
-    if (!teamBox || !allWrap) return;
+    const matchSelect = byId("shiftMatch");
+    if (!teamBox || !matchSelect) return;
 
     try {
       const poolId = sessionStorage.getItem("nsk2_pool_id");
@@ -1148,14 +1173,17 @@ window.NSK2App = (() => {
 
       const pool = await DB.getPool(poolId);
       const teams = parseInt(pool?.teams || "2", 10) || 2;
-      const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
+      const matches = parseInt(pool?.matches || "4", 10) || 4;
 
       renderShiftTeamButtons(teams);
-      setActiveShiftTeamButton(lagNo);
-      setText("bytesschemaTitle", "Bytesschema");
-      setText("shiftHeaderMain", `Lag ${lagNo}`);
+      renderShiftMatchOptions(matches);
+      renderShiftMatchList(matches);
 
-      await renderAllShiftSchemasForLag();
+      const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
+      setActiveShiftTeamButton(lagNo);
+      setActiveShiftMatchButton(matchSelect.value || "1");
+
+      await renderShiftSchema();
     } catch (err) {
       setText("appError", err.message || String(err));
     }
@@ -1175,8 +1203,7 @@ window.NSK2App = (() => {
       btn.addEventListener("click", async () => {
         sessionStorage.setItem("nsk2_lag_nr", String(i));
         setActiveShiftTeamButton(String(i));
-        setText("shiftHeaderMain", `Lag ${i}`);
-        await renderAllShiftSchemasForLag();
+        await renderShiftSchema();
       });
       box.appendChild(btn);
     }
@@ -1189,13 +1216,46 @@ window.NSK2App = (() => {
     });
   }
 
-  async function toggleShiftDone(shiftNo, matchNoOverride = "") {
+  function renderShiftMatchList(matches) {
+    const box = byId("shiftMatchList");
+    if (!box) return;
+    box.innerHTML = "";
+
+    for (let i = 1; i <= matches; i++) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "match-list-item";
+      btn.dataset.shiftMatchCard = String(i);
+      btn.innerHTML = `<div class="match-list-title">Match ${i}</div><div class="match-list-sub">Visa bytesschema</div>`;
+      box.appendChild(btn);
+    }
+  }
+
+  function renderShiftMatchOptions(matches) {
+    const sel = byId("shiftMatch");
+    if (!sel) return;
+    sel.innerHTML = "";
+    for (let i = 1; i <= matches; i++) {
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      opt.textContent = `Match ${i}`;
+      sel.appendChild(opt);
+    }
+  }
+
+  function setActiveShiftMatchButton(matchNo) {
+    document.querySelectorAll("[data-shift-match-card]").forEach(btn => {
+      if (btn.dataset.shiftMatchCard === String(matchNo)) btn.classList.add("active-team-btn");
+      else btn.classList.remove("active-team-btn");
+    });
+  }
+
+  async function toggleShiftDone(shiftNo) {
     const poolId = sessionStorage.getItem("nsk2_pool_id");
     const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
-    const el = document.querySelector(`[data-shift-toggle="${shiftNo}"][data-shift-match="${matchNoOverride}"]`) ||
-               document.querySelector(`[data-shift-toggle="${shiftNo}"]`);
-    const matchNo = matchNoOverride || el?.dataset.shiftMatch || byId("shiftMatch")?.value || "1";
+    const matchNo = byId("shiftMatch")?.value || "1";
 
+    const el = document.querySelector(`[data-shift-toggle="${shiftNo}"]`);
     if (!el || !poolId) return;
 
     const nextDone = !el.classList.contains("done");
@@ -1360,106 +1420,90 @@ window.NSK2App = (() => {
     return shifts;
   }
 
-  async function renderAllShiftSchemasForLag() {
-    const wrap = byId("shiftAllMatchesWrap");
-    if (!wrap) return;
-
+  async function renderShiftSchema() {
     const poolId = sessionStorage.getItem("nsk2_pool_id");
     const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
+    const matchNo = byId("shiftMatch")?.value || "1";
     if (!poolId) return;
 
     const pool = await DB.getPool(poolId);
-    const matches = parseInt(pool?.matches || "4", 10) || 4;
+    let row = await DB.getPoolTeamMatchConfig(poolId, lagNo, matchNo);
+    if (!row && String(matchNo) !== "1") row = await DB.getPoolTeamMatchConfig(poolId, lagNo, 1);
 
     const players = await DB.listPlayers();
     const coaches = await DB.listCoaches();
     const playerMap = {};
     const coachMap = {};
-
     players.forEach(p => { playerMap[String(p.id)] = p.full_name; });
     coaches.forEach(c => { coachMap[String(c.id)] = c.full_name; });
 
-    let html = "";
+    const title = `Match ${matchNo} • Lag ${lagNo}`;
+    setText("bytesschemaTitle", title);
+    setText("shiftHeaderMain", title);
+    setText("shiftStart", row?.start_time || "—");
+    setText("shiftDate", pool?.pool_date || "—");
+    setText("shiftOpponent", row?.opponent || "—");
+    setText("shiftPlan", row?.plan || "—");
 
-    for (let matchNo = 1; matchNo <= matches; matchNo++) {
-      let row = await DB.getPoolTeamMatchConfig(poolId, lagNo, matchNo);
-      if (!row && matchNo !== 1) {
-        row = await DB.getPoolTeamMatchConfig(poolId, lagNo, 1);
-      }
+    const goalieName = row?.goalie_player_id ? shortName(playerMap[String(row.goalie_player_id)] || "—") : "—";
+    setText("shiftGoalieName", goalieName);
 
-      let rows = await DB.listShiftSchema(poolId, lagNo, matchNo);
-      if (!rows.length) {
-        await regenerateShiftSchemaFor(poolId, lagNo, matchNo);
-        rows = await DB.listShiftSchema(poolId, lagNo, matchNo);
-      }
+    let coachNames = "—";
+    if (row?.id) {
+      const lineup = await DB.getLineup(row.id);
+      const ids = lineup
+        .filter(x => x.person_type === "coach")
+        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+        .map(x => shortName(coachMap[String(x.person_id)] || "—"))
+        .filter(Boolean);
+      if (ids.length) coachNames = ids.join(", ");
+    }
+    setText("shiftCoachNames", coachNames);
 
-      let goalieName = "—";
-      let coachNames = "—";
+    setActiveShiftTeamButton(lagNo);
+    setActiveShiftMatchButton(matchNo);
 
-      if (row?.goalie_player_id) {
-        goalieName = shortName(playerMap[String(row.goalie_player_id)] || "—");
-      }
+    const rows = await DB.listShiftSchema(poolId, lagNo, matchNo);
+    const wrap = byId("shiftTableWrap");
+    if (!wrap) return;
 
-      if (row?.id) {
-        const lineup = await DB.getLineup(row.id);
-        const coachList = lineup
-          .filter(x => x.person_type === "coach")
-          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-          .map(x => shortName(coachMap[String(x.person_id)] || "—"))
-          .filter(Boolean);
-        if (coachList.length) coachNames = coachList.join(", ");
-      }
-
-      const table = rows.length ? `
-        <table class="shift-table">
-          <thead>
-            <tr>
-              <th></th>
-              <th>#</th>
-              <th>Tid kvar</th>
-              <th>På plan</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows.map((r, i) => {
-              const shiftNo = i + 1;
-              const names = (Array.isArray(r.players_json) ? r.players_json : [])
-                .map(id => shortName(playerMap[String(id)] || "—"))
-                .join("<br>");
-              const done = r.done ? "done" : "";
-              return `
-                <tr>
-                  <td class="check-cell"><span class="shift-check ${done}" data-shift-toggle="${shiftNo}" data-shift-match="${matchNo}"></span></td>
-                  <td>${shiftNo}</td>
-                  <td>${esc(r.time_left || "—")}</td>
-                  <td class="shift-players">${names || "—"}</td>
-                </tr>
-              `;
-            }).join("")}
-          </tbody>
-        </table>
-      ` : `<div class="small">Inget bytesschema ännu för Match ${matchNo}.</div>`;
-
-      html += `
-        <section class="match-schema-block">
-          <h2>Match ${matchNo}</h2>
-          <div class="match-schema-details">
-            <div class="small"><strong>Start:</strong> ${esc(row?.start_time || "—")}</div>
-            <div class="small"><strong>Datum:</strong> ${esc(pool?.pool_date || "—")}</div>
-            <div class="small"><strong>Motståndare:</strong> ${esc(row?.opponent || "—")}</div>
-            <div class="small"><strong>Plan:</strong> ${esc(row?.plan || "—")}</div>
-            <div class="small"><strong>Tränare:</strong> ${esc(coachNames)}</div>
-            <div class="small"><strong>Målvakt:</strong> ${esc(goalieName)}</div>
-          </div>
-          ${table}
-        </section>
-      `;
+    if (!rows.length) {
+      wrap.innerHTML = '<div class="small">Inget bytesschema ännu. Spara laguppställning först.</div>';
+      return;
     }
 
-    wrap.innerHTML = html;
+    wrap.innerHTML = `
+      <table class="shift-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>#</th>
+            <th>Tid kvar</th>
+            <th>På plan</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((r, i) => {
+            const shiftNo = i + 1;
+            const names = (Array.isArray(r.players_json) ? r.players_json : [])
+              .map(id => shortName(playerMap[String(id)] || "—"))
+              .join("<br>");
+            const done = r.done ? "done" : "";
+            return `
+              <tr>
+                <td class="check-cell"><span class="shift-check ${done}" data-shift-toggle="${shiftNo}"></span></td>
+                <td>${shiftNo}</td>
+                <td>${esc(r.time_left)}</td>
+                <td class="shift-players">${names || "—"}</td>
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      </table>
+    `;
   }
 
-  async function getCoachNamesForLag(poolId, lagNo) {  async function getCoachNamesForLag(poolId, lagNo) {
+  async function getCoachNamesForLag(poolId, lagNo) {
     const rows = await DB.listPoolTeamMatchConfigs(poolId);
     const coaches = await DB.listCoaches();
     const coachMap = {};
@@ -1482,6 +1526,11 @@ window.NSK2App = (() => {
   }
 
   async function initLagPage() {
+    const __dbMissing = [];
+    if (typeof DB?.listPoolTeamMatchConfigs !== "function") __dbMissing.push("listPoolTeamMatchConfigs");
+    if (typeof DB?.getLineup !== "function") __dbMissing.push("getLineup");
+    if (__dbMissing.length) { const el = byId("appError"); if (el) el.textContent = "initLagPage väntar på Supabase-stöd: " + __dbMissing.join(", "); return; }
+
     const box = byId("teamButtons");
     if (!box) return;
 
@@ -1571,6 +1620,10 @@ window.NSK2App = (() => {
   }
 
   async function initMatchvyPage() {
+    const __dbMissing = [];
+    if (typeof DB?.listShiftSchema !== "function") __dbMissing.push("listShiftSchema");
+    if (__dbMissing.length) { const el = byId("appError"); if (el) el.textContent = "initMatchvyPage väntar på Supabase-stöd: " + __dbMissing.join(", "); return; }
+
     const currentEl = byId("currentPlayers");
     const nextEl = byId("nextPlayers");
     if (!currentEl || !nextEl) return;
@@ -1700,10 +1753,14 @@ window.NSK2App = (() => {
     byId("addPlayerBtn")?.addEventListener("click", addPlayer);
     byId("addCoachBtn")?.addEventListener("click", addCoach);
 
-    await renderPlayers();
-    await renderCoaches();
+    if (typeof DB?.listPlayers === "function") {
+      await renderPlayers();
+    }
+    if (typeof DB?.listCoaches === "function") {
+      await renderCoaches();
+    }
 
-    if (!truppenRealtime) {
+    if (!truppenRealtime && typeof DB?.subscribeTruppen === "function") {
       truppenRealtime = await DB.subscribeTruppen(async (type) => {
         if (type === "players") await renderPlayers();
         if (type === "coaches") await renderCoaches();
@@ -1714,6 +1771,11 @@ window.NSK2App = (() => {
   async function initGoalieStatsPage() {
     const list = byId("goalieStatsList");
     if (!list) return;
+
+    if (typeof DB?.listGoalieStats !== "function") {
+      list.innerHTML = '<div class="listrow">Målvaktsstatistik är inte aktiverad ännu.</div>';
+      return;
+    }
 
     const stats = await DB.listGoalieStats();
     const grouped = {};
