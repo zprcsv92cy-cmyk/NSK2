@@ -6,15 +6,27 @@ window.DB = (() => {
     return String(name || "").trim();
   }
 
+  function isUuid(value) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || "").trim());
+  }
+
+  function nullableUuid(value) {
+    if (value === null || value === undefined) return null;
+    const s = String(value).trim();
+    if (!s || s.toLowerCase() === "null" || s.toLowerCase() === "undefined") return null;
+    return isUuid(s) ? s : null;
+  }
+
+  function uuidArray(values) {
+    if (!Array.isArray(values)) return [];
+    return values.map(nullableUuid).filter(Boolean);
+  }
+
   async function getClient() {
-    try {
-      if (window.Auth?.init) await window.Auth.init();
-      const client = window.Auth?.getClient?.();
-      if (!client) throw new Error("Supabase-klient saknas.");
-      return client;
-    } catch (err) {
-      throw new Error(err?.message || "Supabase-klient saknas.");
-    }
+    if (window.Auth?.init) await window.Auth.init();
+    const client = window.Auth?.getClient?.();
+    if (!client) throw new Error("Supabase-klient saknas.");
+    return client;
   }
 
   async function findExactTeam(client) {
@@ -43,7 +55,6 @@ window.DB = (() => {
 
   async function getTeamId() {
     const client = await getClient();
-
     const exact = await findExactTeam(client);
     if (exact?.id) return exact.id;
 
@@ -263,7 +274,6 @@ window.DB = (() => {
 
   async function deletePool(id) {
     const client = await getClient();
-
     await client.from("nsk_shift_schemas").delete().eq("pool_id", id);
     await client.from("nsk_lineups").delete().eq("pool_id", id);
     await client.from("nsk_pool_team_match_configs").delete().eq("pool_id", id);
@@ -283,10 +293,10 @@ window.DB = (() => {
       .order("match_no", { ascending: true });
 
     if (error) throw error;
-
     return (data || []).map((r) => ({
       ...r,
-      players_on_field: Array.isArray(r.players_on_field) ? r.players_on_field.map(String) : []
+      goalie_player_id: nullableUuid(r.goalie_player_id),
+      players_on_field: uuidArray(r.players_on_field)
     }));
   }
 
@@ -301,13 +311,11 @@ window.DB = (() => {
       .maybeSingle();
 
     if (error) throw error;
-
-    return data
-      ? {
-          ...data,
-          players_on_field: Array.isArray(data.players_on_field) ? data.players_on_field.map(String) : []
-        }
-      : null;
+    return data ? {
+      ...data,
+      goalie_player_id: nullableUuid(data.goalie_player_id),
+      players_on_field: uuidArray(data.players_on_field)
+    } : null;
   }
 
   async function savePoolTeamMatchConfig(payload) {
@@ -321,8 +329,8 @@ window.DB = (() => {
       opponent: payload.opponent || "",
       plan: payload.plan || "Plan 1",
       player_count: Number(payload.player_count || 0),
-      goalie_player_id: payload.goalie_player_id || null,
-      players_on_field: Array.isArray(payload.players_on_field) ? payload.players_on_field.map(String) : []
+      goalie_player_id: nullableUuid(payload.goalie_player_id),
+      players_on_field: uuidArray(payload.players_on_field)
     };
 
     const existing = await client
@@ -342,10 +350,10 @@ window.DB = (() => {
         .single();
 
       if (error) throw error;
-
       return {
         ...data,
-        players_on_field: Array.isArray(data.players_on_field) ? data.players_on_field.map(String) : []
+        goalie_player_id: nullableUuid(data.goalie_player_id),
+        players_on_field: uuidArray(data.players_on_field)
       };
     }
 
@@ -356,10 +364,10 @@ window.DB = (() => {
       .single();
 
     if (error) throw error;
-
     return {
       ...data,
-      players_on_field: Array.isArray(data.players_on_field) ? data.players_on_field.map(String) : []
+      goalie_player_id: nullableUuid(data.goalie_player_id),
+      players_on_field: uuidArray(data.players_on_field)
     };
   }
 
@@ -368,7 +376,7 @@ window.DB = (() => {
     const row = await getPoolTeamMatchConfig(poolId, lagNo, matchNo);
     const fallback = String(matchNo) !== "1" ? await getPoolTeamMatchConfig(poolId, lagNo, 1) : null;
     const source = row || fallback;
-    const ids = Array.isArray(source?.players_on_field) ? source.players_on_field.map(String) : [];
+    const ids = uuidArray(source?.players_on_field);
     if (!ids.length) return players;
     return players.filter((p) => ids.includes(String(p.id)));
   }
@@ -382,7 +390,10 @@ window.DB = (() => {
       .order("sort_order", { ascending: true });
 
     if (error) throw error;
-    return data || [];
+    return (data || []).map((r) => ({
+      ...r,
+      person_id: nullableUuid(r.person_id)
+    })).filter((r) => r.person_id);
   }
 
   async function saveLineup(matchConfigId, playerIds, coachIds) {
@@ -399,22 +410,22 @@ window.DB = (() => {
     const rows = [];
     let sort = 1;
 
-    (playerIds || []).forEach((p) => {
+    uuidArray(playerIds).forEach((p) => {
       rows.push({
         pool_id: poolId,
         match_config_id: matchConfigId,
         person_type: "player",
-        person_id: String(p),
+        person_id: p,
         sort_order: sort++
       });
     });
 
-    (coachIds || []).forEach((c) => {
+    uuidArray(coachIds).forEach((c) => {
       rows.push({
         pool_id: poolId,
         match_config_id: matchConfigId,
         person_type: "coach",
-        person_id: String(c),
+        person_id: c,
         sort_order: sort++
       });
     });
@@ -446,7 +457,7 @@ window.DB = (() => {
       .eq("person_type", "player");
 
     if (error) throw error;
-    return (data || []).map((r) => r.person_id);
+    return (data || []).map((r) => nullableUuid(r.person_id)).filter(Boolean);
   }
 
   async function listShiftSchema(poolId, lagNo, matchNo) {
@@ -460,7 +471,10 @@ window.DB = (() => {
       .order("shift_no", { ascending: true });
 
     if (error) throw error;
-    return data || [];
+    return (data || []).map((r) => ({
+      ...r,
+      players_json: uuidArray(r.players_json)
+    }));
   }
 
   async function saveShiftSchema(poolId, lagNo, matchNo, shifts) {
@@ -482,7 +496,7 @@ window.DB = (() => {
       shift_no: i + 1,
       period_no: Number(s.period_no || 1),
       time_left: s.time_left || "00:00",
-      players_json: Array.isArray(s.players) ? s.players.map(String) : [],
+      players_json: uuidArray(s.players),
       done: false
     }));
 
@@ -524,7 +538,6 @@ window.DB = (() => {
   async function listGoalieStats() {
     const client = await getClient();
     const teamId = await getTeamId();
-
     const { data, error } = await client
       .from("nsk_goalie_stats")
       .select("id, goalie_name, match_id")
@@ -537,7 +550,6 @@ window.DB = (() => {
   async function listPlayerCoachMap() {
     const client = await getClient();
     const teamId = await getTeamId();
-
     const { data, error } = await client
       .from("nsk_player_coach_map")
       .select("id, player_name, coach_name")
@@ -588,9 +600,7 @@ window.DB = (() => {
   }
 
   async function subscribeTruppen(_callback) {
-    return {
-      unsubscribe() {}
-    };
+    return { unsubscribe() {} };
   }
 
   return {
