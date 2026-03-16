@@ -22,6 +22,11 @@ window.DB = (() => {
     return values.map(nullableUuid).filter(Boolean);
   }
 
+  function safeInt(value, fallback) {
+    const n = parseInt(value, 10);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
   async function getClient() {
     if (window.Auth?.init) await window.Auth.init();
     const client = window.Auth?.getClient?.();
@@ -55,6 +60,7 @@ window.DB = (() => {
 
   async function getTeamId() {
     const client = await getClient();
+
     const exact = await findExactTeam(client);
     if (exact?.id) return exact.id;
 
@@ -227,12 +233,12 @@ window.DB = (() => {
       place: payload.place || "",
       pool_date: payload.pool_date || null,
       status: payload.status || "Aktiv",
-      teams: Number(payload.teams || 2),
-      matches: Number(payload.matches || 4),
-      players_on_field: Number(payload.players_on_field || 3),
-      periods: Number(payload.periods || 1),
-      period_time: Number(payload.period_time || 15),
-      sub_time: Number(payload.sub_time || 90)
+      teams: safeInt(payload.teams || 2, 2),
+      matches: safeInt(payload.matches || 4, 4),
+      players_on_field: safeInt(payload.players_on_field || 3, 3),
+      periods: safeInt(payload.periods || 1, 1),
+      period_time: safeInt(payload.period_time || 15, 15),
+      sub_time: safeInt(payload.sub_time || 90, 90)
     };
 
     const { data, error } = await client
@@ -253,12 +259,12 @@ window.DB = (() => {
       place: payload.place || "",
       pool_date: payload.pool_date || null,
       status: payload.status || "Aktiv",
-      teams: Number(payload.teams || 2),
-      matches: Number(payload.matches || 4),
-      players_on_field: Number(payload.players_on_field || 3),
-      periods: Number(payload.periods || 1),
-      period_time: Number(payload.period_time || 15),
-      sub_time: Number(payload.sub_time || 90)
+      teams: safeInt(payload.teams || 2, 2),
+      matches: safeInt(payload.matches || 4, 4),
+      players_on_field: safeInt(payload.players_on_field || 3, 3),
+      periods: safeInt(payload.periods || 1, 1),
+      period_time: safeInt(payload.period_time || 15, 15),
+      sub_time: safeInt(payload.sub_time || 90, 90)
     };
 
     const { data, error } = await client
@@ -274,6 +280,7 @@ window.DB = (() => {
 
   async function deletePool(id) {
     const client = await getClient();
+
     await client.from("nsk_shift_schemas").delete().eq("pool_id", id);
     await client.from("nsk_lineups").delete().eq("pool_id", id);
     await client.from("nsk_pool_team_match_configs").delete().eq("pool_id", id);
@@ -306,8 +313,8 @@ window.DB = (() => {
       .from("nsk_pool_team_match_configs")
       .select("id, pool_id, lag_no, match_no, start_time, opponent, plan, player_count, goalie_player_id, players_on_field")
       .eq("pool_id", poolId)
-      .eq("lag_no", Number(lagNo))
-      .eq("match_no", Number(matchNo))
+      .eq("lag_no", safeInt(lagNo, 1))
+      .eq("match_no", safeInt(matchNo, 1))
       .maybeSingle();
 
     if (error) throw error;
@@ -323,12 +330,12 @@ window.DB = (() => {
 
     const safePayload = {
       pool_id: payload.pool_id,
-      lag_no: Number(payload.lag_no),
-      match_no: Number(payload.match_no),
+      lag_no: safeInt(payload.lag_no, 1),
+      match_no: safeInt(payload.match_no, 1),
       start_time: payload.start_time || null,
       opponent: payload.opponent || "",
       plan: payload.plan || "Plan 1",
-      player_count: Number(payload.player_count || 0),
+      player_count: safeInt(payload.player_count || 0, 0),
       goalie_player_id: nullableUuid(payload.goalie_player_id),
       players_on_field: uuidArray(payload.players_on_field)
     };
@@ -341,7 +348,9 @@ window.DB = (() => {
       .eq("match_no", safePayload.match_no)
       .maybeSingle();
 
-    if (!existing.error && existing.data?.id) {
+    if (existing.error) throw existing.error;
+
+    if (existing.data?.id) {
       const { data, error } = await client
         .from("nsk_pool_team_match_configs")
         .update(safePayload)
@@ -373,10 +382,15 @@ window.DB = (() => {
 
   async function getPlayersOnField(poolId, lagNo, matchNo) {
     const players = await listPlayers();
+
     const row = await getPoolTeamMatchConfig(poolId, lagNo, matchNo);
-    const fallback = String(matchNo) !== "1" ? await getPoolTeamMatchConfig(poolId, lagNo, 1) : null;
+    const fallback = String(matchNo) !== "1"
+      ? await getPoolTeamMatchConfig(poolId, lagNo, 1)
+      : null;
+
     const source = row || fallback;
     const ids = uuidArray(source?.players_on_field);
+
     if (!ids.length) return players;
     return players.filter((p) => ids.includes(String(p.id)));
   }
@@ -390,10 +404,9 @@ window.DB = (() => {
       .order("sort_order", { ascending: true });
 
     if (error) throw error;
-    return (data || []).map((r) => ({
-      ...r,
-      person_id: nullableUuid(r.person_id)
-    })).filter((r) => r.person_id);
+    return (data || [])
+      .map((r) => ({ ...r, person_id: nullableUuid(r.person_id) }))
+      .filter((r) => r.person_id);
   }
 
   async function saveLineup(matchConfigId, playerIds, coachIds) {
@@ -405,27 +418,29 @@ window.DB = (() => {
       .eq("id", matchConfigId)
       .maybeSingle();
 
+    if (cfg.error) throw cfg.error;
+
     const poolId = cfg.data?.pool_id || null;
 
     const rows = [];
     let sort = 1;
 
-    uuidArray(playerIds).forEach((p) => {
+    uuidArray(playerIds).forEach((id) => {
       rows.push({
         pool_id: poolId,
         match_config_id: matchConfigId,
         person_type: "player",
-        person_id: p,
+        person_id: id,
         sort_order: sort++
       });
     });
 
-    uuidArray(coachIds).forEach((c) => {
+    uuidArray(coachIds).forEach((id) => {
       rows.push({
         pool_id: poolId,
         match_config_id: matchConfigId,
         person_type: "coach",
-        person_id: c,
+        person_id: id,
         sort_order: sort++
       });
     });
@@ -460,23 +475,6 @@ window.DB = (() => {
     return (data || []).map((r) => nullableUuid(r.person_id)).filter(Boolean);
   }
 
-  async function listShiftSchema(poolId, lagNo, matchNo) {
-    const client = await getClient();
-    const { data, error } = await client
-      .from("nsk_shift_schemas")
-      .select("id, pool_id, lag_no, match_no, shift_no, period_no, time_left, players_json, done")
-      .eq("pool_id", poolId)
-      .eq("lag_no", Number(lagNo))
-      .eq("match_no", Number(matchNo))
-      .order("shift_no", { ascending: true });
-
-    if (error) throw error;
-    return (data || []).map((r) => ({
-      ...r,
-      players_json: uuidArray(r.players_json)
-    }));
-  }
-
   async function saveShiftSchema(poolId, lagNo, matchNo, shifts) {
     const client = await getClient();
 
@@ -484,17 +482,17 @@ window.DB = (() => {
       .from("nsk_shift_schemas")
       .delete()
       .eq("pool_id", poolId)
-      .eq("lag_no", Number(lagNo))
-      .eq("match_no", Number(matchNo));
+      .eq("lag_no", safeInt(lagNo, 1))
+      .eq("match_no", safeInt(matchNo, 1));
 
     if (del.error) throw del.error;
 
     const rows = (shifts || []).map((s, i) => ({
       pool_id: poolId,
-      lag_no: Number(lagNo),
-      match_no: Number(matchNo),
+      lag_no: safeInt(lagNo, 1),
+      match_no: safeInt(matchNo, 1),
       shift_no: i + 1,
-      period_no: Number(s.period_no || 1),
+      period_no: safeInt(s.period_no || 1, 1),
       time_left: s.time_left || "00:00",
       players_json: uuidArray(s.players),
       done: false
@@ -508,14 +506,31 @@ window.DB = (() => {
     return true;
   }
 
+  async function listShiftSchema(poolId, lagNo, matchNo) {
+    const client = await getClient();
+    const { data, error } = await client
+      .from("nsk_shift_schemas")
+      .select("id, pool_id, lag_no, match_no, shift_no, period_no, time_left, players_json, done")
+      .eq("pool_id", poolId)
+      .eq("lag_no", safeInt(lagNo, 1))
+      .eq("match_no", safeInt(matchNo, 1))
+      .order("shift_no", { ascending: true });
+
+    if (error) throw error;
+    return (data || []).map((r) => ({
+      ...r,
+      players_json: uuidArray(r.players_json)
+    }));
+  }
+
   async function deleteShiftSchema(poolId, lagNo, matchNo) {
     const client = await getClient();
     const { error } = await client
       .from("nsk_shift_schemas")
       .delete()
       .eq("pool_id", poolId)
-      .eq("lag_no", Number(lagNo))
-      .eq("match_no", Number(matchNo));
+      .eq("lag_no", safeInt(lagNo, 1))
+      .eq("match_no", safeInt(matchNo, 1));
 
     if (error) throw error;
     return true;
@@ -527,9 +542,9 @@ window.DB = (() => {
       .from("nsk_shift_schemas")
       .update({ done: !!done })
       .eq("pool_id", poolId)
-      .eq("lag_no", Number(lagNo))
-      .eq("match_no", Number(matchNo))
-      .eq("shift_no", Number(shiftNo));
+      .eq("lag_no", safeInt(lagNo, 1))
+      .eq("match_no", safeInt(matchNo, 1))
+      .eq("shift_no", safeInt(shiftNo, 1));
 
     if (error) throw error;
     return true;
@@ -538,6 +553,7 @@ window.DB = (() => {
   async function listGoalieStats() {
     const client = await getClient();
     const teamId = await getTeamId();
+
     const { data, error } = await client
       .from("nsk_goalie_stats")
       .select("id, goalie_name, match_id")
@@ -550,6 +566,7 @@ window.DB = (() => {
   async function listPlayerCoachMap() {
     const client = await getClient();
     const teamId = await getTeamId();
+
     const { data, error } = await client
       .from("nsk_player_coach_map")
       .select("id, player_name, coach_name")
@@ -563,6 +580,7 @@ window.DB = (() => {
   async function savePlayerCoachMap(playerName, coachName) {
     const client = await getClient();
     const teamId = await getTeamId();
+
     const safePlayer = normalizeName(playerName);
     const safeCoach = normalizeName(coachName);
 
@@ -577,7 +595,9 @@ window.DB = (() => {
       .eq("player_name", safePlayer)
       .maybeSingle();
 
-    if (!existing.error && existing.data?.id) {
+    if (existing.error) throw existing.error;
+
+    if (existing.data?.id) {
       const { data, error } = await client
         .from("nsk_player_coach_map")
         .update({ coach_name: safeCoach })
@@ -617,8 +637,8 @@ window.DB = (() => {
     addCoach,
     updateCoach,
     deleteCoach,
-    getPoolTeamMatchConfig,
     listPoolTeamMatchConfigs,
+    getPoolTeamMatchConfig,
     savePoolTeamMatchConfig,
     getPlayersOnField,
     getLineup,
