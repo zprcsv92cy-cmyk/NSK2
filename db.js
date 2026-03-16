@@ -13,18 +13,36 @@ window.DB = (() => {
   function nullableUuid(value) {
     if (value === null || value === undefined) return null;
     const s = String(value).trim();
-    if (!s || s.toLowerCase() === "null" || s.toLowerCase() === "undefined") return null;
+    if (!s) return null;
+    const lower = s.toLowerCase();
+    if (lower === "null" || lower === "undefined" || lower === "nan") return null;
     return isUuid(s) ? s : null;
   }
 
   function uuidArray(values) {
     if (!Array.isArray(values)) return [];
-    return values.map(nullableUuid).filter(Boolean);
+    return values
+      .map(nullableUuid)
+      .filter((v, i, arr) => !!v && arr.indexOf(v) === i);
   }
 
   function safeInt(value, fallback) {
     const n = parseInt(value, 10);
     return Number.isFinite(n) ? n : fallback;
+  }
+
+  function sanitizeMatchConfigPayload(payload) {
+    return {
+      pool_id: payload.pool_id,
+      lag_no: safeInt(payload.lag_no, 1),
+      match_no: safeInt(payload.match_no, 1),
+      start_time: payload.start_time || null,
+      opponent: String(payload.opponent || "").trim(),
+      plan: String(payload.plan || "Plan 1").trim() || "Plan 1",
+      player_count: safeInt(payload.player_count || 0, 0),
+      goalie_player_id: nullableUuid(payload.goalie_player_id),
+      players_on_field: uuidArray(payload.players_on_field)
+    };
   }
 
   async function getClient() {
@@ -300,6 +318,7 @@ window.DB = (() => {
       .order("match_no", { ascending: true });
 
     if (error) throw error;
+
     return (data || []).map((r) => ({
       ...r,
       goalie_player_id: nullableUuid(r.goalie_player_id),
@@ -318,6 +337,7 @@ window.DB = (() => {
       .maybeSingle();
 
     if (error) throw error;
+
     return data ? {
       ...data,
       goalie_player_id: nullableUuid(data.goalie_player_id),
@@ -327,20 +347,9 @@ window.DB = (() => {
 
   async function savePoolTeamMatchConfig(payload) {
     const client = await getClient();
+    const safePayload = sanitizeMatchConfigPayload(payload);
 
-    const safePayload = {
-      pool_id: payload.pool_id,
-      lag_no: safeInt(payload.lag_no, 1),
-      match_no: safeInt(payload.match_no, 1),
-      start_time: payload.start_time || null,
-      opponent: payload.opponent || "",
-      plan: payload.plan || "Plan 1",
-      player_count: safeInt(payload.player_count || 0, 0),
-      goalie_player_id: nullableUuid(payload.goalie_player_id),
-      players_on_field: uuidArray(payload.players_on_field)
-    };
-
-    const existing = await client
+    const { data: existing, error: existingError } = await client
       .from("nsk_pool_team_match_configs")
       .select("id")
       .eq("pool_id", safePayload.pool_id)
@@ -348,17 +357,18 @@ window.DB = (() => {
       .eq("match_no", safePayload.match_no)
       .maybeSingle();
 
-    if (existing.error) throw existing.error;
+    if (existingError) throw existingError;
 
-    if (existing.data?.id) {
+    if (existing?.id) {
       const { data, error } = await client
         .from("nsk_pool_team_match_configs")
         .update(safePayload)
-        .eq("id", existing.data.id)
+        .eq("id", existing.id)
         .select("id, pool_id, lag_no, match_no, start_time, opponent, plan, player_count, goalie_player_id, players_on_field")
         .single();
 
       if (error) throw error;
+
       return {
         ...data,
         goalie_player_id: nullableUuid(data.goalie_player_id),
@@ -373,6 +383,7 @@ window.DB = (() => {
       .single();
 
     if (error) throw error;
+
     return {
       ...data,
       goalie_player_id: nullableUuid(data.goalie_player_id),
@@ -404,6 +415,7 @@ window.DB = (() => {
       .order("sort_order", { ascending: true });
 
     if (error) throw error;
+
     return (data || [])
       .map((r) => ({ ...r, person_id: nullableUuid(r.person_id) }))
       .filter((r) => r.person_id);
@@ -412,15 +424,15 @@ window.DB = (() => {
   async function saveLineup(matchConfigId, playerIds, coachIds) {
     const client = await getClient();
 
-    const cfg = await client
+    const { data: cfg, error: cfgError } = await client
       .from("nsk_pool_team_match_configs")
       .select("pool_id")
       .eq("id", matchConfigId)
       .maybeSingle();
 
-    if (cfg.error) throw cfg.error;
+    if (cfgError) throw cfgError;
 
-    const poolId = cfg.data?.pool_id || null;
+    const poolId = cfg?.pool_id || null;
 
     const rows = [];
     let sort = 1;
@@ -517,6 +529,7 @@ window.DB = (() => {
       .order("shift_no", { ascending: true });
 
     if (error) throw error;
+
     return (data || []).map((r) => ({
       ...r,
       players_json: uuidArray(r.players_json)
@@ -588,20 +601,20 @@ window.DB = (() => {
       throw new Error("Spelare eller tränare saknas.");
     }
 
-    const existing = await client
+    const { data: existing, error: existingError } = await client
       .from("nsk_player_coach_map")
       .select("id")
       .eq("team_id", teamId)
       .eq("player_name", safePlayer)
       .maybeSingle();
 
-    if (existing.error) throw existing.error;
+    if (existingError) throw existingError;
 
-    if (existing.data?.id) {
+    if (existing?.id) {
       const { data, error } = await client
         .from("nsk_player_coach_map")
         .update({ coach_name: safeCoach })
-        .eq("id", existing.data.id)
+        .eq("id", existing.id)
         .select("id, player_name, coach_name")
         .single();
 
@@ -615,9 +628,9 @@ window.DB = (() => {
       .select("id, player_name, coach_name")
       .single();
 
-    if (error) throw error;
-    return data;
-  }
+      if (error) throw error;
+      return data;
+    }
 
   async function subscribeTruppen(_callback) {
     return { unsubscribe() {} };
