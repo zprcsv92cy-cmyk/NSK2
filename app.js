@@ -631,16 +631,21 @@ window.NSK2App = (() => {
     const countSel = byId("lineupPlayerCount");
     const count = safeInt(countSel?.value || "3", 3);
 
-    for (let i = 1; i <= 25; i++) {
+    for (let i = 1; i <= count; i++) {
       const label = document.querySelector(`[data-player-label="${i}"]`);
       const field = byId(`lineupPlayer${i}`);
       if (!field) continue;
+      field.style.display = "";
+      if (label) label.style.display = "";
+    }
 
-      const show = i <= count;
-      field.style.display = show ? "" : "none";
-      if (label) label.style.display = show ? "" : "none";
-
-      if (!show) field.value = "";
+    for (let i = count + 1; i <= 25; i++) {
+      const label = document.querySelector(`[data-player-label="${i}"]`);
+      const field = byId(`lineupPlayer${i}`);
+      if (!field) continue;
+      field.style.display = "none";
+      field.value = "";
+      if (label) label.style.display = "none";
     }
 
     updateCoachEnabledState();
@@ -1070,6 +1075,139 @@ window.NSK2App = (() => {
     return "";
   }
 
+  function buildShiftSchedule({ matchNo, playerIds, playersOnField, periods, periodTime, subTime }) {
+    const shifts = [];
+    if (!playerIds || !playerIds.length) return shifts;
+
+    const totalSeconds = periodTime * 60;
+    const shiftCountPerPeriod = Math.max(1, Math.ceil(totalSeconds / subTime));
+    const totalShifts = periods * shiftCountPerPeriod;
+
+    const ids = [...playerIds];
+    const playerCount = ids.length;
+    const onField = Math.min(safeInt(playersOnField, 0), playerCount);
+    if (onField <= 0) return shifts;
+
+    let startIndex = ((Math.max(1, safeInt(matchNo, 1)) - 1) * onField) % playerCount;
+
+    const appearances = {};
+    ids.forEach((id) => { appearances[String(id)] = 0; });
+
+    let previousLine = [];
+
+    function sameLine(a, b) {
+      if (!Array.isArray(a) || !Array.isArray(b)) return false;
+      if (a.length !== b.length) return false;
+      const aa = [...a].map(String).sort();
+      const bb = [...b].map(String).sort();
+      for (let i = 0; i < aa.length; i++) {
+        if (aa[i] !== bb[i]) return false;
+      }
+      return true;
+    }
+
+    for (let shiftIndex = 0; shiftIndex < totalShifts; shiftIndex++) {
+      const periodNo = Math.floor(shiftIndex / shiftCountPerPeriod) + 1;
+      const shiftInPeriod = shiftIndex % shiftCountPerPeriod;
+      const elapsed = shiftInPeriod * subTime;
+      const left = Math.max(0, totalSeconds - elapsed);
+      const mm = String(Math.floor(left / 60)).padStart(2, "0");
+      const ss = String(left % 60).padStart(2, "0");
+
+      const rotated = [];
+      for (let i = 0; i < playerCount; i++) {
+        rotated.push(ids[(startIndex + i) % playerCount]);
+      }
+
+      rotated.sort((a, b) => {
+        const diff = appearances[String(a)] - appearances[String(b)];
+        if (diff !== 0) return diff;
+        return 0;
+      });
+
+      let line = rotated.slice(0, onField);
+
+      if (sameLine(line, previousLine)) {
+        const bench = rotated.slice(onField);
+        if (bench.length > 0) {
+          let replaceIndex = 0;
+          let maxAppearances = -1;
+          for (let i = 0; i < line.length; i++) {
+            const count = appearances[String(line[i])] || 0;
+            if (count > maxAppearances) {
+              maxAppearances = count;
+              replaceIndex = i;
+            }
+          }
+          line[replaceIndex] = bench[0];
+        } else if (line.length > 1) {
+          const first = line.shift();
+          line.push(first);
+        }
+      }
+
+      line.forEach((id) => { appearances[String(id)] += 1; });
+
+      shifts.push({
+        period_no: periodNo,
+        time_left: `${mm}:${ss}`,
+        players: [...line]
+      });
+
+      previousLine = [...line];
+      startIndex = (startIndex + onField) % playerCount;
+    }
+
+    return shifts;
+  }
+
+  async function regenerateShiftSchemaFor(poolId, lagNo, matchNo) {
+    if (typeof DB?.getPool !== "function") return [];
+    const pool = await DB.getPool(poolId);
+
+    let row = typeof DB?.getPoolTeamMatchConfig === "function"
+      ? await DB.getPoolTeamMatchConfig(poolId, lagNo, matchNo)
+      : null;
+    let sourceRow = row;
+
+    if (!sourceRow && String(matchNo) !== "1" && typeof DB?.getPoolTeamMatchConfig === "function") {
+      sourceRow = await DB.getPoolTeamMatchConfig(poolId, lagNo, 1);
+    }
+
+    if (!sourceRow?.id) return [];
+
+    let lineup = [];
+    if (typeof DB?.getLineup === "function") {
+      lineup = await DB.getLineup(sourceRow.id);
+    }
+
+    const playerIds = lineup
+      .filter((x) => x.person_type === "player")
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+      .map((x) => String(x.person_id));
+
+    if (!playerIds.length) {
+      if (typeof DB?.deleteShiftSchema === "function") {
+        await DB.deleteShiftSchema(poolId, lagNo, matchNo);
+      }
+      return [];
+    }
+
+    const shifts = buildShiftSchedule({
+      matchNo: safeInt(matchNo, 1),
+      playerIds,
+      playersOnField: safeInt(pool?.players_on_field || 3, 3),
+      periods: safeInt(pool?.periods || 1, 1),
+      periodTime: safeInt(pool?.period_time || 15, 15),
+      subTime: safeInt(pool?.sub_time || 90, 90)
+    });
+
+    if (typeof DB?.saveShiftSchema === "function") {
+      await DB.saveShiftSchema(poolId, lagNo, matchNo, shifts);
+    }
+    return shifts;
+  }
+
   async function saveLaguppstallningMatchConfig(silent = false) {
     const poolId = sessionStorage.getItem("nsk2_pool_id") || "";
     const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
@@ -1195,6 +1333,86 @@ window.NSK2App = (() => {
         });
       }
     } catch (err) {
+      setText("appError", err?.message || String(err));
+    }
+  }
+
+  function renderShiftTeamButtons(teams) {
+    const box = byId("shiftTeamButtons");
+    if (!box) return;
+    box.innerHTML = "";
+
+    for (let i = 1; i <= teams; i++) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "team-btn lag-team-btn";
+      btn.textContent = `Lag ${i}`;
+      btn.dataset.shiftLag = String(i);
+      btn.addEventListener("click", async () => {
+        sessionStorage.setItem("nsk2_lag_nr", String(i));
+        setActiveShiftTeamButton(String(i));
+        await renderShiftSchema();
+      });
+      box.appendChild(btn);
+    }
+  }
+
+  function setActiveShiftTeamButton(lagNo) {
+    document.querySelectorAll("[data-shift-lag]").forEach((btn) => {
+      if (btn.dataset.shiftLag === String(lagNo)) btn.classList.add("active-team-btn");
+      else btn.classList.remove("active-team-btn");
+    });
+  }
+
+  function renderShiftMatchList(matches) {
+    const box = byId("shiftMatchList");
+    if (!box) return;
+    box.innerHTML = "";
+
+    for (let i = 1; i <= matches; i++) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "match-list-item";
+      btn.dataset.shiftMatchCard = String(i);
+      btn.innerHTML = `<div class="match-list-title">Match ${i}</div><div class="match-list-sub">Visa bytesschema</div>`;
+      box.appendChild(btn);
+    }
+  }
+
+  function renderShiftMatchOptions(matches) {
+    const sel = byId("shiftMatch");
+    if (!sel) return;
+    sel.innerHTML = "";
+    for (let i = 1; i <= matches; i++) {
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      opt.textContent = `Match ${i}`;
+      sel.appendChild(opt);
+    }
+  }
+
+  function setActiveShiftMatchButton(matchNo) {
+    document.querySelectorAll("[data-shift-match-card]").forEach((btn) => {
+      if (btn.dataset.shiftMatchCard === String(matchNo)) btn.classList.add("active-team-btn");
+      else btn.classList.remove("active-team-btn");
+    });
+  }
+
+  async function toggleShiftDone(shiftNo) {
+    const poolId = sessionStorage.getItem("nsk2_pool_id");
+    const lagNo = sessionStorage.getItem("nsk2_lag_nr") || "1";
+    const matchNo = byId("shiftMatch")?.value || "1";
+
+    const el = document.querySelector(`[data-shift-toggle="${shiftNo}"]`);
+    if (!el || !poolId) return;
+
+    const nextDone = !el.classList.contains("done");
+    el.classList.toggle("done", nextDone);
+
+    try {
+      await DB.setShiftDone(poolId, lagNo, matchNo, shiftNo, nextDone);
+    } catch (err) {
+      el.classList.toggle("done", !nextDone);
       setText("appError", err?.message || String(err));
     }
   }
