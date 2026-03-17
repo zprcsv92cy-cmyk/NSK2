@@ -81,6 +81,87 @@ window.NSK2App = (() => {
   let globalClicksBound = false;
   let matchCurrentShiftIndex = 0;
 
+  const rosterCache = {
+    players: null,
+    coaches: null,
+    playerCoachMap: null,
+    playersPromise: null,
+    coachesPromise: null,
+    mapPromise: null
+  };
+
+  function clearRosterCache() {
+    rosterCache.players = null;
+    rosterCache.coaches = null;
+    rosterCache.playerCoachMap = null;
+    rosterCache.playersPromise = null;
+    rosterCache.coachesPromise = null;
+    rosterCache.mapPromise = null;
+  }
+
+  async function getPlayersCached(force = false) {
+    if (force) {
+      rosterCache.players = null;
+      rosterCache.playersPromise = null;
+    }
+
+    if (rosterCache.players) return rosterCache.players;
+    if (rosterCache.playersPromise) return rosterCache.playersPromise;
+
+    rosterCache.playersPromise = DB.listPlayers().then((data) => {
+      rosterCache.players = Array.isArray(data) ? data : [];
+      rosterCache.playersPromise = null;
+      return rosterCache.players;
+    }).catch((err) => {
+      rosterCache.playersPromise = null;
+      throw err;
+    });
+
+    return rosterCache.playersPromise;
+  }
+
+  async function getCoachesCached(force = false) {
+    if (force) {
+      rosterCache.coaches = null;
+      rosterCache.coachesPromise = null;
+    }
+
+    if (rosterCache.coaches) return rosterCache.coaches;
+    if (rosterCache.coachesPromise) return rosterCache.coachesPromise;
+
+    rosterCache.coachesPromise = DB.listCoaches().then((data) => {
+      rosterCache.coaches = Array.isArray(data) ? data : [];
+      rosterCache.coachesPromise = null;
+      return rosterCache.coaches;
+    }).catch((err) => {
+      rosterCache.coachesPromise = null;
+      throw err;
+    });
+
+    return rosterCache.coachesPromise;
+  }
+
+  async function getPlayerCoachMapCached(force = false) {
+    if (force) {
+      rosterCache.playerCoachMap = null;
+      rosterCache.mapPromise = null;
+    }
+
+    if (rosterCache.playerCoachMap) return rosterCache.playerCoachMap;
+    if (rosterCache.mapPromise) return rosterCache.mapPromise;
+
+    rosterCache.mapPromise = DB.listPlayerCoachMap().then((data) => {
+      rosterCache.playerCoachMap = Array.isArray(data) ? data : [];
+      rosterCache.mapPromise = null;
+      return rosterCache.playerCoachMap;
+    }).catch((err) => {
+      rosterCache.mapPromise = null;
+      throw err;
+    });
+
+    return rosterCache.mapPromise;
+  }
+
   async function init() {
     await checkAppVersion();
 
@@ -478,7 +559,7 @@ window.NSK2App = (() => {
     if (!coachSelect) return;
 
     const coaches = typeof DB?.listCoaches === "function"
-      ? await DB.listCoaches()
+      ? await getCoachesCached()
       : [];
 
     coachSelect.innerHTML = "";
@@ -536,7 +617,7 @@ window.NSK2App = (() => {
 
       const players = typeof DB?.getPlayersOnField === "function"
         ? await DB.getPlayersOnField(poolId, lagNo, currentMatchNo)
-        : (typeof DB?.listPlayers === "function" ? await DB.listPlayers() : []);
+        : (typeof DB?.listPlayers === "function" ? await getPlayersCached() : []);
 
       const usedSameMatchSet = poolId ? await getUsedPlayersInSameMatch(poolId, lagNo, currentMatchNo) : new Set();
 
@@ -687,6 +768,18 @@ window.NSK2App = (() => {
     }
   }
 
+  function getSelectedLineupPlayerIds() {
+    const count = safeInt(byId("lineupPlayerCount")?.value || "3", 3);
+    const ids = [];
+
+    for (let i = 1; i <= count; i++) {
+      const v = byId(`lineupPlayer${i}`)?.value || "";
+      if (v) ids.push(String(v));
+    }
+
+    return ids;
+  }
+
   function syncSelectedPlayersAcrossLineup() {
     const goalieId = byId("lineupGoalie")?.value || "";
     const count = safeInt(byId("lineupPlayerCount")?.value || "3", 3);
@@ -721,6 +814,7 @@ window.NSK2App = (() => {
     const goalieSel = byId("lineupGoalie");
     if (goalieSel) {
       const currentGoalie = goalieSel.value;
+
       Array.from(goalieSel.options).forEach((opt) => {
         if (!opt.value) {
           opt.hidden = false;
@@ -827,9 +921,9 @@ window.NSK2App = (() => {
       return;
     }
 
-    const players = await DB.listPlayers();
-    const coaches = await DB.listCoaches();
-    const mappings = await DB.listPlayerCoachMap();
+    const players = await getPlayersCached();
+    const coaches = await getCoachesCached();
+    const mappings = await getPlayerCoachMapCached();
 
     const playerMap = {};
     players.forEach((p) => { playerMap[String(p.id)] = p.full_name; });
@@ -880,15 +974,8 @@ window.NSK2App = (() => {
   async function randomizeGoalie() {
     if (typeof DB?.listPlayers !== "function" || typeof DB?.listGoalieStats !== "function") return;
 
-    const count = safeInt(byId("lineupPlayerCount")?.value || "3", 3);
-    const selectedPlayerIds = [];
-
-    for (let i = 1; i <= count; i++) {
-      const v = byId(`lineupPlayer${i}`)?.value || "";
-      if (v) selectedPlayerIds.push(String(v));
-    }
-
-    const players = await DB.listPlayers();
+    const selectedPlayerIds = getSelectedLineupPlayerIds();
+    const players = await getPlayersCached();
     const goalieStats = await DB.listGoalieStats();
 
     const statCount = {};
@@ -1239,6 +1326,16 @@ window.NSK2App = (() => {
       selectedPlayers.push(val);
     }
 
+    if (!goalie) {
+      if (!silent) setText("lineupMsg", "Välj målvakt först.");
+      return;
+    }
+
+    if (selectedPlayers.length !== playerCount) {
+      if (!silent) setText("lineupMsg", "Välj exakt rätt antal spelare.");
+      return;
+    }
+
     const poolConflict = await validateUniquePlayersPerMatch(poolId, lagNo, matchNo, goalie, selectedPlayers);
     if (poolConflict) {
       if (!silent) setText("lineupMsg", poolConflict);
@@ -1265,8 +1362,8 @@ window.NSK2App = (() => {
         opponent: byId("lineupOpponent")?.value?.trim() || "",
         plan: byId("lineupPlan")?.value || "Plan 1",
         player_count: playerCount,
-        goalie_player_id: goalie || null,
-        players_on_field: [goalie, ...selectedPlayers].filter(Boolean)
+        goalie_player_id: goalie,
+        players_on_field: [goalie, ...selectedPlayers]
       });
 
       if (typeof DB?.saveLineup === "function") {
@@ -1307,6 +1404,12 @@ window.NSK2App = (() => {
         matches = safeInt(pool?.matches || "4", 4);
         playersOnField = safeInt(pool?.players_on_field || "3", 3);
       }
+
+      await Promise.all([
+        typeof DB?.listPlayers === "function" ? getPlayersCached() : Promise.resolve([]),
+        typeof DB?.listCoaches === "function" ? getCoachesCached() : Promise.resolve([]),
+        typeof DB?.listPlayerCoachMap === "function" ? getPlayerCoachMapCached() : Promise.resolve([])
+      ]);
 
       renderLaguppstallningTeamButtons(teams);
       renderLaguppstallningMatchOptions(matches);
@@ -1465,8 +1568,8 @@ window.NSK2App = (() => {
     let row = await DB.getPoolTeamMatchConfig(poolId, lagNo, matchNo);
     if (!row && String(matchNo) !== "1") row = await DB.getPoolTeamMatchConfig(poolId, lagNo, 1);
 
-    const players = await DB.listPlayers();
-    const coaches = await DB.listCoaches();
+    const players = await getPlayersCached();
+    const coaches = await getCoachesCached();
     const playerMap = {};
     const coachMap = {};
     players.forEach((p) => { playerMap[String(p.id)] = p.full_name; });
@@ -1540,7 +1643,7 @@ window.NSK2App = (() => {
 
   async function getCoachNamesForLag(poolId, lagNo) {
     const rows = await DB.listPoolTeamMatchConfigs(poolId);
-    const coaches = await DB.listCoaches();
+    const coaches = await getCoachesCached();
     const coachMap = {};
     coaches.forEach((c) => { coachMap[String(c.id)] = c.full_name; });
 
@@ -1599,7 +1702,7 @@ window.NSK2App = (() => {
 
   async function renderCoachMatchView(poolId, lagNo, matchNo) {
     const rows = await DB.listShiftSchema(poolId, lagNo, matchNo);
-    const players = await DB.listPlayers();
+    const players = await getPlayersCached();
     const playerMap = {};
     players.forEach((p) => { playerMap[String(p.id)] = p.full_name; });
 
@@ -1698,8 +1801,8 @@ window.NSK2App = (() => {
     const players = Array.isArray(data.players) ? data.players : [];
     const coaches = Array.isArray(data.coaches) ? data.coaches : [];
 
-    const existingPlayers = typeof DB?.listPlayers === "function" ? await DB.listPlayers() : [];
-    const existingCoaches = typeof DB?.listCoaches === "function" ? await DB.listCoaches() : [];
+    const existingPlayers = typeof DB?.listPlayers === "function" ? await getPlayersCached() : [];
+    const existingCoaches = typeof DB?.listCoaches === "function" ? await getCoachesCached() : [];
 
     const existingPlayerNames = new Set(
       existingPlayers.map((p) => String(p.full_name || "").trim().toLowerCase()).filter(Boolean)
@@ -1745,6 +1848,7 @@ window.NSK2App = (() => {
       addedCoaches++;
     }
 
+    clearRosterCache();
     if (typeof DB?.listPlayers === "function") await renderPlayers();
     if (typeof DB?.listCoaches === "function") await renderCoaches();
 
@@ -1784,7 +1888,7 @@ window.NSK2App = (() => {
   async function renderPlayers() {
     const list = byId("playersList");
     if (!list) return;
-    const players = await DB.listPlayers();
+    const players = await getPlayersCached();
     list.innerHTML = players.length
       ? players.map((p) => rowHtml(p, "player")).join("")
       : '<div class="muted-note">Inga spelare ännu.</div>';
@@ -1793,7 +1897,7 @@ window.NSK2App = (() => {
   async function renderCoaches() {
     const list = byId("coachesList");
     if (!list) return;
-    const coaches = await DB.listCoaches();
+    const coaches = await getCoachesCached();
     list.innerHTML = coaches.length
       ? coaches.map((c) => rowHtml(c, "coach")).join("")
       : '<div class="muted-note">Inga tränare ännu.</div>';
@@ -1803,6 +1907,7 @@ window.NSK2App = (() => {
     clearTimeout(saveTimers[`p_${id}`]);
     saveTimers[`p_${id}`] = setTimeout(async () => {
       await DB.updatePlayer(id, String(value || "").trim());
+      clearRosterCache();
     }, 600);
   }
 
@@ -1810,17 +1915,20 @@ window.NSK2App = (() => {
     clearTimeout(saveTimers[`c_${id}`]);
     saveTimers[`c_${id}`] = setTimeout(async () => {
       await DB.updateCoach(id, String(value || "").trim());
+      clearRosterCache();
     }, 600);
   }
 
   async function flushInlinePlayerSave(id, value) {
     clearTimeout(saveTimers[`p_${id}`]);
     await DB.updatePlayer(id, String(value || "").trim());
+    clearRosterCache();
   }
 
   async function flushInlineCoachSave(id, value) {
     clearTimeout(saveTimers[`c_${id}`]);
     await DB.updateCoach(id, String(value || "").trim());
+    clearRosterCache();
   }
 
   async function addPlayer() {
@@ -1829,6 +1937,7 @@ window.NSK2App = (() => {
     if (!name) return;
     await DB.addPlayer(name);
     input.value = "";
+    clearRosterCache();
     await renderPlayers();
   }
 
@@ -1838,16 +1947,19 @@ window.NSK2App = (() => {
     if (!name) return;
     await DB.addCoach(name);
     input.value = "";
+    clearRosterCache();
     await renderCoaches();
   }
 
   async function deletePlayer(id) {
     await DB.deletePlayer(id);
+    clearRosterCache();
     await renderPlayers();
   }
 
   async function deleteCoach(id) {
     await DB.deleteCoach(id);
+    clearRosterCache();
     await renderCoaches();
   }
 
@@ -1875,6 +1987,7 @@ window.NSK2App = (() => {
 
     if (!truppenRealtime && typeof DB?.subscribeTruppen === "function") {
       truppenRealtime = await DB.subscribeTruppen(async (type) => {
+        clearRosterCache();
         if (type === "players") await renderPlayers();
         if (type === "coaches") await renderCoaches();
       });
