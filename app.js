@@ -76,28 +76,19 @@ window.NSK2App = (() => {
     return Number.isFinite(n) ? n : fallback;
   }
 
-  function normalizeUuidValue(value) {
-    if (value === null || value === undefined) return "";
+  function cleanUUID(value) {
+    if (value === null || value === undefined) return null;
     const s = String(value).trim();
-    if (!s) return "";
-    const lower = s.toLowerCase();
-    if (lower === "null" || lower === "undefined" || lower === "nan") return "";
+    if (!s || s === "null" || s === "undefined") return null;
     return s;
   }
 
-  function sanitizeUuidArray(values) {
-    if (!Array.isArray(values)) return [];
-    const seen = new Set();
+  function cleanUUIDList(values) {
     const out = [];
-
-    for (const value of values) {
-      const safe = normalizeUuidValue(value);
-      if (!safe) continue;
-      if (seen.has(safe)) continue;
-      seen.add(safe);
-      out.push(safe);
+    for (const value of Array.isArray(values) ? values : []) {
+      const clean = cleanUUID(value);
+      if (clean && !out.includes(clean)) out.push(clean);
     }
-
     return out;
   }
 
@@ -618,7 +609,8 @@ window.NSK2App = (() => {
       const otherLag = String(row.lag_no) !== String(currentLagNo);
       if (!sameMatch || !otherLag) continue;
 
-      if (row.goalie_player_id) used.add(String(row.goalie_player_id));
+      const rowGoalieId = cleanUUID(row.goalie_player_id);
+      if (rowGoalieId) used.add(String(rowGoalieId));
 
       if (row.id && typeof DB?.getLineup === "function") {
         const lineup = await DB.getLineup(row.id);
@@ -660,7 +652,8 @@ window.NSK2App = (() => {
       }
 
       const ownSet = new Set();
-      if (matchRow?.goalie_player_id) ownSet.add(String(matchRow.goalie_player_id));
+      const matchGoalieId = cleanUUID(matchRow?.goalie_player_id);
+      if (matchGoalieId) ownSet.add(String(matchGoalieId));
       (lineup || [])
         .filter((x) => x.person_type === "player")
         .forEach((x) => ownSet.add(String(x.person_id)));
@@ -697,18 +690,18 @@ window.NSK2App = (() => {
       box.innerHTML = html;
 
       const goalieEl = byId("lineupGoalie");
-      if (goalieEl) goalieEl.value = normalizeUuidValue(matchRow?.goalie_player_id);
+      if (goalieEl) goalieEl.value = cleanUUID(matchRow?.goalie_player_id) || "";
 
       if (Array.isArray(lineup) && lineup.length) {
         const playerIds = lineup
           .filter((x) => x.person_type === "player")
           .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-          .map((x) => normalizeUuidValue(x.person_id)).filter(Boolean);
+          .map((x) => String(x.person_id));
 
         const coachIds = lineup
           .filter((x) => x.person_type === "coach")
           .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-          .map((x) => normalizeUuidValue(x.person_id)).filter(Boolean);
+          .map((x) => String(x.person_id));
 
         for (let i = 1; i <= 25; i++) {
           const el = byId(`lineupPlayer${i}`);
@@ -774,12 +767,12 @@ window.NSK2App = (() => {
     const coachSelect = byId("lineupCoach");
     if (!coachSelect) return;
 
-    const goalie = normalizeUuidValue(byId("lineupGoalie")?.value || "");
+    const goalie = cleanUUID(byId("lineupGoalie")?.value) || "";
     const count = safeInt(byId("lineupPlayerCount")?.value || "3", 3);
 
     let selectedPlayers = 0;
     for (let i = 1; i <= count; i++) {
-      const v = normalizeUuidValue(byId(`lineupPlayer${i}`)?.value || "");
+      const v = cleanUUID(byId(`lineupPlayer${i}`)?.value);
       if (v) selectedPlayers++;
     }
 
@@ -798,7 +791,7 @@ window.NSK2App = (() => {
     const ids = [];
 
     for (let i = 1; i <= count; i++) {
-      const v = normalizeUuidValue(byId(`lineupPlayer${i}`)?.value || "");
+      const v = cleanUUID(byId(`lineupPlayer${i}`)?.value);
       if (v) ids.push(String(v));
     }
 
@@ -806,14 +799,14 @@ window.NSK2App = (() => {
   }
 
   function syncSelectedPlayersAcrossLineup() {
-    const goalieId = byId("lineupGoalie")?.value || "";
+    const goalieId = cleanUUID(byId("lineupGoalie")?.value) || "";
     const count = safeInt(byId("lineupPlayerCount")?.value || "3", 3);
 
     const selectedIds = new Set();
     if (goalieId) selectedIds.add(String(goalieId));
 
     for (let i = 1; i <= count; i++) {
-      const v = byId(`lineupPlayer${i}`)?.value || "";
+      const v = cleanUUID(byId(`lineupPlayer${i}`)?.value);
       if (v) selectedIds.add(String(v));
     }
 
@@ -849,8 +842,8 @@ window.NSK2App = (() => {
 
         let usedAsPlayer = false;
         for (let i = 1; i <= count; i++) {
-          const v = byId(`lineupPlayer${i}`)?.value || "";
-          if (String(v) === String(opt.value)) {
+          const v = cleanUUID(byId(`lineupPlayer${i}`)?.value);
+          if (String(v || "") === String(opt.value)) {
             usedAsPlayer = true;
             break;
           }
@@ -927,7 +920,7 @@ window.NSK2App = (() => {
   }
 
   function syncGoalieAgainstPlayers() {
-    const goalieId = byId("lineupGoalie")?.value || "";
+    const goalieId = cleanUUID(byId("lineupGoalie")?.value) || "";
     const count = safeInt(byId("lineupPlayerCount")?.value || "3", 3);
 
     for (let i = 1; i <= count; i++) {
@@ -984,11 +977,11 @@ window.NSK2App = (() => {
     const count = safeInt(byId("lineupPlayerCount")?.value || "3", 3);
     const ids = [];
 
-    const goalie = byId("lineupGoalie")?.value || "";
+    const goalie = cleanUUID(byId("lineupGoalie")?.value) || "";
     if (goalie) ids.push(goalie);
 
     for (let i = 1; i <= count; i++) {
-      const v = byId(`lineupPlayer${i}`)?.value || "";
+      const v = cleanUUID(byId(`lineupPlayer${i}`)?.value);
       if (v) ids.push(v);
     }
 
@@ -1094,7 +1087,7 @@ window.NSK2App = (() => {
       setActiveMatchButton(matchNo);
 
       if (byId("lineupGoalie")) {
-        byId("lineupGoalie").value = normalizeUuidValue(rowCurrent?.goalie_player_id || sourceRow?.goalie_player_id);
+        byId("lineupGoalie").value = cleanUUID(rowCurrent?.goalie_player_id) || cleanUUID(sourceRow?.goalie_player_id) || "";
       }
 
       let lineup = [];
@@ -1166,7 +1159,8 @@ window.NSK2App = (() => {
       if (!sameMatch || !otherLag) continue;
 
       const taken = new Set();
-      if (row.goalie_player_id) taken.add(String(row.goalie_player_id));
+      const rowGoalieId = cleanUUID(row.goalie_player_id);
+      if (rowGoalieId) taken.add(String(rowGoalieId));
 
       const lineup = row.id && typeof DB?.getLineup === "function" ? await DB.getLineup(row.id) : [];
       lineup
@@ -1330,12 +1324,13 @@ window.NSK2App = (() => {
       return;
     }
 
-    const goalie = normalizeUuidValue(byId("lineupGoalie")?.value || "");
+    const goalie = cleanUUID(byId("lineupGoalie")?.value);
     const playerCount = safeInt(byId("lineupPlayerCount")?.value || "3", 3);
     const selectedPlayers = [];
 
     for (let i = 1; i <= playerCount; i++) {
-      const val = normalizeUuidValue(byId(`lineupPlayer${i}`)?.value || "");
+      const rawVal = byId(`lineupPlayer${i}`)?.value || "";
+      const val = cleanUUID(rawVal);
       if (!val) continue;
 
       if (goalie && val === goalie) {
@@ -1388,7 +1383,7 @@ window.NSK2App = (() => {
         plan: byId("lineupPlan")?.value || "Plan 1",
         player_count: playerCount,
         goalie_player_id: goalie,
-        players_on_field: [goalie, ...selectedPlayers]
+        players_on_field: cleanUUIDList([goalie, ...selectedPlayers])
       });
 
       if (typeof DB?.saveLineup === "function") {
