@@ -7,18 +7,17 @@
 <meta name="theme-color" content="#b11226">
 
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+<!-- Core -->
 <script src="../config.js?v=667"></script>
 <script src="../auth.js?v=667"></script>
 <script src="../db.js?v=667"></script>
-<script src="../app.js?v=667"></script
+<script src="../app.js?v=667"></script>
 
-<script
-document.write('<script src="./config.js?v=' + window.NSK_VERSION + '"><\\/script>');
-document.write('<script src="./auth.js?v=' + window.NSK_VERSION + '"><\\/script>');
-</script>
+<!-- VERSION CONTROL (NY) -->
+<script src="../kontroll_app_version_live.js?v=667"></script>
 
 <style>
-
 html,body{
 margin:0;
 padding:0;
@@ -100,7 +99,6 @@ background:linear-gradient(180deg,#e11d3d,#9f0d20);
 margin-top:14px;
 font-size:14px;
 }
-
 </style>
 </head>
 
@@ -113,19 +111,8 @@ font-size:14px;
 <h1>NSK Team 18</h1>
 <div class="sub">Admin login</div>
 
-<input
-id="emailInput"
-type="email"
-autocomplete="email"
-placeholder="peter_hasselberg@hotmail.com"
->
-
-<input
-id="passwordInput"
-type="password"
-autocomplete="current-password"
-placeholder="Lösenord"
->
+<input id="emailInput" type="email" autocomplete="email" placeholder="peter_hasselberg@hotmail.com">
+<input id="passwordInput" type="password" autocomplete="current-password" placeholder="Lösenord">
 
 <div class="row">
 <button id="loginBtn" type="button">Logga in</button>
@@ -141,7 +128,6 @@ placeholder="Lösenord"
 </section>
 
 <script>
-
 window.onerror=function(msg,url,line,col,err){
 const el=document.getElementById("appError");
 if(el){
@@ -151,23 +137,16 @@ console.error(msg,url,line,col,err);
 };
 
 document.addEventListener("DOMContentLoaded",function(){
-
 if(window.Auth && typeof window.Auth.init==="function"){
 window.Auth.init().catch(function(err){
-
 const el=document.getElementById("appError");
-
 if(el){
 el.textContent=err.message || String(err);
 }
-
 console.error(err);
-
 });
 }
-
 });
-
 </script>
 
 </body>
